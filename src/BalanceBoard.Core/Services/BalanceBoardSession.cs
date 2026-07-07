@@ -804,7 +804,6 @@ public sealed class BalanceBoardSession : IDisposable
     {
         _recoveryCts?.Cancel();
         var task = _recoveryTask;
-        EndRecovery();
         if (task is not null)
         {
             try
@@ -816,6 +815,8 @@ public sealed class BalanceBoardSession : IDisposable
                 // Recovery teardown must not throw.
             }
         }
+
+        EndRecovery();
     }
 
     private void EndRecovery()
