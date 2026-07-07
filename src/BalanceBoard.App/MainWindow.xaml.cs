@@ -368,6 +368,7 @@ public partial class MainWindow : Window
 
     private void RefreshDynamicBrushes()
     {
+        ThemeManager.RefreshThemedElements(this);
         RefreshVJoyStatus();
         UpdateConnectionChip(_session.IsConnected);
         UpdateProfileButtonStyles();
@@ -387,40 +388,42 @@ public partial class MainWindow : Window
     {
         var detail = _settings.UiDetailLevel;
         var simple = detail == UiDetailLevel.Simple;
-        var standard = detail == UiDetailLevel.Standard;
         var advanced = detail == UiDetailLevel.Advanced;
+        var showAdvancedTab = !simple;
 
         DetailLevelDescription.Text = detail switch
         {
-            UiDetailLevel.Simple => "Simple — pick a profile and sensitivity; we handle the rest.",
+            UiDetailLevel.Simple => "Simple — Dashboard and Profiles only; we handle the rest.",
             UiDetailLevel.Standard => "Standard — theme, calibration, and invert options.",
             UiDetailLevel.Advanced => "Advanced — full sliders, vJoy, bindings, and diagnostics.",
             _ => string.Empty,
         };
 
-        ThemeOptionsPanel.Visibility = simple ? Visibility.Collapsed : Visibility.Visible;
-        CalibrationExpander.Visibility = simple ? Visibility.Collapsed : Visibility.Visible;
+        AdvancedTab.Visibility = showAdvancedTab ? Visibility.Visible : Visibility.Collapsed;
+        if (!showAdvancedTab && MainTabControl.SelectedItem == AdvancedTab)
+        {
+            MainTabControl.SelectedIndex = 0;
+        }
+
+        ThemeCard.Visibility = simple ? Visibility.Collapsed : Visibility.Visible;
+        CalibrationSection.Visibility = simple ? Visibility.Collapsed : Visibility.Visible;
         InvertPanel.Visibility = simple ? Visibility.Collapsed : Visibility.Visible;
+        FineTuneSection.Visibility = simple ? Visibility.Collapsed : Visibility.Visible;
         AdvancedSensitivityPanel.Visibility = advanced && SimpleSensitivityCheck.IsChecked != true
             ? Visibility.Visible
             : Visibility.Collapsed;
-        DiagnosticsExpander.Visibility = advanced ? Visibility.Visible : Visibility.Collapsed;
-        SessionLogExpander.Visibility = advanced ? Visibility.Visible : Visibility.Collapsed;
+        DiagnosticsSection.Visibility = advanced ? Visibility.Visible : Visibility.Collapsed;
+        SessionLogSection.Visibility = advanced ? Visibility.Visible : Visibility.Collapsed;
 
         if (simple)
         {
-            VJoyExpander.Visibility = Visibility.Collapsed;
-            KeyboardExpander.Visibility = Visibility.Collapsed;
+            VJoySection.Visibility = Visibility.Collapsed;
+            KeyboardSection.Visibility = Visibility.Collapsed;
         }
         else
         {
-            VJoyExpander.Visibility = Visibility.Visible;
-            KeyboardExpander.Visibility = Visibility.Visible;
-            if (standard)
-            {
-                VJoyExpander.IsExpanded = false;
-                KeyboardExpander.IsExpanded = false;
-            }
+            VJoySection.Visibility = Visibility.Visible;
+            KeyboardSection.Visibility = Visibility.Visible;
         }
 
         ResetCenterButton.Visibility = simple ? Visibility.Collapsed : Visibility.Visible;
