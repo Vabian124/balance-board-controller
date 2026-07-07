@@ -6,6 +6,7 @@ Short index for AI assistants. User-facing history: [CHANGELOG.md](../../CHANGEL
 
 | Commit | Summary |
 |--------|---------|
+| [`e3764f1`](https://github.com/Vabian124/balance-board-controller/commit/e3764f1) | **v1.2.0** — version metadata fix, release zip naming aligned with tags |
 | [`4eeaa4a`](https://github.com/Vabian124/balance-board-controller/commit/4eeaa4a) | **Docs v1.1.1** — README, CODEMAP, ROADMAP, archive cleanup |
 | [`cf6a36a`](https://github.com/Vabian124/balance-board-controller/commit/cf6a36a) | **Finish-line** — crash-proof disconnect/Minecraft, jump presets, UI detail levels, structured logs |
 | [`543455f`](https://github.com/Vabian124/balance-board-controller/commit/543455f) | Tabbed UI, dark-mode ComboBox contrast fix |
