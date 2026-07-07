@@ -18,6 +18,10 @@ public sealed class SettingsStore
         _settingsPath = Path.Combine(root, "settings.json");
     }
 
+    public string SettingsPath => _settingsPath;
+
+    public bool HasPersistedSettings => File.Exists(_settingsPath);
+
     public AppSettings Load()
     {
         if (!File.Exists(_settingsPath))
