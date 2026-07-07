@@ -12,6 +12,7 @@ public sealed class BalanceProcessor
     private float _offsetBottomRight;
     private bool _resetCenterPossible;
     private DateTime _jumpTime = DateTime.MinValue;
+    private bool _aboveJumpThreshold;
 
     public void Tare()
     {
@@ -21,6 +22,7 @@ public sealed class BalanceProcessor
         _offsetBottomLeft = 0;
         _offsetBottomRight = 0;
         _resetCenterPossible = false;
+        _aboveJumpThreshold = false;
     }
 
     public void SetCenterFromCurrentReading(BalanceReading reading)
@@ -64,7 +66,8 @@ public sealed class BalanceProcessor
             settings.JumpWeightThresholdKg,
             settings.JumpHoldSeconds,
             DateTime.UtcNow,
-            ref _jumpTime);
+            ref _jumpTime,
+            ref _aboveJumpThreshold);
 
         var onBoard = weight > BalanceConstants.WeightOnBoardThresholdKg;
         var vJoyButton1 = settings.MapJumpToVJoyButton
@@ -86,6 +89,19 @@ public sealed class BalanceProcessor
 
         var (owrTopLeft, owrTopRight, owrBottomLeft, owrBottomRight, total) =
             BalanceMath.ToBalancePercent(topLeft, topRight, bottomLeft, bottomRight);
+
+        if (total <= BalanceConstants.MinTotalWeightEpsilon)
+        {
+            return new ProcessedBalance
+            {
+                WeightKg = weight,
+                BalanceX = BalanceConstants.BalanceCenterPercent,
+                BalanceY = BalanceConstants.BalanceCenterPercent,
+                Jump = jump,
+                ButtonA = reading.ButtonA,
+                VJoyButton1 = vJoyButton1,
+            };
+        }
 
         var (balanceX, balanceY) = BalanceMath.ComputeBalanceXY(
             owrTopLeft, owrTopRight, owrBottomLeft, owrBottomRight);

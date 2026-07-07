@@ -44,11 +44,11 @@ public sealed class VJoyController : IGameControllerOutput
         if (!_joystick.vJoyEnabled())
         {
             LastError = "vJoy driver not enabled.";
-            Log?.Invoke(LastError);
+            Log?.Invoke($"[VJOY] {LastError}");
             return false;
         }
 
-        Log?.Invoke($"vJoy: {_joystick.GetvJoyManufacturerString()} / {_joystick.GetvJoyProductString()}");
+        Log?.Invoke($"[VJOY] {_joystick.GetvJoyManufacturerString()} / {_joystick.GetvJoyProductString()}");
 
         return TryAcquire(deviceId, attemptCleanupOnBusy);
     }
@@ -64,17 +64,17 @@ public sealed class VJoyController : IGameControllerOutput
         if (status == VjdStat.VJD_STAT_MISS)
         {
             LastError = $"vJoy device {deviceId} is not installed. Open vJoyConf and enable it.";
-            Log?.Invoke(LastError);
+            Log?.Invoke($"[VJOY] {LastError}");
             return false;
         }
 
         if (status == VjdStat.VJD_STAT_BUSY && attemptCleanupOnBusy)
         {
-            Log?.Invoke($"vJoy device {deviceId} is busy — stopping other feeder apps and retrying...");
+            Log?.Invoke($"[VJOY] Device {deviceId} busy — stopping other feeder apps and retrying...");
             var killed = FeederProcessCleanup.TerminateCompetingFeeders();
             if (killed > 0)
             {
-                Log?.Invoke($"Stopped {killed} competing process(es): {string.Join(", ", FeederProcessCleanup.LastTerminatedProcesses)}");
+                Log?.Invoke($"[VJOY] Stopped {killed} competing process(es): {string.Join(", ", FeederProcessCleanup.LastTerminatedProcesses)}");
             }
 
             FeederProcessCleanup.WaitForVJoyDeviceFree(deviceId);
@@ -84,7 +84,7 @@ public sealed class VJoyController : IGameControllerOutput
         if (status == VjdStat.VJD_STAT_BUSY)
         {
             LastError = $"vJoy device {deviceId} is owned by another application. Close vJoy Monitor, other feeders, or reboot.";
-            Log?.Invoke(LastError);
+            Log?.Invoke($"[VJOY] {LastError}");
             return false;
         }
 
@@ -94,12 +94,12 @@ public sealed class VJoyController : IGameControllerOutput
             _acquired = true;
             _axesInitialized = false;
             LastError = null;
-            Log?.Invoke($"Acquired vJoy device {deviceId}.");
+            Log?.Invoke($"[VJOY] Acquired device {deviceId}.");
             return true;
         }
 
         LastError = $"Failed to acquire vJoy device {deviceId}.";
-        Log?.Invoke(LastError);
+        Log?.Invoke($"[VJOY] {LastError}");
         return false;
     }
 
@@ -117,7 +117,7 @@ public sealed class VJoyController : IGameControllerOutput
         catch (Exception ex)
         {
             LastError = ex.Message;
-            Log?.Invoke($"vJoy update failed: {ex.Message}");
+            Log?.Invoke($"[VJOY] Update failed: {ex.Message}");
         }
     }
 
@@ -135,7 +135,7 @@ public sealed class VJoyController : IGameControllerOutput
         catch (Exception ex)
         {
             LastError = ex.Message;
-            Log?.Invoke($"vJoy center failed: {ex.Message}");
+            Log?.Invoke($"[VJOY] Center failed: {ex.Message}");
         }
     }
 

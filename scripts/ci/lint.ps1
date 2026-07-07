@@ -35,7 +35,7 @@ foreach ($proj in $testProjects) {
 }
 
 Write-Host "`n=== Meta: verify test harness ==="
-& (Join-Path $PSScriptRoot "verify-tests.ps1") -SkipTestRun
+& (Join-Path $PSScriptRoot "verify-tests.ps1") -VerifyCountsOnly
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
 Write-Host "`n=== Validate (vJoy / HID) ==="

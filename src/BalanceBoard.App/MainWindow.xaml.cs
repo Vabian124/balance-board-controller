@@ -43,6 +43,7 @@ public partial class MainWindow : Window
             RefreshDynamicBrushes();
         });
         PopulateUi();
+        RefreshDynamicBrushes();
         RefreshVJoyStatus();
         UpdateSliderLabels();
         UpdateConnectUi(isBusy: false);
@@ -75,6 +76,7 @@ public partial class MainWindow : Window
         }
 
         ThemeManager.Apply(_settings.ThemePreference);
+        RefreshDynamicBrushes();
 
         var diag = VJoyDiagnostics.Inspect(_settings.VJoyDeviceId);
         Log($"vJoy: driver={(diag.DriverEnabled ? "OK" : "missing")}, status={diag.DeviceStatus}");
@@ -167,6 +169,12 @@ public partial class MainWindow : Window
             ? _settings.ActiveProfileName
             : ActionPresets.Default;
 
+        DetailLevelCombo.Items.Clear();
+        DetailLevelCombo.Items.Add("Simple");
+        DetailLevelCombo.Items.Add("Standard");
+        DetailLevelCombo.Items.Add("Advanced");
+        DetailLevelCombo.SelectedIndex = (int)_settings.UiDetailLevel;
+
         ThemeCombo.ItemsSource = new[] { ThemePreference.System, ThemePreference.Light, ThemePreference.Dark };
         ThemeCombo.SelectedItem = _settings.ThemePreference;
 
@@ -187,7 +195,9 @@ public partial class MainWindow : Window
         InvertYCheck.IsChecked = _settings.InvertY;
 
         UpdateSensitivityModeUi();
+        UpdateJumpPresetButtons();
         UpdateProfileButtonStyles();
+        ApplyDetailLevel();
 
         VJoyDeviceCombo.Items.Clear();
         for (uint i = 1; i <= 16; i++)
@@ -249,15 +259,20 @@ public partial class MainWindow : Window
         SensitivityLabel.Text = $"Sensitivity: {SensitivitySlider.Value:0.0}×";
         TriggerLeftRightLabel.Text = $"Left/right trigger: {TriggerLeftRightSlider.Value:0}%";
         TriggerForwardBackwardLabel.Text = $"Forward/back trigger: {TriggerForwardBackwardSlider.Value:0}%";
-        JumpThresholdLabel.Text = $"Jump threshold: {JumpThresholdSlider.Value:0.0} kg";
-        JumpHoldLabel.Text = $"Jump hold: {JumpHoldSlider.Value:0.0} s";
+        JumpThresholdLabel.Text = _settings.UiDetailLevel == UiDetailLevel.Simple
+            ? JumpPresets.DisplayName(_settings.JumpLevel)
+            : $"Jump threshold: {JumpThresholdSlider.Value:0.0} kg";
+        JumpHoldLabel.Text = _settings.UiDetailLevel == UiDetailLevel.Simple
+            ? $"Jump hold: {JumpHoldSlider.Value:0.1} s"
+            : $"Jump hold: {JumpHoldSlider.Value:0.0} s";
     }
 
     private void UpdateSensitivityModeUi()
     {
         var simple = SimpleSensitivityCheck.IsChecked == true;
         SimpleSensitivityPanel.Visibility = simple ? Visibility.Visible : Visibility.Collapsed;
-        AdvancedSensitivityPanel.Visibility = simple ? Visibility.Collapsed : Visibility.Visible;
+        var showAdvancedSliders = _settings.UiDetailLevel == UiDetailLevel.Advanced && !simple;
+        AdvancedSensitivityPanel.Visibility = showAdvancedSliders ? Visibility.Visible : Visibility.Collapsed;
         UpdateSensitivityPresetButtons();
     }
 
@@ -271,44 +286,170 @@ public partial class MainWindow : Window
 
     private void UpdateProfileButtonStyles()
     {
-        var profile = _settings.ActiveProfileName;
-        var minecraft = profile == ActionPresets.Minecraft;
-        SetPresetButtonStyle(GamePresetButton, profile == ActionPresets.GameController);
-        SetPresetButtonStyle(MinecraftPresetButton, minecraft);
-        SetPresetButtonStyle(DesktopPresetButton, profile == ActionPresets.KeyboardMovement);
-        SetPresetButtonStyle(PedalPresetButton, profile == ActionPresets.Pedal);
-        SetPresetButtonStyle(MousePresetButton, profile == ActionPresets.BalanceMouse);
-
-        var accent = minecraft ? (Brush)FindResource("Brush.Minecraft") : (Brush)FindResource("Brush.CardBorder");
-        ProfileCard.BorderBrush = accent;
-        ProfileCard.BorderThickness = minecraft ? new Thickness(2) : new Thickness(1);
-        BalancePanel.BorderBrush = minecraft ? accent : (Brush)FindResource("Brush.CardBorder");
-        BalancePanel.BorderThickness = minecraft ? new Thickness(2) : new Thickness(1);
-
-        if (minecraft)
+        try
         {
-            ProfileHintText.Text =
-                "Minecraft + Controlify: in Options → Controls → Controlify, bind vJoy Device 1. " +
-                "Lean maps to the left stick (move); lift one foot to jump (vJoy A). Use mouse/right stick for look.";
-            ProfileHintText.Visibility = Visibility.Visible;
+            var profile = _settings.ActiveProfileName;
+            var minecraft = profile == ActionPresets.Minecraft;
+            SetPresetButtonStyle(GamePresetButton, profile == ActionPresets.GameController);
+            SetPresetButtonStyle(MinecraftPresetButton, minecraft);
+            SetPresetButtonStyle(DesktopPresetButton, profile == ActionPresets.KeyboardMovement);
+            SetPresetButtonStyle(PedalPresetButton, profile == ActionPresets.Pedal);
+            SetPresetButtonStyle(MousePresetButton, profile == ActionPresets.BalanceMouse);
+
+            var accent = minecraft
+                ? FindThemeBrush("Brush.Minecraft", "#22C55E")
+                : FindThemeBrush("Brush.CardBorder");
+            ProfileCard.BorderBrush = accent;
+            ProfileCard.BorderThickness = minecraft ? new Thickness(2) : new Thickness(1);
+            BalancePanel.BorderBrush = minecraft ? accent : FindThemeBrush("Brush.CardBorder");
+            BalancePanel.BorderThickness = minecraft ? new Thickness(2) : new Thickness(1);
+
+            if (minecraft)
+            {
+                ProfileHintText.Text =
+                    "Minecraft + Controlify: in Options → Controls → Controlify, bind vJoy Device 1. " +
+                    "Lean maps to the left stick (move); lift one foot to jump (vJoy A). Use mouse/right stick for look.";
+                ProfileHintText.Visibility = Visibility.Visible;
+            }
+            else
+            {
+                ProfileHintText.Visibility = Visibility.Collapsed;
+            }
         }
-        else
+        catch (Exception ex)
         {
-            ProfileHintText.Visibility = Visibility.Collapsed;
+            _fileLog.WriteException(ex, "UpdateProfileButtonStyles");
+        }
+    }
+
+    private static Brush FindThemeBrush(string key, string fallbackHex = "#E5E7EB")
+    {
+        try
+        {
+            if (Application.Current?.TryFindResource(key) is Brush appBrush)
+            {
+                return appBrush;
+            }
+        }
+        catch
+        {
+            // TryFindResource can throw on bad keys — use fallback.
+        }
+
+        return ParseHexBrush(fallbackHex);
+    }
+
+    private static Brush ParseHexBrush(string hex)
+    {
+        try
+        {
+            var color = (Color)ColorConverter.ConvertFromString(hex)!;
+            var brush = new SolidColorBrush(color);
+            brush.Freeze();
+            return brush;
+        }
+        catch
+        {
+            return Brushes.Gray;
         }
     }
 
     private static void SetPresetButtonStyle(Button button, bool active)
     {
-        button.Style = (Style)button.FindResource(active ? "Button.Primary" : "Button.Secondary");
+        try
+        {
+            button.Style = (Style)button.FindResource(active ? "Button.Primary" : "Button.Secondary");
+        }
+        catch
+        {
+            // Style lookup failed — leave default button style.
+        }
     }
 
     private void RefreshDynamicBrushes()
     {
+        ThemeManager.RefreshThemedElements(this);
         RefreshVJoyStatus();
         UpdateConnectionChip(_session.IsConnected);
         UpdateProfileButtonStyles();
         UpdateSensitivityPresetButtons();
+        UpdateJumpPresetButtons();
+        ApplyDetailLevel();
+    }
+
+    private void UpdateJumpPresetButtons()
+    {
+        SetPresetButtonStyle(JumpEasyButton, _settings.JumpLevel == JumpLevel.Easy);
+        SetPresetButtonStyle(JumpNormalButton, _settings.JumpLevel == JumpLevel.Normal);
+        SetPresetButtonStyle(JumpHardButton, _settings.JumpLevel == JumpLevel.Hard);
+    }
+
+    private void ApplyDetailLevel()
+    {
+        var detail = _settings.UiDetailLevel;
+        var simple = detail == UiDetailLevel.Simple;
+        var advanced = detail == UiDetailLevel.Advanced;
+        var showAdvancedTab = !simple;
+
+        DetailLevelDescription.Text = detail switch
+        {
+            UiDetailLevel.Simple => "Simple — Dashboard and Profiles only; we handle the rest.",
+            UiDetailLevel.Standard => "Standard — theme, calibration, and invert options.",
+            UiDetailLevel.Advanced => "Advanced — full sliders, vJoy, bindings, and diagnostics.",
+            _ => string.Empty,
+        };
+
+        AdvancedTab.Visibility = showAdvancedTab ? Visibility.Visible : Visibility.Collapsed;
+        if (!showAdvancedTab && MainTabControl.SelectedItem == AdvancedTab)
+        {
+            MainTabControl.SelectedIndex = 0;
+        }
+
+        ThemeCard.Visibility = simple ? Visibility.Collapsed : Visibility.Visible;
+        CalibrationSection.Visibility = simple ? Visibility.Collapsed : Visibility.Visible;
+        InvertPanel.Visibility = simple ? Visibility.Collapsed : Visibility.Visible;
+        FineTuneSection.Visibility = simple ? Visibility.Collapsed : Visibility.Visible;
+        AdvancedSensitivityPanel.Visibility = advanced && SimpleSensitivityCheck.IsChecked != true
+            ? Visibility.Visible
+            : Visibility.Collapsed;
+        DiagnosticsSection.Visibility = advanced ? Visibility.Visible : Visibility.Collapsed;
+        SessionLogSection.Visibility = advanced ? Visibility.Visible : Visibility.Collapsed;
+
+        if (simple)
+        {
+            VJoySection.Visibility = Visibility.Collapsed;
+            KeyboardSection.Visibility = Visibility.Collapsed;
+        }
+        else
+        {
+            VJoySection.Visibility = Visibility.Visible;
+            KeyboardSection.Visibility = Visibility.Visible;
+        }
+
+        ResetCenterButton.Visibility = simple ? Visibility.Collapsed : Visibility.Visible;
+        SensorText.Visibility = simple ? Visibility.Collapsed : Visibility.Visible;
+        VJoyAxesText.Visibility = advanced ? Visibility.Visible : Visibility.Collapsed;
+        BoardButtonText.Visibility = advanced ? Visibility.Visible : Visibility.Collapsed;
+        SimpleJumpPanel.Visibility = Visibility.Visible;
+        SimpleJumpLabel.Text = simple ? "How easy to jump" : "Jump difficulty";
+
+        var touchHeight = simple ? 44.0 : 32.0;
+        ConnectButton.MinHeight = touchHeight;
+        DisconnectButton.MinHeight = touchHeight;
+        TareButton.MinHeight = touchHeight;
+        SetCenterButton.MinHeight = touchHeight;
+        GamePresetButton.MinHeight = touchHeight;
+        MinecraftPresetButton.MinHeight = touchHeight;
+        DesktopPresetButton.MinHeight = touchHeight;
+        PedalPresetButton.MinHeight = touchHeight;
+        MousePresetButton.MinHeight = touchHeight;
+        SensitivityLowButton.MinHeight = touchHeight;
+        SensitivityMediumButton.MinHeight = touchHeight;
+        SensitivityHighButton.MinHeight = touchHeight;
+        SensitivityHighlyButton.MinHeight = touchHeight;
+        JumpEasyButton.MinHeight = touchHeight;
+        JumpNormalButton.MinHeight = touchHeight;
+        JumpHardButton.MinHeight = touchHeight;
     }
 
     private void OnProcessed(ProcessedBalance data)
@@ -320,12 +461,32 @@ public partial class MainWindow : Window
                 BoardVisual.Data = data;
                 WeightText.Text = $"Weight: {data.WeightKg:0.0} kg";
                 BalanceText.Text = $"Balance: {data.BalanceX:0.0}% / {data.BalanceY:0.0}%";
-                DirectionText.Text = DescribeDirection(data);
+                if (data.Jump)
+                {
+                    DirectionText.Text = "Jump!";
+                    DirectionText.FontSize = 28;
+                    DirectionText.Foreground = FindThemeBrush("Brush.Success", "#16A34A");
+                    BalancePanel.BorderBrush = FindThemeBrush("Brush.Success", "#16A34A");
+                    BalancePanel.BorderThickness = new Thickness(3);
+                }
+                else
+                {
+                    DirectionText.Text = DescribeDirection(data);
+                    DirectionText.FontSize = 20;
+                    DirectionText.SetResourceReference(TextBlock.ForegroundProperty, "Brush.Foreground");
+                    var minecraft = _settings.ActiveProfileName == ActionPresets.Minecraft;
+                    var accent = minecraft
+                        ? FindThemeBrush("Brush.Minecraft", "#22C55E")
+                        : FindThemeBrush("Brush.CardBorder");
+                    BalancePanel.BorderBrush = minecraft ? accent : FindThemeBrush("Brush.CardBorder");
+                    BalancePanel.BorderThickness = minecraft ? new Thickness(2) : new Thickness(1);
+                }
+
                 ActiveActionsText.Text = DescribeActiveInputs(data);
                 SensorText.Text =
                     $"TL {data.TopLeftKg:0.0} kg  TR {data.TopRightKg:0.0} kg  BL {data.BottomLeftKg:0.0} kg  BR {data.BottomRightKg:0.0} kg";
                 VJoyAxesText.Text = $"vJoy  X={data.JoyX,6}  Y={data.JoyY,6}  Z={data.JoyZ,6}  RX={data.JoyRx,6}";
-                BoardButtonText.Text = data.ButtonA ? "Board button: pressed (A)" : "Board button: up";
+                BoardButtonText.Text = DescribeBoardButton(data);
             }
             catch (Exception ex)
             {
@@ -334,13 +495,41 @@ public partial class MainWindow : Window
         }, DispatcherPriority.DataBind);
     }
 
+    private string DescribeBoardButton(ProcessedBalance data)
+    {
+        if (data.Jump && _settings.MapJumpToVJoyButton)
+        {
+            return "vJoy A: jump";
+        }
+
+        if (data.VJoyButton1 && _settings.MapJumpToVJoyButton)
+        {
+            return "vJoy A: pressed";
+        }
+
+        return data.ButtonA ? "Board button: pressed (A)" : "Board button: up";
+    }
+
     private static string DescribeDirection(ProcessedBalance data)
     {
+        if (data.Jump)
+        {
+            return data.WeightKg < BalanceConstants.WeightOnBoardThresholdKg
+                ? "Jump!"
+                : "Jump! · " + DescribeLean(data);
+        }
+
         if (data.WeightKg < BalanceConstants.WeightOnBoardThresholdKg)
         {
             return "Step on the board";
         }
 
+        var lean = DescribeLean(data);
+        return string.IsNullOrEmpty(lean) ? "Centered" : lean;
+    }
+
+    private static string DescribeLean(ProcessedBalance data)
+    {
         var parts = new List<string>();
         if (data.MoveForward)
         {
@@ -362,16 +551,16 @@ public partial class MainWindow : Window
             parts.Add("right");
         }
 
-        if (data.Jump)
-        {
-            parts.Add("jump");
-        }
-
-        return parts.Count == 0 ? "Centered" : string.Join(" · ", parts);
+        return string.Join(" · ", parts);
     }
 
     private string DescribeActiveInputs(ProcessedBalance data)
     {
+        if (data.Jump && data.WeightKg < BalanceConstants.WeightOnBoardThresholdKg)
+        {
+            return "Active: Jump";
+        }
+
         if (data.WeightKg < BalanceConstants.WeightOnBoardThresholdKg)
         {
             return $"Profile: {_settings.ActiveProfileName}";
@@ -408,24 +597,40 @@ public partial class MainWindow : Window
 
     private void RefreshVJoyStatus()
     {
-        var diag = VJoyDiagnostics.Inspect(_settings.VJoyDeviceId);
-        VJoyStatusText.Text =
-            $"Driver: {(diag.DriverEnabled ? "OK" : "MISSING")}\n" +
-            $"Status: {diag.DeviceStatus}\n" +
-            $"Axes: {diag.HasAxisX}/{diag.HasAxisY}/{diag.HasAxisZ}/{diag.HasAxisRx}/{diag.HasAxisRy}/{diag.HasAxisRz}\n" +
-            (diag.Error ?? "OK");
+        try
+        {
+            var diag = VJoyDiagnostics.Inspect(_settings.VJoyDeviceId);
+            VJoyStatusText.Text =
+                $"Driver: {(diag.DriverEnabled ? "OK" : "MISSING")}\n" +
+                $"Status: {diag.DeviceStatus}\n" +
+                $"Axes: {diag.HasAxisX}/{diag.HasAxisY}/{diag.HasAxisZ}/{diag.HasAxisRx}/{diag.HasAxisRy}/{diag.HasAxisRz}\n" +
+                (diag.Error ?? "OK");
 
-        var ok = diag.DriverEnabled && diag.DeviceStatus is not "VJD_STAT_MISS" and not "VJD_STAT_BUSY";
-        VJoyChipText.Text = ok ? "vJoy: ready" : "vJoy: check";
-        VJoyChip.BorderBrush = ok ? (Brush)FindResource("Brush.Success") : (Brush)FindResource("Brush.Warning");
+            var ok = diag.DriverEnabled && diag.DeviceStatus is not "VJD_STAT_MISS" and not "VJD_STAT_BUSY";
+            VJoyChipText.Text = ok ? "vJoy: ready" : "vJoy: check";
+            VJoyChip.BorderBrush = ok
+                ? FindThemeBrush("Brush.Success", "#22C55E")
+                : FindThemeBrush("Brush.Warning", "#F59E0B");
+        }
+        catch (Exception ex)
+        {
+            _fileLog.WriteException(ex, "RefreshVJoyStatus");
+        }
     }
 
     private void UpdateConnectionChip(bool connected)
     {
-        ConnectionChipText.Text = connected ? "Board: connected" : "Board: offline";
-        ConnectionChip.BorderBrush = connected
-            ? (Brush)FindResource("Brush.Success")
-            : (Brush)FindResource("Brush.CardBorder");
+        try
+        {
+            ConnectionChipText.Text = connected ? "Board: connected" : "Board: offline";
+            ConnectionChip.BorderBrush = connected
+                ? FindThemeBrush("Brush.Success", "#22C55E")
+                : FindThemeBrush("Brush.CardBorder");
+        }
+        catch (Exception ex)
+        {
+            _fileLog.WriteException(ex, "UpdateConnectionChip");
+        }
 
         if (!connected)
         {
@@ -488,10 +693,20 @@ public partial class MainWindow : Window
         _settings.JumpWeightThresholdKg = (float)JumpThresholdSlider.Value;
         _settings.JumpHoldSeconds = JumpHoldSlider.Value;
         _settings.UseSimpleSensitivity = SimpleSensitivityCheck.IsChecked == true;
+        if (ProfileCombo.SelectedItem is string profile)
+        {
+            _settings.ActiveProfileName = profile;
+        }
         if (ThemeCombo.SelectedItem is ThemePreference theme)
         {
             _settings.ThemePreference = theme;
         }
+
+        if (DetailLevelCombo.SelectedIndex is >= 0 and <= 2)
+        {
+            _settings.UiDetailLevel = (UiDetailLevel)DetailLevelCombo.SelectedIndex;
+        }
+
         _settings.InvertX = InvertXCheck.IsChecked == true;
         _settings.InvertY = InvertYCheck.IsChecked == true;
         if (VJoyDeviceCombo.SelectedItem is uint id)
@@ -507,6 +722,7 @@ public partial class MainWindow : Window
 
         UpdateSliderLabels();
         UpdateSensitivityModeUi();
+        ApplyDetailLevel();
         _settingsStore.Save(_settings);
         _session.LoadSettings(_settings);
         ThemeManager.Apply(_settings.ThemePreference);
@@ -671,16 +887,34 @@ public partial class MainWindow : Window
         SendCgCheck.IsChecked = _settings.SendCenterOfGravityToAxes;
         SendSensorsCheck.IsChecked = _settings.SendLoadSensorsToAxes;
         DisableActionsCheck.IsChecked = _settings.DisableKeyboardActions;
+        AutoConnectCheck.IsChecked = _settings.AutoConnectOnStartup;
+        AutoTareCheck.IsChecked = _settings.AutoTareOnConnect;
         TriggerLeftRightSlider.Value = _settings.TriggerLeftRight;
         TriggerForwardBackwardSlider.Value = _settings.TriggerForwardBackward;
+        DeadzoneSlider.Value = _settings.DeadzonePercent;
+        SensitivitySlider.Value = _settings.Sensitivity;
+        JumpThresholdSlider.Value = _settings.JumpWeightThresholdKg;
+        JumpHoldSlider.Value = _settings.JumpHoldSeconds;
+        SimpleSensitivityCheck.IsChecked = _settings.UseSimpleSensitivity;
+        InvertXCheck.IsChecked = _settings.InvertX;
+        InvertYCheck.IsChecked = _settings.InvertY;
+        ThemeCombo.SelectedItem = _settings.ThemePreference;
+        DetailLevelCombo.SelectedIndex = (int)_settings.UiDetailLevel;
         if (ActionPresets.All.Contains(_settings.ActiveProfileName))
         {
             ProfileCombo.SelectedItem = _settings.ActiveProfileName;
         }
 
+        if (VJoyDeviceCombo.Items.Contains(_settings.VJoyDeviceId))
+        {
+            VJoyDeviceCombo.SelectedItem = _settings.VJoyDeviceId;
+        }
+
         LoadActionBindingsFromSettings();
         UpdateProfileButtonStyles();
+        UpdateJumpPresetButtons();
         UpdateSensitivityModeUi();
+        ApplyDetailLevel();
         _suppressSettingEvents = false;
         UpdateSliderLabels();
     }
@@ -757,6 +991,23 @@ public partial class MainWindow : Window
     private void SensitivityHigh_Click(object sender, RoutedEventArgs e) => ApplySensitivityPreset(SensitivityLevel.High);
     private void SensitivityHighly_Click(object sender, RoutedEventArgs e) => ApplySensitivityPreset(SensitivityLevel.HighlySensitive);
 
+    private void DetailLevelCombo_SelectionChanged(object sender, SelectionChangedEventArgs e) => SaveSettingsFromUi();
+
+    private void ApplyJumpPreset(JumpLevel level)
+    {
+        JumpPresets.Apply(_settings, level);
+        _suppressSettingEvents = true;
+        JumpThresholdSlider.Value = _settings.JumpWeightThresholdKg;
+        JumpHoldSlider.Value = _settings.JumpHoldSeconds;
+        _suppressSettingEvents = false;
+        SaveSettingsFromUi();
+        SyncUiFromSettings();
+    }
+
+    private void JumpEasy_Click(object sender, RoutedEventArgs e) => ApplyJumpPreset(JumpLevel.Easy);
+    private void JumpNormal_Click(object sender, RoutedEventArgs e) => ApplyJumpPreset(JumpLevel.Normal);
+    private void JumpHard_Click(object sender, RoutedEventArgs e) => ApplyJumpPreset(JumpLevel.Hard);
+
     private void RunHealthCheckButton_Click(object sender, RoutedEventArgs e)
     {
         IReadOnlyList<string>? knownDevices = null;
@@ -824,4 +1075,13 @@ public partial class MainWindow : Window
         ForceShutdown();
         base.OnClosed(e);
     }
+
+    /// <summary>Used by UiSmoke to verify Minecraft preset styling does not throw.</summary>
+    internal void SmokeApplyMinecraftPreset()
+    {
+        _session.ApplyMinecraftPreset();
+        SyncUiFromSettings();
+    }
+
+    internal Brush? SmokeProfileCardBorderBrush => ProfileCard.BorderBrush;
 }

@@ -11,6 +11,13 @@
     <SolidColorBrush x:Key="Brush.Hover" Color="#E8EDF5"/>
     <SolidColorBrush x:Key="Brush.Pressed" Color="#D0D8E6"/>
 
+    <SolidColorBrush x:Key="Brush.InputBackground" Color="#FFFFFF"/>
+    <SolidColorBrush x:Key="Brush.InputForeground" Color="#111827"/>
+    <SolidColorBrush x:Key="Brush.DropdownBackground" Color="#FFFFFF"/>
+    <SolidColorBrush x:Key="Brush.DropdownForeground" Color="#111827"/>
+    <SolidColorBrush x:Key="Brush.DropdownHighlight" Color="#E8EDF5"/>
+    <SolidColorBrush x:Key="Brush.DropdownHighlightText" Color="#111827"/>
+
     <Color x:Key="Color.Success">#16A34A</Color>
     <Color x:Key="Color.Warning">#D97706</Color>
     <Color x:Key="Color.Danger">#DC2626</Color>
@@ -19,6 +26,10 @@
     <SolidColorBrush x:Key="Brush.Warning" Color="{StaticResource Color.Warning}"/>
     <SolidColorBrush x:Key="Brush.Danger" Color="{StaticResource Color.Danger}"/>
     <SolidColorBrush x:Key="Brush.Info" Color="{StaticResource Color.Info}"/>
+
+    <Color x:Key="Color.Minecraft">#22C55E</Color>
+    <SolidColorBrush x:Key="Brush.Minecraft" Color="{StaticResource Color.Minecraft}"/>
+    <SolidColorBrush x:Key="Brush.JumpActive" Color="{StaticResource Color.Success}"/>
 
     <SolidColorBrush x:Key="Brush.BoardSurface" Color="#F8FAFC"/>
     <SolidColorBrush x:Key="Brush.BoardBorder" Color="#94A3B8"/>

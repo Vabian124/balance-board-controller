@@ -6,12 +6,13 @@ Use this matrix to verify workflow behavior. Hardware tests need a Wii Balance B
 
 ```powershell
 cd <repo-root>
-.\scripts\test-flow.ps1
+.\scripts\dev\test-flow.ps1
+# or: .\scripts\test-flow.ps1  (shim to dev/)
 ```
 
 Checks: build, start/stop lifecycle, second-instance activation, log file creation.
 
-For full static analysis including **XAML runtime load**, run `.\scripts\lint.ps1`.
+For full static analysis including **XAML runtime load**, run `.\scripts\lint.ps1` (delegates to `scripts/ci/lint.ps1`).
 
 ## Edge-case matrix
 
@@ -84,7 +85,7 @@ Start-Process ".\src\BalanceBoard.App\bin\Release\net8.0-windows\BalanceBoardApp
 
 ```powershell
 dotnet build BalanceBoard.sln -c Release
-.\scripts\test-flow.ps1
+.\scripts\dev\test-flow.ps1
 ```
 
 - [ ] Build succeeds

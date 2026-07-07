@@ -9,6 +9,22 @@ namespace BalanceBoard.Core.Tests;
 public class BalanceMathTests
 {
     [Fact]
+    public void ComputeBalanceXY_zero_distribution_returns_center()
+    {
+        var (x, y) = BalanceMath.ComputeBalanceXY(0, 0, 0, 0);
+        Assert.Equal(BalanceConstants.BalanceCenterPercent, x);
+        Assert.Equal(BalanceConstants.BalanceCenterPercent, y);
+    }
+
+    [Fact]
+    public void ComputeBalanceXY_zero_axes_never_return_origin()
+    {
+        var (x, y) = BalanceMath.ComputeBalanceXY(0, 0, 0, 0);
+        Assert.NotEqual(0f, x);
+        Assert.NotEqual(0f, y);
+    }
+
+    [Fact]
     public void ToJoyAxis_at_center_is_zero()
     {
         var axis = BalanceMath.ToJoyAxis(BalanceConstants.BalanceCenterPercent, 1.0, invert: false);
@@ -57,7 +73,8 @@ public class BalanceMathTests
     public void EvaluateJump_holds_for_two_seconds_after_lift_off()
     {
         var jumpTime = DateTime.UtcNow.AddSeconds(-1);
-        var stillJumping = BalanceMath.EvaluateJump(0.5f, 1f, 2, DateTime.UtcNow, ref jumpTime);
+        var above = false;
+        var stillJumping = BalanceMath.EvaluateJump(0.5f, 1f, 2, DateTime.UtcNow, ref jumpTime, ref above);
         Assert.True(stillJumping);
     }
 
@@ -65,9 +82,41 @@ public class BalanceMathTests
     public void EvaluateJump_resets_when_weight_returns()
     {
         var jumpTime = DateTime.UtcNow.AddSeconds(-5);
-        var jumped = BalanceMath.EvaluateJump(60f, 1f, 2, DateTime.UtcNow, ref jumpTime);
+        var above = false;
+        var jumped = BalanceMath.EvaluateJump(60f, 1f, 2, DateTime.UtcNow, ref jumpTime, ref above);
         Assert.False(jumped);
-        Assert.True(jumpTime > DateTime.UtcNow.AddSeconds(-1));
+        Assert.True(above);
+    }
+
+    [Fact]
+    public void EvaluateJump_hold_anchors_on_threshold_crossing()
+    {
+        var jumpTime = DateTime.UtcNow.AddSeconds(-10);
+        var above = true;
+        var liftAt = DateTime.UtcNow;
+
+        Assert.True(BalanceMath.EvaluateJump(0.5f, 1f, 2, liftAt, ref jumpTime, ref above));
+        Assert.True(liftAt.Subtract(jumpTime).TotalSeconds < 0.01);
+
+        Assert.True(BalanceMath.EvaluateJump(0.5f, 1f, 2, liftAt.AddSeconds(1), ref jumpTime, ref above));
+        Assert.False(BalanceMath.EvaluateJump(0.5f, 1f, 2, liftAt.AddSeconds(2.5), ref jumpTime, ref above));
+    }
+
+    [Fact]
+    public void EvaluateJump_idle_board_does_not_jump()
+    {
+        var jumpTime = DateTime.MinValue;
+        var above = false;
+        var jumped = BalanceMath.EvaluateJump(
+            0f,
+            BalanceConstants.JumpNormalThresholdKg,
+            BalanceConstants.JumpNormalHoldSeconds,
+            DateTime.UtcNow,
+            ref jumpTime,
+            ref above);
+
+        Assert.False(jumped);
+        Assert.False(above);
     }
 
     [Fact]
@@ -196,6 +245,100 @@ public class BalanceProcessorTests
     }
 
     [Fact]
+    public void Process_light_weight_with_no_corner_load_is_centered()
+    {
+        var processor = new BalanceProcessor();
+        var settings = new AppSettings();
+        var reading = new BalanceReading
+        {
+            WeightKg = 8,
+            TopLeftKg = 0,
+            TopRightKg = 0,
+            BottomLeftKg = 0,
+            BottomRightKg = 0,
+            IsBalanceBoard = true,
+        };
+
+        processor.Tare();
+        var processed = processor.Process(reading, settings);
+
+        Assert.Equal(BalanceConstants.BalanceCenterPercent, processed.BalanceX);
+        Assert.Equal(BalanceConstants.BalanceCenterPercent, processed.BalanceY);
+    }
+
+    [Fact]
+    public void Process_minecraft_preset_one_foot_jump_triggers()
+    {
+        var processor = new BalanceProcessor();
+        var settings = new AppSettings();
+        ActionPresets.ApplyMinecraft(settings);
+
+        var standing = new BalanceReading
+        {
+            WeightKg = 70,
+            TopLeftKg = 17,
+            TopRightKg = 17,
+            BottomLeftKg = 18,
+            BottomRightKg = 18,
+            IsBalanceBoard = true,
+        };
+        var oneFoot = new BalanceReading
+        {
+            WeightKg = 32,
+            TopLeftKg = 8,
+            TopRightKg = 8,
+            BottomLeftKg = 8,
+            BottomRightKg = 8,
+            IsBalanceBoard = true,
+        };
+
+        processor.Tare();
+        processor.Process(standing, settings);
+        var jumped = processor.Process(oneFoot, settings);
+
+        Assert.True(jumped.Jump);
+        Assert.True(jumped.VJoyButton1);
+        Assert.Equal(BalanceConstants.JumpNormalThresholdKg, settings.JumpWeightThresholdKg);
+    }
+
+    [Fact]
+    public void Process_one_foot_jump_triggers_below_threshold()
+    {
+        var processor = new BalanceProcessor();
+        var settings = new AppSettings
+        {
+            JumpWeightThresholdKg = 40f,
+            JumpHoldSeconds = 2,
+            MapJumpToVJoyButton = true,
+        };
+        var standing = new BalanceReading
+        {
+            WeightKg = 70,
+            TopLeftKg = 17,
+            TopRightKg = 17,
+            BottomLeftKg = 18,
+            BottomRightKg = 18,
+            IsBalanceBoard = true,
+        };
+        var oneFoot = new BalanceReading
+        {
+            WeightKg = 35,
+            TopLeftKg = 8,
+            TopRightKg = 8,
+            BottomLeftKg = 9,
+            BottomRightKg = 10,
+            IsBalanceBoard = true,
+        };
+
+        processor.Tare();
+        processor.Process(standing, settings);
+        var jumped = processor.Process(oneFoot, settings);
+
+        Assert.True(jumped.Jump);
+        Assert.True(jumped.VJoyButton1);
+    }
+
+    [Fact]
     public void Process_idle_board_is_centered_with_neutral_vjoy()
     {
         var processor = new BalanceProcessor();
@@ -219,6 +362,30 @@ public class BalanceProcessorTests
         Assert.Equal(0, processed.JoyY);
         Assert.False(processed.MoveLeft);
         Assert.False(processed.Jump);
+    }
+
+    [Fact]
+    public void Process_negative_weight_idle_is_centered_not_origin()
+    {
+        var processor = new BalanceProcessor();
+        var settings = new AppSettings();
+        var reading = new BalanceReading
+        {
+            WeightKg = -7.6f,
+            TopLeftKg = -2f,
+            TopRightKg = -1.9f,
+            BottomLeftKg = -2.1f,
+            BottomRightKg = -1.8f,
+            IsBalanceBoard = true,
+        };
+
+        processor.Tare();
+        var processed = processor.Process(reading, settings);
+
+        Assert.Equal(BalanceConstants.BalanceCenterPercent, processed.BalanceX);
+        Assert.Equal(BalanceConstants.BalanceCenterPercent, processed.BalanceY);
+        Assert.NotEqual(0f, processed.BalanceX);
+        Assert.NotEqual(0f, processed.BalanceY);
     }
 
     [Fact]
@@ -315,8 +482,19 @@ public class ActionPresetsTests
         Assert.True(settings.EnableVJoy);
         Assert.True(settings.SendCenterOfGravityToAxes);
         Assert.True(settings.MapJumpToVJoyButton);
+        Assert.Equal(BalanceConstants.JumpNormalThresholdKg, settings.JumpWeightThresholdKg);
+        Assert.Equal(BalanceConstants.JumpNormalHoldSeconds, settings.JumpHoldSeconds);
+        Assert.Equal(JumpLevel.Normal, settings.JumpLevel);
         Assert.True(settings.DisableKeyboardActions);
         Assert.Equal(SensitivityLevel.Medium, settings.SensitivityLevel);
+    }
+
+    [Fact]
+    public void ApplyMinecraft_uses_normal_jump_preset()
+    {
+        var settings = new AppSettings();
+        ActionPresets.ApplyMinecraft(settings);
+        Assert.Equal(BalanceConstants.JumpNormalHoldSeconds, settings.JumpHoldSeconds);
     }
 
     [Fact]
@@ -348,6 +526,77 @@ public class ActionPresetsTests
     }
 }
 
+public class JumpPresetsTests
+{
+    [Theory]
+    [InlineData(JumpLevel.Easy, 20f, 0.6)]
+    [InlineData(JumpLevel.Normal, 35f, 0.4)]
+    [InlineData(JumpLevel.Hard, 50f, 0.25)]
+    public void Apply_sets_threshold_and_hold(JumpLevel level, float threshold, double holdSeconds)
+    {
+        var settings = new AppSettings();
+        JumpPresets.Apply(settings, level);
+        Assert.Equal(level, settings.JumpLevel);
+        Assert.Equal(threshold, settings.JumpWeightThresholdKg);
+        Assert.Equal(holdSeconds, settings.JumpHoldSeconds);
+    }
+
+    [Fact]
+    public void Hard_uses_higher_threshold_than_easy()
+    {
+        var easy = new AppSettings();
+        var hard = new AppSettings();
+        JumpPresets.Apply(easy, JumpLevel.Easy);
+        JumpPresets.Apply(hard, JumpLevel.Hard);
+        Assert.True(hard.JumpWeightThresholdKg > easy.JumpWeightThresholdKg);
+    }
+
+    [Fact]
+    public void Normal_matches_minecraft_preset_jump_defaults()
+    {
+        var fromPreset = new AppSettings();
+        ActionPresets.ApplyMinecraft(fromPreset);
+        var fromJump = new AppSettings();
+        JumpPresets.Apply(fromJump, JumpLevel.Normal);
+        Assert.Equal(fromJump.JumpWeightThresholdKg, fromPreset.JumpWeightThresholdKg);
+        Assert.Equal(fromJump.JumpHoldSeconds, fromPreset.JumpHoldSeconds);
+        Assert.Equal(JumpLevel.Normal, fromPreset.JumpLevel);
+    }
+
+    [Fact]
+    public void Minecraft_jump_triggers_after_one_foot_lift()
+    {
+        var processor = new BalanceProcessor();
+        var settings = new AppSettings();
+        ActionPresets.ApplyMinecraft(settings);
+        var onBoard = new BalanceReading
+        {
+            WeightKg = 60,
+            TopLeftKg = 15,
+            TopRightKg = 15,
+            BottomLeftKg = 15,
+            BottomRightKg = 15,
+            IsBalanceBoard = true,
+        };
+        var oneFoot = new BalanceReading
+        {
+            WeightKg = 28,
+            TopLeftKg = 28,
+            TopRightKg = 0,
+            BottomLeftKg = 0,
+            BottomRightKg = 0,
+            IsBalanceBoard = true,
+        };
+
+        processor.Tare();
+        processor.Process(onBoard, settings);
+        var jumped = processor.Process(oneFoot, settings);
+
+        Assert.True(jumped.Jump);
+        Assert.True(jumped.VJoyButton1);
+    }
+}
+
 public class SensitivityPresetsTests
 {
     [Fact]
@@ -357,6 +606,68 @@ public class SensitivityPresetsTests
         SensitivityPresets.Apply(settings, SensitivityLevel.HighlySensitive);
         Assert.Equal(3, settings.TriggerLeftRight);
         Assert.Equal(2.0, settings.Sensitivity);
+    }
+}
+
+public class BalanceDisplayTests
+{
+    [Fact]
+    public void GetCenterDotPercent_idle_below_threshold_returns_center_not_origin()
+    {
+        var idle = new ProcessedBalance
+        {
+            WeightKg = 0,
+            BalanceX = 0,
+            BalanceY = 0,
+        };
+
+        var (x, y) = BalanceDisplay.GetCenterDotPercent(idle);
+
+        Assert.Equal(BalanceConstants.BalanceCenterPercent, x);
+        Assert.Equal(BalanceConstants.BalanceCenterPercent, y);
+        Assert.NotEqual(0f, x);
+        Assert.NotEqual(0f, y);
+    }
+
+    [Fact]
+    public void GetCenterDotPercent_phantom_origin_on_board_still_centers()
+    {
+        var phantom = new ProcessedBalance
+        {
+            WeightKg = 8,
+            BalanceX = 0,
+            BalanceY = 0,
+        };
+
+        var (x, y) = BalanceDisplay.GetCenterDotPercent(phantom);
+
+        Assert.Equal(BalanceConstants.BalanceCenterPercent, x);
+        Assert.Equal(BalanceConstants.BalanceCenterPercent, y);
+    }
+
+    [Fact]
+    public void CenterDotCanvasPosition_centered_is_not_top_left()
+    {
+        var (left, top) = BalanceDisplay.CenterDotCanvasPosition(
+            BalanceConstants.BalanceCenterPercent,
+            BalanceConstants.BalanceCenterPercent,
+            canvasWidth: 200,
+            canvasHeight: 200,
+            dotWidth: 22,
+            dotHeight: 22);
+
+        Assert.True(left > 0);
+        Assert.True(top > 0);
+        Assert.InRange(left, 85, 95);
+        Assert.InRange(top, 85, 95);
+    }
+
+    [Fact]
+    public void CenterDotCanvasPosition_origin_is_top_left()
+    {
+        var (left, top) = BalanceDisplay.CenterDotCanvasPosition(0, 0, 200, 200, 22, 22);
+        Assert.Equal(0, left);
+        Assert.Equal(0, top);
     }
 }
 
