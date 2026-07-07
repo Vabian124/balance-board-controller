@@ -17,6 +17,7 @@ public partial class MainWindow : Window
     private bool _uiReady;
     private bool _shutdownCompleted;
     private string _lastHealthReport = string.Empty;
+    private bool _connectInProgress;
 
     public MainWindow(int competingProcessesStopped = 0)
     {
@@ -267,28 +268,51 @@ public partial class MainWindow : Window
             Log(diag.Error);
         }
 
-        if (!_settings.SetupWizardCompleted)
+        BluetoothPairingService.Warmup();
+
+        if (_settings.ActiveProfileName != ActionPresets.GameController)
         {
-            Log("Setup Wizard not completed — applying Game Controller preset and opening wizard.");
             _session.ApplyControllerPreset();
             SyncUiFromSettings();
-            SaveSettingsFromUi();
-            Dispatcher.BeginInvoke(() => ShowSetupWizard());
-        }
-        else if (_session.DiscoverDevices().Count == 0)
-        {
-            Log("No Wii balance board detected yet. Pair in Windows Bluetooth (PIN 0000, hold SYNC).");
         }
 
-        if (!_settings.AutoConnectOnStartup || _session.IsConnected)
+        BeginAutoConnect();
+    }
+
+    private async void BeginAutoConnect()
+    {
+        if (_connectInProgress || _session.IsConnected)
         {
             return;
         }
 
-        Log("Auto-connect enabled — connecting to balance board...");
-        if (!_session.Connect())
+        _connectInProgress = true;
+        ConnectButton.IsEnabled = false;
+        StatusText.Text = "Finding and pairing balance board…";
+
+        try
         {
-            Log("Auto-connect failed. Pair the board in Windows Bluetooth settings, then click Connect.");
+            var connected = await Task.Run(() => StaThread.Run(() => _session.ConnectOrPair()));
+            if (connected)
+            {
+                _settings.SetupWizardCompleted = true;
+                SaveSettingsFromUi();
+                Log("Balance board connected and ready.");
+            }
+            else
+            {
+                StatusText.Text = "Press SYNC on the board (red button under batteries), then click Connect.";
+            }
+        }
+        catch (Exception ex)
+        {
+            Log($"Connection error: {ex.Message}");
+            StatusText.Text = "Connection error — see Debug Suite log.";
+        }
+        finally
+        {
+            _connectInProgress = false;
+            ConnectButton.IsEnabled = true;
         }
     }
 
@@ -326,14 +350,7 @@ public partial class MainWindow : Window
     private void ConnectButton_Click(object sender, RoutedEventArgs e)
     {
         SaveSettingsFromUi();
-        if (!_session.Connect())
-        {
-            MessageBox.Show(this,
-                "Could not connect. Pair the board in Windows Bluetooth settings, then hold SYNC while connecting.",
-                "Connection failed",
-                MessageBoxButton.OK,
-                MessageBoxImage.Warning);
-        }
+        BeginAutoConnect();
     }
 
     private void DisconnectButton_Click(object sender, RoutedEventArgs e) => _session.Disconnect();

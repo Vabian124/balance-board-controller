@@ -22,10 +22,11 @@ This project includes or depends on components from other projects.
 - **License:** See upstream repository
 - **Usage:** Virtual joystick driver (installed separately) and `vJoyInterfaceWrap.dll` / `vJoyInterface.dll` in `libs/x64/`
 
-## 32Feet.NET / InTheHand.Net (legacy only)
+## 32Feet.NET / InTheHand.Net
 
-- **Usage:** Legacy `WiiBalanceWalker` Bluetooth pairing only
-- **Note:** The modern app uses Windows Bluetooth pairing instead of the deprecated 32Feet stack
+- **Source:** https://github.com/inthehand/32feet (InTheHand.Net.Personal)
+- **Usage:** Automatic Wii Balance Board Bluetooth pairing in `BalanceBoard.Core` (`BluetoothPairingService`)
+- **Binary:** `libs/x64/InTheHand.Net.Personal.dll`
 
 ## Wii Balance Board GUI (reference only)
 

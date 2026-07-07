@@ -11,6 +11,7 @@ public partial class SetupWizardWindow : Window
 {
     private int _step;
     private readonly BalanceBoardSession _session;
+    private TextBlock? _statusText;
 
     public SetupWizardWindow(BalanceBoardSession session)
     {
@@ -29,11 +30,11 @@ public partial class SetupWizardWindow : Window
         switch (_step)
         {
             case 0:
-                StepTitle.Text = "Step 1 of 3 — Prerequisites";
-                BuildPrereqStep();
+                StepTitle.Text = "Step 1 of 3 — Ready";
+                BuildReadyStep();
                 break;
             case 1:
-                StepTitle.Text = "Step 2 of 3 — Pair and connect";
+                StepTitle.Text = "Step 2 of 3 — Pair automatically";
                 BuildPairStep();
                 break;
             case 2:
@@ -43,48 +44,51 @@ public partial class SetupWizardWindow : Window
         }
     }
 
-    private void BuildPrereqStep()
+    private void BuildReadyStep()
     {
         var diag = VJoyDiagnostics.Inspect(_session.Settings.VJoyDeviceId);
         AddBullet(diag.DriverEnabled ? "vJoy driver is enabled." : "vJoy driver is NOT enabled. Reboot after installing vJoy.");
         AddBullet(diag.HasAxisX && diag.HasAxisY ? "vJoy Device 1 has X/Y axes configured." : "Open vJoyConf and enable X/Y on Device 1.");
         if (!string.IsNullOrWhiteSpace(diag.Error)) AddBullet(diag.Error);
 
+        AddParagraph("No Windows Bluetooth menus. The app pairs automatically using your PC's Bluetooth address as the Wii PIN (same as WiiBalanceWalker).");
+
         var openVJoy = new Button { Content = "Open vJoyConf", Style = (Style)FindResource("SecondaryButton") };
         openVJoy.Click += (_, _) => TryLaunchVJoyConf();
         StepContent.Children.Add(openVJoy);
-
-        var openBt = new Button { Content = "Open Bluetooth Settings", Style = (Style)FindResource("GhostButton") };
-        openBt.Click += (_, _) => Process.Start(new ProcessStartInfo("ms-settings:bluetooth") { UseShellExecute = true });
-        StepContent.Children.Add(openBt);
-
-        AddParagraph("Pair the Wii Balance Board in Windows Bluetooth (PIN 0000). Hold the red SYNC button in the battery bay while pairing.");
     }
 
     private void BuildPairStep()
     {
-        AddParagraph("1. Remove old pairings if connection fails.");
-        AddParagraph("2. Add the board in Windows Bluetooth while holding SYNC.");
-        AddParagraph("3. Click Connect below and keep holding SYNC until connected.");
+        AddParagraph("1. Flip open the battery cover on the balance board.");
+        AddParagraph("2. Press the red SYNC button once.");
+        AddParagraph("3. Click Find & Pair below — the app handles Bluetooth for you.");
 
-        var devices = _session.DiscoverDevices();
-        AddBullet(devices.Count > 0
-            ? $"Found {devices.Count} Wii HID device(s)."
-            : "No Wii devices detected yet.");
-
-        var connect = new Button { Content = "Connect Balance Board", Margin = new Thickness(0, 12, 0, 0) };
-        connect.Click += (_, _) =>
+        _statusText = new TextBlock
         {
-            if (_session.Connect())
+            TextWrapping = TextWrapping.Wrap,
+            Margin = new Thickness(0, 8, 0, 0),
+            Foreground = (Brush)FindResource("TextMutedBrush"),
+        };
+        StepContent.Children.Add(_statusText);
+
+        var pair = new Button { Content = "Find & Pair Balance Board", Margin = new Thickness(0, 12, 0, 0) };
+        pair.Click += (_, _) =>
+        {
+            pair.IsEnabled = false;
+            SetStatus("Searching and pairing… press SYNC if you have not already.");
+            var ok = _session.ConnectOrPair(discoveryRounds: 4);
+            pair.IsEnabled = true;
+            if (ok)
             {
-                MessageBox.Show(this, "Connected. Proceed to calibration.", "Connected", MessageBoxButton.OK, MessageBoxImage.Information);
+                SetStatus("Connected! Click Next to calibrate.");
             }
             else
             {
-                MessageBox.Show(this, "Could not connect. Ensure the board is paired and hold SYNC while connecting.", "Connection failed", MessageBoxButton.OK, MessageBoxImage.Warning);
+                SetStatus("Not found yet. Press SYNC on the board and try again.");
             }
         };
-        StepContent.Children.Add(connect);
+        StepContent.Children.Add(pair);
     }
 
     private void BuildCalibrateStep()
@@ -102,6 +106,14 @@ public partial class SetupWizardWindow : Window
         var preset = new Button { Content = "Apply Game Controller Preset", Margin = new Thickness(0, 12, 0, 0) };
         preset.Click += (_, _) => _session.ApplyControllerPreset();
         StepContent.Children.Add(preset);
+    }
+
+    private void SetStatus(string text)
+    {
+        if (_statusText is not null)
+        {
+            _statusText.Text = text;
+        }
     }
 
     private void AddParagraph(string text)

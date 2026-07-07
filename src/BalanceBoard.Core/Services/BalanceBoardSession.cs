@@ -5,6 +5,7 @@ namespace BalanceBoard.Core.Services;
 public sealed class BalanceBoardSession : IDisposable
 {
     private readonly BalanceBoardConnection _connection = new();
+    private readonly BluetoothPairingService _pairing = new();
     private readonly BalanceProcessor _processor = new();
     private readonly VJoyController _vjoy = new();
     private readonly InputSimulator _input = new();
@@ -48,17 +49,66 @@ public sealed class BalanceBoardSession : IDisposable
         var ok = _connection.Connect(deviceIndex);
         if (ok)
         {
-            _pollTimer.Start();
-            if (_settings.AutoTareOnConnect)
-            {
-                Tare();
-            }
-            if (_settings.EnableVJoy)
-            {
-                _vjoy.Initialize(_settings.VJoyDeviceId);
-            }
+            OnConnected();
         }
         return ok;
+    }
+
+    /// <summary>
+    /// Connect to an already-paired board, or automatically Bluetooth-pair then connect (WiiBalanceWalker PIN method).
+    /// </summary>
+    public bool ConnectOrPair(int deviceIndex = 0, int discoveryRounds = 6)
+    {
+        if (Connect(deviceIndex))
+        {
+            return true;
+        }
+
+        for (var round = 1; round <= discoveryRounds; round++)
+        {
+            if (round == 1)
+            {
+                Log?.Invoke("Balance board not found — starting automatic Bluetooth pairing. Press the red SYNC button.");
+            }
+            else
+            {
+                Log?.Invoke($"Still searching… press SYNC again (round {round}/{discoveryRounds}).");
+            }
+
+            var pairResult = _pairing.PairDiscoverableBoard(Log);
+            Log?.Invoke(pairResult.Message);
+
+            if (!pairResult.Success)
+            {
+                if (round < discoveryRounds)
+                {
+                    Thread.Sleep(3000);
+                }
+                continue;
+            }
+
+            Thread.Sleep(1500);
+            if (Connect(deviceIndex))
+            {
+                return true;
+            }
+        }
+
+        StatusChanged?.Invoke("Press SYNC on the board, then click Connect.");
+        return false;
+    }
+
+    private void OnConnected()
+    {
+        _pollTimer.Start();
+        if (_settings.AutoTareOnConnect)
+        {
+            Tare();
+        }
+        if (_settings.EnableVJoy)
+        {
+            _vjoy.Initialize(_settings.VJoyDeviceId);
+        }
     }
 
     public void Disconnect()

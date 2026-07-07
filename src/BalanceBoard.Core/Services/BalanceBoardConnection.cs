@@ -50,7 +50,7 @@ public sealed class BalanceBoardConnection : IDisposable
 
             if (collection.Count == 0)
             {
-                StatusChanged?.Invoke("No Wii devices found. Pair the balance board in Windows Bluetooth settings, then hold SYNC while connecting.");
+                StatusChanged?.Invoke("No balance board found yet — automatic pairing will run when you connect.");
                 return false;
             }
 
