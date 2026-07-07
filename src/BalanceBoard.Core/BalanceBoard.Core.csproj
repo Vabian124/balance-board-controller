@@ -1,0 +1,27 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <RootNamespace>BalanceBoard.Core</RootNamespace>
+    <PlatformTarget>x64</PlatformTarget>
+    <UseWindowsForms>true</UseWindowsForms>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Reference Include="WiimoteLib">
+      <HintPath>..\..\libs\x64\WiimoteLib.dll</HintPath>
+    </Reference>
+    <Reference Include="vJoyInterfaceWrap">
+      <HintPath>..\..\libs\x64\vJoyInterfaceWrap.dll</HintPath>
+    </Reference>
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="..\..\libs\x64\vJoyInterface.dll" Link="vJoyInterface.dll" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="..\..\libs\x64\vJoyInterfaceWrap.dll" Link="vJoyInterfaceWrap.dll" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="..\..\libs\x64\WiimoteLib.dll" Link="WiimoteLib.dll" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+</Project>
