@@ -14,6 +14,10 @@ Write-Host "`n=== dotnet build (warnings as errors) ==="
 dotnet build BalanceBoard.sln -c Release -warnaserror
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
+Write-Host "`n=== Unit tests (portable core contract) ==="
+dotnet test tests/BalanceBoard.Core.Tests/BalanceBoard.Core.Tests.csproj -c Release --no-build
+if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
 Write-Host "`n=== Validate (vJoy / HID) ==="
 dotnet run --project tools/Validate/BalanceBoard.Validate.csproj -c Release --no-build
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }

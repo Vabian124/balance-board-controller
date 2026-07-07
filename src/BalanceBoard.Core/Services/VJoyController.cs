@@ -1,9 +1,10 @@
+using BalanceBoard.Core.Abstractions;
 using BalanceBoard.Core.Models;
 using vJoyInterfaceWrap;
 
 namespace BalanceBoard.Core.Services;
 
-public sealed class VJoyController : IDisposable
+public sealed class VJoyController : IGameControllerOutput
 {
     private vJoy? _joystick;
     private uint _deviceId = 1;
@@ -91,27 +92,26 @@ public sealed class VJoyController : IDisposable
     public void Update(ProcessedBalance data)
     {
         if (!IsReady || _joystick is null) return;
-
-        _joystick.SetAxis(data.JoyX, _deviceId, HID_USAGES.HID_USAGE_X);
-        _joystick.SetAxis(data.JoyY, _deviceId, HID_USAGES.HID_USAGE_Y);
-        _joystick.SetAxis(data.JoyZ, _deviceId, HID_USAGES.HID_USAGE_Z);
-        _joystick.SetAxis(data.JoyRx, _deviceId, HID_USAGES.HID_USAGE_RX);
-        _joystick.SetAxis(data.JoyRy, _deviceId, HID_USAGES.HID_USAGE_RY);
-        _joystick.SetAxis(data.JoyRz, _deviceId, HID_USAGES.HID_USAGE_RZ);
-        _joystick.SetBtn(data.ButtonA, _deviceId, 1);
+        WriteAxes(data.JoyX, data.JoyY, data.JoyZ, data.JoyRx, data.JoyRy, data.JoyRz, data.ButtonA);
     }
 
     public void Center()
     {
         if (!IsReady || _joystick is null) return;
+        WriteAxes(0, 0, 0, 0, 0, 0, false);
+    }
 
-        _joystick.SetAxis(0, _deviceId, HID_USAGES.HID_USAGE_X);
-        _joystick.SetAxis(0, _deviceId, HID_USAGES.HID_USAGE_Y);
-        _joystick.SetAxis(0, _deviceId, HID_USAGES.HID_USAGE_Z);
-        _joystick.SetAxis(0, _deviceId, HID_USAGES.HID_USAGE_RX);
-        _joystick.SetAxis(0, _deviceId, HID_USAGES.HID_USAGE_RY);
-        _joystick.SetAxis(0, _deviceId, HID_USAGES.HID_USAGE_RZ);
-        _joystick.SetBtn(false, _deviceId, 1);
+    private void WriteAxes(short x, short y, short z, short rx, short ry, short rz, bool buttonA)
+    {
+        if (_joystick is null) return;
+
+        _joystick.SetAxis(x, _deviceId, HID_USAGES.HID_USAGE_X);
+        _joystick.SetAxis(y, _deviceId, HID_USAGES.HID_USAGE_Y);
+        _joystick.SetAxis(z, _deviceId, HID_USAGES.HID_USAGE_Z);
+        _joystick.SetAxis(rx, _deviceId, HID_USAGES.HID_USAGE_RX);
+        _joystick.SetAxis(ry, _deviceId, HID_USAGES.HID_USAGE_RY);
+        _joystick.SetAxis(rz, _deviceId, HID_USAGES.HID_USAGE_RZ);
+        _joystick.SetBtn(buttonA, _deviceId, 1);
     }
 
     public void Shutdown()

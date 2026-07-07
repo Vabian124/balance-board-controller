@@ -1,4 +1,5 @@
 using BalanceBoard.Core.Models;
+using BalanceBoard.Core.Processing;
 
 namespace BalanceBoard.Core.Services;
 
@@ -24,10 +25,7 @@ public sealed class BalanceProcessor
 
     public void SetCenterFromCurrentReading(BalanceReading reading)
     {
-        var highest = Math.Max(
-            Math.Max(reading.TopLeftKg, reading.TopRightKg),
-            Math.Max(reading.BottomLeftKg, reading.BottomRightKg));
-
+        var highest = BalanceMath.HighestCornerKg(reading);
         _offsetTopLeft = highest - reading.TopLeftKg;
         _offsetTopRight = highest - reading.TopRightKg;
         _offsetBottomLeft = highest - reading.BottomLeftKg;
@@ -35,9 +33,10 @@ public sealed class BalanceProcessor
         _resetCenterPossible = true;
     }
 
-    public bool CanSetCenter(float weightKg) => weightKg > 5f;
+    public bool CanSetCenter(float weightKg) => weightKg > BalanceConstants.WeightOnBoardThresholdKg;
 
-    public bool CanResetCenter(float weightKg) => weightKg <= 5f && _resetCenterPossible;
+    public bool CanResetCenter(float weightKg) =>
+        weightKg <= BalanceConstants.WeightOnBoardThresholdKg && _resetCenterPossible;
 
     public void ResetCenterOffsets()
     {
@@ -50,103 +49,41 @@ public sealed class BalanceProcessor
 
     public ProcessedBalance Process(BalanceReading reading, AppSettings settings)
     {
-        var rwTopLeft = reading.TopLeftKg;
-        var rwTopRight = reading.TopRightKg;
-        var rwBottomLeft = reading.BottomLeftKg;
-        var rwBottomRight = reading.BottomRightKg;
+        UpdateMinCorner(reading);
 
-        if (rwTopLeft < _minCorner) _minCorner = rwTopLeft;
-        if (rwTopRight < _minCorner) _minCorner = rwTopRight;
-        if (rwBottomLeft < _minCorner) _minCorner = rwBottomLeft;
-        if (rwBottomRight < _minCorner) _minCorner = rwBottomRight;
+        var (topLeft, topRight, bottomLeft, bottomRight, weight) = BalanceMath.NormalizeCorners(
+            reading,
+            _minCorner,
+            _offsetTopLeft,
+            _offsetTopRight,
+            _offsetBottomLeft,
+            _offsetBottomRight);
 
-        var weight = reading.WeightKg < 0 ? 0 : reading.WeightKg;
-        var topLeft = rwTopLeft - _minCorner;
-        var topRight = rwTopRight - _minCorner;
-        var bottomLeft = rwBottomLeft - _minCorner;
-        var bottomRight = rwBottomRight - _minCorner;
+        var (owrTopLeft, owrTopRight, owrBottomLeft, owrBottomRight, total) =
+            BalanceMath.ToBalancePercent(topLeft, topRight, bottomLeft, bottomRight);
 
-        if (weight > 5f)
-        {
-            topLeft += _offsetTopLeft;
-            topRight += _offsetTopRight;
-            bottomLeft += _offsetBottomLeft;
-            bottomRight += _offsetBottomRight;
-        }
-        else
-        {
-            topLeft = 0;
-            topRight = 0;
-            bottomLeft = 0;
-            bottomRight = 0;
-        }
+        var (balanceX, balanceY) = BalanceMath.ComputeBalanceXY(
+            owrTopLeft, owrTopRight, owrBottomLeft, owrBottomRight);
 
-        var total = topLeft + topRight + bottomLeft + bottomRight;
-        float owrTopLeft = 0, owrTopRight = 0, owrBottomLeft = 0, owrBottomRight = 0;
-        if (total > 0.001f)
-        {
-            var scale = 100f / total;
-            owrTopLeft = scale * topLeft;
-            owrTopRight = scale * topRight;
-            owrBottomLeft = scale * bottomLeft;
-            owrBottomRight = scale * bottomRight;
-        }
+        var (moveLeft, moveRight, moveForward, moveBackward) =
+            BalanceMath.EvaluateCardinalMovement(balanceX, balanceY, settings);
 
-        var balanceX = owrBottomRight + owrTopRight;
-        var balanceY = owrBottomRight + owrBottomLeft;
+        var modifier = BalanceMath.EvaluateModifier(balanceX, balanceY, settings);
+        var jump = BalanceMath.EvaluateJump(weight, DateTime.UtcNow, ref _jumpTime);
 
-        var moveLeft = balanceX < 50f - settings.TriggerLeftRight;
-        var moveRight = balanceX > 50f + settings.TriggerLeftRight;
-        var moveForward = balanceY < 50f - settings.TriggerForwardBackward;
-        var moveBackward = balanceY > 50f + settings.TriggerForwardBackward;
+        var (diagonalLeft, diagonalRight) = BalanceMath.EvaluateDiagonals(
+            total,
+            bottomLeft,
+            topRight,
+            bottomRight,
+            topLeft,
+            moveLeft,
+            moveRight,
+            moveForward,
+            moveBackward);
 
-        var modifier = false;
-        if (balanceX < 50f - settings.TriggerModifierLeftRight) modifier = true;
-        else if (balanceX > 50f + settings.TriggerModifierLeftRight) modifier = true;
-        else if (balanceY < 50f - settings.TriggerModifierForwardBackward) modifier = true;
-        else if (balanceY > 50f + settings.TriggerModifierForwardBackward) modifier = true;
-
-        var jump = false;
-        if (weight < 1f)
-        {
-            if (DateTime.UtcNow.Subtract(_jumpTime).TotalSeconds < 2) jump = true;
-        }
-        else
-        {
-            _jumpTime = DateTime.UtcNow;
-        }
-
-        var diagonalLeft = false;
-        var diagonalRight = false;
-        var brDl = total > 0.001f ? (100f / total) * (bottomLeft + topRight) : 0;
-        var brDr = total > 0.001f ? (100f / total) * (bottomRight + topLeft) : 0;
-        var brDf = Math.Abs(brDl - brDr);
-        if (!moveLeft && !moveRight && !moveForward && !moveBackward && brDf > 15)
-        {
-            if (brDl > brDr) diagonalLeft = true;
-            else diagonalRight = true;
-        }
-
-        short joyX = 0;
-        short joyY = 0;
-        if (settings.SendCenterOfGravityToAxes)
-        {
-            var x = balanceX;
-            var y = balanceY;
-            if (settings.DeadzonePercent > 0)
-            {
-                x = ApplyDeadzone(x, settings.DeadzonePercent);
-                y = ApplyDeadzone(y, settings.DeadzonePercent);
-            }
-
-            joyX = ToJoyAxis(x, settings.Sensitivity, settings.InvertX);
-            joyY = ToJoyAxis(y, settings.Sensitivity, settings.InvertY);
-        }
-
-        var sensorTopLeft = settings.SendLoadSensorsToAxes ? (short)(reading.TopLeftKg * 100) : (short)0;
-        var sensorTopRight = settings.SendLoadSensorsToAxes ? (short)(reading.TopRightKg * 100) : (short)0;
-        var sensorBottomLeft = settings.SendLoadSensorsToAxes ? (short)(reading.BottomLeftKg * 100) : (short)0;
-        var sensorBottomRight = settings.SendLoadSensorsToAxes ? (short)(reading.BottomRightKg * 100) : (short)0;
+        var (joyX, joyY) = BalanceMath.MapCenterOfGravityAxes(balanceX, balanceY, settings);
+        var (joyZ, joyRx, joyRy, joyRz) = BalanceMath.MapLoadSensorAxes(reading, settings);
 
         return new ProcessedBalance
         {
@@ -167,29 +104,19 @@ public sealed class BalanceProcessor
             DiagonalRight = diagonalRight,
             JoyX = joyX,
             JoyY = joyY,
-            JoyZ = sensorTopLeft,
-            JoyRx = sensorTopRight,
-            JoyRy = sensorBottomLeft,
-            JoyRz = sensorBottomRight,
+            JoyZ = joyZ,
+            JoyRx = joyRx,
+            JoyRy = joyRy,
+            JoyRz = joyRz,
             ButtonA = reading.ButtonA,
         };
     }
 
-    private static float ApplyDeadzone(float percent, double deadzone)
+    private void UpdateMinCorner(BalanceReading reading)
     {
-        var delta = percent - 50f;
-        if (Math.Abs(delta) < deadzone) return 50f;
-        var sign = Math.Sign(delta);
-        var scaled = (Math.Abs(delta) - deadzone) / (50f - deadzone) * 50f;
-        return (float)(50f + sign * scaled);
-    }
-
-    private static short ToJoyAxis(float percent, double sensitivity, bool invert)
-    {
-        var value = percent * 655.34 + -32767.0;
-        value *= 2.0 * sensitivity;
-        if (invert) value *= -1;
-        if (double.IsNaN(value)) return 0;
-        return (short)Math.Clamp(value, short.MinValue, short.MaxValue);
+        if (reading.TopLeftKg < _minCorner) _minCorner = reading.TopLeftKg;
+        if (reading.TopRightKg < _minCorner) _minCorner = reading.TopRightKg;
+        if (reading.BottomLeftKg < _minCorner) _minCorner = reading.BottomLeftKg;
+        if (reading.BottomRightKg < _minCorner) _minCorner = reading.BottomRightKg;
     }
 }

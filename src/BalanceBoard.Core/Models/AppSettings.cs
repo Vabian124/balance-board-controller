@@ -2,10 +2,10 @@ namespace BalanceBoard.Core.Models;
 
 public sealed class AppSettings
 {
-    public int TriggerLeftRight { get; set; } = 8;
-    public int TriggerForwardBackward { get; set; } = 9;
-    public int TriggerModifierLeftRight { get; set; } = 15;
-    public int TriggerModifierForwardBackward { get; set; } = 16;
+    public int TriggerLeftRight { get; set; } = TriggerDefaults.LeftRight;
+    public int TriggerForwardBackward { get; set; } = TriggerDefaults.ForwardBackward;
+    public int TriggerModifierLeftRight { get; set; } = TriggerDefaults.ModifierLeftRight;
+    public int TriggerModifierForwardBackward { get; set; } = TriggerDefaults.ModifierForwardBackward;
     public bool EnableVJoy { get; set; } = true;
     public bool SendCenterOfGravityToAxes { get; set; } = true;
     public bool SendLoadSensorsToAxes { get; set; }
@@ -25,20 +25,8 @@ public sealed class AppSettings
     public bool SetupWizardCompleted { get; set; }
     public Dictionary<string, ActionBinding> Actions { get; set; } = CreateDefaultActions();
 
-    public static Dictionary<string, ActionBinding> CreateDefaultActions()
-    {
-        return new Dictionary<string, ActionBinding>
-        {
-            ["Left"] = new() { Kind = ActionKind.None },
-            ["Right"] = new() { Kind = ActionKind.None },
-            ["Forward"] = new() { Kind = ActionKind.None },
-            ["Backward"] = new() { Kind = ActionKind.None },
-            ["Modifier"] = new() { Kind = ActionKind.None },
-            ["Jump"] = new() { Kind = ActionKind.None },
-            ["DiagonalLeft"] = new() { Kind = ActionKind.None },
-            ["DiagonalRight"] = new() { Kind = ActionKind.None },
-        };
-    }
+    public static Dictionary<string, ActionBinding> CreateDefaultActions() =>
+        ActionSlots.All.ToDictionary(name => name, _ => new ActionBinding());
 }
 
 public enum ActionKind

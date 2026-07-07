@@ -6,7 +6,7 @@ Complete map of **maintained source** (ignore `bin/`, `obj/`, `.vs/`).
 
 | Path | Purpose |
 |------|---------|
-| `BalanceBoard.sln` | App + Core + Validate projects |
+| `BalanceBoard.sln` | App + Core + Validate + UiSmoke + Tests |
 | `Directory.Build.props` | Shared nullable, analyzers, code style |
 | `.editorconfig` | Formatting rules |
 | `.github/workflows/build.yml` | CI: restore, Release build, validate tool |
@@ -40,10 +40,30 @@ Complete map of **maintained source** (ignore `bin/`, `obj/`, `.vs/`).
 | Path | Purpose |
 |------|---------|
 | `AppSettings.cs` | All user settings; `Actions` dict; trigger thresholds |
+| `ActionSlots.cs` | Canonical action slot names (Left, Right, …) |
+| `BalanceConstants.cs` | Thresholds, joy scaling, poll interval — **port verbatim** |
+| `ActionConstants.cs` | Mouse-move timer interval for action engine |
+| `VirtualKeyCodes.cs` | Key name → VK code lookup (no WinForms) |
 | `ActionPresets.cs` | Named profiles: Game Controller, Pedal, Hand-Free Desktop |
 | `ActionBinding.cs` | In `AppSettings.cs` — Key/MouseButton/MouseMove binding |
 | `BalanceReading.cs` | Raw sensor snapshot from WiimoteLib |
 | `ProcessedBalance.cs` | Processed lean, movement flags, vJoy axis values |
+
+### Processing (`Processing/`) — pure, Python-portable
+
+| Path | Purpose |
+|------|---------|
+| `BalanceMath.cs` | Stateless balance math (deadzone, triggers, axes) |
+| `MovementMapper.cs` | `ProcessedBalance` flags → `ActionSlots` |
+| `ActionEngine.cs` | Portable action-slot state machine |
+
+### Abstractions (`Abstractions/`)
+
+| Path | Purpose |
+|------|---------|
+| `IGameControllerOutput.cs` | vJoy adapter contract for session + Python `ports.py` |
+| `IActionSimulator.cs` | Keyboard/mouse action contract |
+| `IInputBackend.cs` | Low-level key/mouse injection contract |
 
 ### Services (`Services/`)
 
@@ -52,10 +72,11 @@ Complete map of **maintained source** (ignore `bin/`, `obj/`, `.vs/`).
 | `BalanceBoardSession.cs` | **Orchestrator**: `ConnectWithIntent`, poll (50 ms), route to vJoy + input |
 | `ConnectionIntent.cs` | `QuickReconnect` vs `PairAndConnect` |
 | `BalanceBoardConnection.cs` | WiimoteLib wrapper: discover, connect, tare, read corners |
-| `BalanceProcessor.cs` | Tare, center offset, deadzone, triggers → `ProcessedBalance` |
-| `VJoyController.cs` | Acquire vJoy device, map axes, center on shutdown |
+| `BalanceProcessor.cs` | Stateful tare/center; delegates math to `BalanceMath` |
+| `VJoyController.cs` | `IGameControllerOutput` — acquire vJoy, `WriteAxes` |
 | `VJoyDiagnostics.cs` | Read driver status, axis capabilities, DLL version match |
-| `InputSimulator.cs` | `SendInput` keyboard/mouse; supports X1/X2 side buttons |
+| `InputSimulator.cs` | Facade: `ActionEngine` + `Win32InputBackend` |
+| `Win32InputBackend.cs` | `SendInput` keyboard/mouse (Windows only) |
 | `BluetoothPairingService.cs` | Automatic Wii BT pairing (reversed host MAC PIN, WiiBalanceWalker method) |
 | `WiiBluetoothPin.cs` | Host MAC → Wii permanent pairing PIN |
 | `SettingsStore.cs` | JSON settings in `%AppData%\BalanceBoardApp\`; atomic save; connection state |
@@ -81,9 +102,15 @@ Complete map of **maintained source** (ignore `bin/`, `obj/`, `.vs/`).
 
 | Path | Purpose |
 |------|---------|
-| `lint.ps1` | Full lint: format, build, Validate, UiSmoke, test-flow |
+| `lint.ps1` | Full lint: format, build, unit tests, Validate, UiSmoke, test-flow |
 | `test-flow.ps1` | Process lifecycle smoke tests |
 | `start.ps1` / `stop.ps1` / `restart.ps1` / `connect.ps1` | Dev launch helpers |
+
+## `tests/BalanceBoard.Core.Tests/`
+
+| Path | Purpose |
+|------|---------|
+| `BalanceProcessorTests.cs` | Golden tests: `BalanceMath`, `BalanceProcessor`, `ActionEngine`, `VirtualKeyCodes` |
 
 ## `libs/x64/`
 
@@ -114,5 +141,8 @@ BalanceBoard.App
         └── vJoyInterfaceWrap.dll → vJoyInterface.dll
 
 BalanceBoard.Validate
+  └── BalanceBoard.Core
+
+BalanceBoard.Core.Tests
   └── BalanceBoard.Core
 ```
