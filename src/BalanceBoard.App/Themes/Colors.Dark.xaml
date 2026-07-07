@@ -11,6 +11,13 @@
     <SolidColorBrush x:Key="Brush.Hover" Color="#243044"/>
     <SolidColorBrush x:Key="Brush.Pressed" Color="#334155"/>
 
+    <SolidColorBrush x:Key="Brush.InputBackground" Color="#243044"/>
+    <SolidColorBrush x:Key="Brush.InputForeground" Color="#E8EDF5"/>
+    <SolidColorBrush x:Key="Brush.DropdownBackground" Color="#1A2230"/>
+    <SolidColorBrush x:Key="Brush.DropdownForeground" Color="#E8EDF5"/>
+    <SolidColorBrush x:Key="Brush.DropdownHighlight" Color="#334155"/>
+    <SolidColorBrush x:Key="Brush.DropdownHighlightText" Color="#F8FAFC"/>
+
     <Color x:Key="Color.Success">#22C55E</Color>
     <Color x:Key="Color.Warning">#F59E0B</Color>
     <Color x:Key="Color.Danger">#F87171</Color>
