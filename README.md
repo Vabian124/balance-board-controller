@@ -30,7 +30,7 @@ Built as a clean rewrite of [WiiBalanceWalker v0.5](https://github.com/lshachar/
 
 1. Install **vJoy** and **reboot**.
 2. Open **vJoyConf** and enable **Device 1** with at least **X** and **Y** axes.
-3. Pair the balance board in **Settings → Bluetooth** (PIN `0000`, hold **SYNC** in the battery bay).
+3. Launch the app — it pairs automatically. **Press the red SYNC button** under the battery cover when prompted (no Windows Bluetooth menus).
 4. Build and run:
 
 ```powershell
@@ -40,7 +40,7 @@ dotnet build BalanceBoard.sln -c Release
 dotnet run --project src/BalanceBoard.App/BalanceBoard.App.csproj -c Release
 ```
 
-5. Pick **Play Games** (or **Hand-Free Desktop** for keyboard/mouse) → connect → **Tare**.
+5. The app auto-connects on startup. Stand on the board → **Tare** if needed.
 6. Verify axes in **vJoy Monitor** (installed with vJoy).
 
 ### Publish (single folder)

@@ -54,7 +54,8 @@ Complete map of **maintained source** (ignore `bin/`, `obj/`, `.vs/`).
 | `VJoyController.cs` | Acquire vJoy device, map axes, center on shutdown |
 | `VJoyDiagnostics.cs` | Read driver status, axis capabilities, DLL version match |
 | `InputSimulator.cs` | `SendInput` keyboard/mouse; supports X1/X2 side buttons |
-| `FeederProcessCleanup.cs` | Kill competing feeder processes; wait for vJoy free |
+| `BluetoothPairingService.cs` | Automatic Wii BT pairing (reversed host MAC PIN, WiiBalanceWalker method) |
+| `WiiBluetoothPin.cs` | Host MAC → Wii permanent pairing PIN |
 | `SettingsStore.cs` | JSON settings in `%AppData%\BalanceBoardApp\` |
 | `FileLogService.cs` | Session log file `logs/session-YYYY-MM-DD.log` |
 | `DiagnosticsReport.cs` | Structured health check for UI + clipboard |
