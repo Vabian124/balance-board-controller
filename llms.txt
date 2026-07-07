@@ -1,6 +1,6 @@
 # Balance Board Controller
 
-> Windows .NET 8 app (v1.1.1): Wii Fit Balance Board → vJoy game controller and/or keyboard-mouse (SendInput).
+> Windows .NET 8 app (v1.2.0): Wii Fit Balance Board → vJoy game controller and/or keyboard-mouse (SendInput).
 
 ## Essential docs
 
@@ -17,11 +17,11 @@
 - [docs/testing/README.md](docs/testing/README.md): Test pyramid, CI gate, hardware scripts
 - [docs/TEST_PLAN.md](docs/TEST_PLAN.md): Edge-case test matrix
 - [docs/GLOSSARY.md](docs/GLOSSARY.md): Domain terms (tare, vJoy, UiDetailLevel, jump presets, etc.)
-- [docs/ROADMAP.md](docs/ROADMAP.md): Planned features and completed v1.1.x items
+- [docs/ROADMAP.md](docs/ROADMAP.md): Planned features and completed v1.2.x items
 - [docs/updates/README.md](docs/updates/README.md): Agent work log index (git is source of truth)
 - [README.md](README.md): User-facing setup, tabbed UI, profiles, quick start
 
-## v1.1.1 highlights
+## v1.2.0 highlights
 
 - Tabbed UI: Dashboard / Profiles / Advanced
 - `UiDetailLevel`: Simple / Standard / Advanced

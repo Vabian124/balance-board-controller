@@ -1,6 +1,6 @@
 # Suggestions backlog
 
-> **Status (v1.1.1):** The July 2026 architecture review items were largely addressed (ConnectionWorker, ci.yml, tabbed UI, jump presets, crash-proof disconnect, DeviceIdRules, vJoy coalescing). Remaining work lives in [ROADMAP.md](../ROADMAP.md) and [GitHub Issues](https://github.com/Vabian124/balance-board-controller/issues).
+> **Status (v1.2.0):** The July 2026 architecture review items were largely addressed (ConnectionWorker, ci.yml, tabbed UI, jump presets, crash-proof disconnect, DeviceIdRules, vJoy coalescing). Remaining work lives in [ROADMAP.md](../ROADMAP.md) and [GitHub Issues](https://github.com/Vabian124/balance-board-controller/issues).
 
 ## Open items (from prior review)
 

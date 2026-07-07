@@ -76,7 +76,7 @@ All steps honour **Cancel** (`CancellationToken`) and run on `ConnectionWorker`.
 
 Session logs use `[CONNECT]` markers (intent, HID discovery, pairing rounds, attempts, first reading, flow complete). See [STORAGE.md](STORAGE.md).
 
-## Disconnect (v1.1.1+)
+## Disconnect (v1.2.0+)
 
 Disconnect is hardened against WiimoteLib `OnReadData` callbacks after HID dispose:
 
