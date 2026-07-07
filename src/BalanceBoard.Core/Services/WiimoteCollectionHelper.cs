@@ -1,0 +1,121 @@
+using BalanceBoard.Core.Models;
+using WiimoteLib;
+
+namespace BalanceBoard.Core.Services;
+
+/// <summary>
+/// Ensures WiimoteLib HID probes are torn down before handles go out of scope.
+/// Prevents thread-pool OnReadData crashes after Disconnect.
+/// </summary>
+internal static class WiimoteCollectionHelper
+{
+    public static IReadOnlyList<string> DiscoverDeviceIds()
+    {
+        WiimoteCollection? collection = null;
+        try
+        {
+            collection = new WiimoteCollection();
+            collection.FindAllWiimotes();
+            return EnumerateDeviceIds(collection);
+        }
+        catch (WiimoteNotFoundException)
+        {
+            return Array.Empty<string>();
+        }
+        finally
+        {
+            ReleaseAll(collection);
+        }
+    }
+
+    public static int WakeDevices(Action<string>? log)
+    {
+        WiimoteCollection? collection = null;
+        try
+        {
+            collection = new WiimoteCollection();
+            collection.FindAllWiimotes();
+            var woke = 0;
+
+            foreach (var wii in collection)
+            {
+                try
+                {
+                    wii.Connect();
+                    wii.SetLEDs(true, false, false, false);
+                    woke++;
+                }
+                catch (Exception ex)
+                {
+                    log?.Invoke($"[CONNECT] HID wake device note: {ex.Message}");
+                }
+            }
+
+            return woke;
+        }
+        catch (Exception ex)
+        {
+            log?.Invoke($"[CONNECT] HID wake-up error: {ex.Message}");
+            if (!string.IsNullOrWhiteSpace(ex.StackTrace))
+            {
+                log?.Invoke(ex.StackTrace);
+            }
+
+            return 0;
+        }
+        finally
+        {
+            ReleaseAll(collection);
+        }
+    }
+
+    public static void ReleaseAll(WiimoteCollection? collection)
+    {
+        if (collection is null)
+        {
+            return;
+        }
+
+        foreach (var wii in collection)
+        {
+            SafeDisconnect(wii);
+        }
+
+        Thread.Sleep(BalanceConstants.HidCallbackDrainMs);
+    }
+
+    public static void SafeDisconnect(Wiimote? wii)
+    {
+        if (wii is null)
+        {
+            return;
+        }
+
+        try
+        {
+            wii.Disconnect();
+        }
+        catch
+        {
+            // Best-effort — handle may already be closed.
+        }
+
+        Thread.Sleep(BalanceConstants.DisconnectGraceMs);
+    }
+
+    private static IReadOnlyList<string> EnumerateDeviceIds(WiimoteCollection collection) =>
+        collection
+            .Select(d => ExtractDeviceId(d.HIDDevicePath))
+            .Where(id => !string.IsNullOrWhiteSpace(id))
+            .Cast<string>()
+            .ToList();
+
+    private static string? ExtractDeviceId(string hidPath)
+    {
+        var match = System.Text.RegularExpressions.Regex.Match(
+            hidPath,
+            "e_pid&.*?&(.*?)&",
+            System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+        return match.Success ? match.Groups[1].Value.ToUpperInvariant() : hidPath;
+    }
+}

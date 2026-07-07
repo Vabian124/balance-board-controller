@@ -18,6 +18,7 @@ public static class BalanceConstants
     public const int SensorKgToAxisMultiplier = 100;
     public const int SessionPollIntervalMs = 50;
     public const int DisconnectGraceMs = 500;
+    public const int HidCallbackDrainMs = 1200;
     public const int PostPairSettleMs = 1500;
     public const int PostWakeSettleMs = 800;
 }
