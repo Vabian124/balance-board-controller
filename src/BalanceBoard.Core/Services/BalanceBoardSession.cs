@@ -14,6 +14,7 @@ public sealed class BalanceBoardSession : IDisposable
     private AppSettings _settings = new();
     private bool _disposed;
     private CancellationTokenSource? _connectCts;
+    private int _pollInProgress;
 
     public void CancelConnect() => _connectCts?.Cancel();
 
@@ -67,11 +68,18 @@ public sealed class BalanceBoardSession : IDisposable
 
     public bool Connect(int deviceIndex = 0)
     {
+        Log?.Invoke($"HID connect attempt (device index {deviceIndex})…");
         var ok = _connection.Connect(deviceIndex);
         if (ok)
         {
+            Log?.Invoke($"HID connected: {_connection.ConnectedDeviceId ?? "unknown device"}.");
             OnConnected();
         }
+        else
+        {
+            Log?.Invoke("HID connect failed — no device or connection error.");
+        }
+
         return ok;
     }
 
@@ -107,6 +115,13 @@ public sealed class BalanceBoardSession : IDisposable
         {
             Log?.Invoke("Connection cancelled.");
             StatusChanged?.Invoke("Connection cancelled.");
+            return false;
+        }
+        catch (Exception ex)
+        {
+            Log?.Invoke($"Connection error: {ex.Message}");
+            Log?.Invoke(ex.StackTrace ?? string.Empty);
+            StatusChanged?.Invoke("Connection error — see log.");
             return false;
         }
         finally
@@ -213,6 +228,7 @@ public sealed class BalanceBoardSession : IDisposable
 
     private void OnConnected()
     {
+        Log?.Invoke("Starting balance poll loop.");
         _pollTimer.Start();
         if (_settings.AutoTareOnConnect)
         {
@@ -290,28 +306,83 @@ public sealed class BalanceBoardSession : IDisposable
 
     private void Poll()
     {
-        var reading = _connection.GetCurrentReading();
-        if (reading is not null)
+        if (_disposed || Interlocked.Exchange(ref _pollInProgress, 1) == 1)
         {
-            OnReading(reading);
+            return;
+        }
+
+        try
+        {
+            var reading = _connection.GetCurrentReading();
+            if (reading is not null)
+            {
+                OnReading(reading);
+            }
+        }
+        catch (Exception ex)
+        {
+            Log?.Invoke($"Poll error: {ex.Message}");
+            Log?.Invoke(ex.StackTrace ?? string.Empty);
+        }
+        finally
+        {
+            Interlocked.Exchange(ref _pollInProgress, 0);
         }
     }
 
     private void OnReading(BalanceReading reading)
     {
-        if (!reading.IsBalanceBoard) return;
+        if (!reading.IsBalanceBoard)
+        {
+            return;
+        }
 
-        var processed = _processor.Process(reading, _settings);
-        Processed?.Invoke(processed);
+        ProcessedBalance processed;
+        try
+        {
+            processed = _processor.Process(reading, _settings);
+        }
+        catch (Exception ex)
+        {
+            Log?.Invoke($"Process error: {ex.Message}");
+            Log?.Invoke(ex.StackTrace ?? string.Empty);
+            return;
+        }
+
+        try
+        {
+            Processed?.Invoke(processed);
+        }
+        catch (Exception ex)
+        {
+            Log?.Invoke($"UI process callback error: {ex.Message}");
+            Log?.Invoke(ex.StackTrace ?? string.Empty);
+        }
 
         if (_settings.EnableVJoy && _vjoy.IsReady)
         {
-            _vjoy.Update(processed);
+            try
+            {
+                _vjoy.Update(processed);
+            }
+            catch (Exception ex)
+            {
+                Log?.Invoke($"vJoy output error: {ex.Message}");
+                Log?.Invoke(ex.StackTrace ?? string.Empty);
+            }
         }
 
         if (!_settings.DisableKeyboardActions)
         {
-            _input.Apply(processed, _settings);
+            try
+            {
+                _input.Apply(processed, _settings);
+            }
+            catch (Exception ex)
+            {
+                Log?.Invoke($"Input simulator error: {ex.Message}");
+                Log?.Invoke(ex.StackTrace ?? string.Empty);
+            }
         }
     }
 

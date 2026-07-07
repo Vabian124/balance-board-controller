@@ -82,6 +82,11 @@ public sealed class BalanceBoardConnection : IDisposable
         catch (Exception ex)
         {
             Error?.Invoke(ex.Message);
+            if (!string.IsNullOrWhiteSpace(ex.StackTrace))
+            {
+                Error?.Invoke(ex.StackTrace);
+            }
+
             Disconnect();
             return false;
         }

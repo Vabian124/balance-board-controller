@@ -56,6 +56,23 @@ public sealed class FileLogService
         LineWritten?.Invoke(line);
     }
 
+    public void WriteException(Exception exception, string context)
+    {
+        Write($"{context}: {exception.GetType().Name}: {exception.Message}", "ERROR");
+        if (!string.IsNullOrWhiteSpace(exception.StackTrace))
+        {
+            foreach (var frame in exception.StackTrace.Split(Environment.NewLine, StringSplitOptions.RemoveEmptyEntries))
+            {
+                Write(frame.Trim(), "ERROR");
+            }
+        }
+
+        if (exception.InnerException is not null)
+        {
+            WriteException(exception.InnerException, $"{context} (inner)");
+        }
+    }
+
     public string ReadTail(int maxLines = 200)
     {
         if (!File.Exists(_currentLogPath))

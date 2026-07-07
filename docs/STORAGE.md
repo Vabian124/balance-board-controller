@@ -51,7 +51,7 @@ Written by `SettingsStore.Save()` using **atomic replace** (write `.tmp`, then m
 Path: `%AppData%\BalanceBoardApp\logs\session-YYYY-MM-DD.log`
 
 - **Append-only** for the day; each app launch writes a `=== Session start ===` block with settings path and connection flags.
-- Categories: `SESSION`, `INFO`, etc.
+- Categories: `SESSION`, `INFO`, `ERROR` (stack traces), `FATAL` (unhandled crashes)
 - **Clear View** in the UI clears the on-screen log only; the file is kept.
 - Open log folder: Debug Suite → **Open Log Folder**, or `explorer %AppData%\BalanceBoardApp\logs`.
 
@@ -66,6 +66,8 @@ Look for:
 ```
 
 Pairing issues: lines with `Bluetooth adapter`, `Removing stale Nintendo`, `Pairing Nintendo RVL-WBC-01`.
+
+Crashes: search for `[ERROR]` or `FATAL` — unhandled UI, background, and AppDomain exceptions are written with full stack traces before the process exits.
 
 ## Profiles directory
 
