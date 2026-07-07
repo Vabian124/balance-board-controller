@@ -24,6 +24,7 @@
 | 3 | 2026-07-07 13:14:39 | [`238405a`](https://github.com/Vabian124/balance-board-controller/commit/238405a) | [LLM-friendly docs and Cursor rules](2026-07-07_131439_238405a_llm-friendly-docs.md) | Cursor — make repo LLM-friendly |
 | 4 | 2026-07-07 13:19:23 | [`5dff713`](https://github.com/Vabian124/balance-board-controller/commit/5dff713) | [Agent update log folder](2026-07-07_131923_5dff713_agent-update-log.md) | Cursor — update MD audit trail |
 | 5 | 2026-07-07 13:23:44 | [`b451e12`](https://github.com/Vabian124/balance-board-controller/commit/b451e12) | [Every-pass LLM instructions](2026-07-07_132344_b451e12_llm-instructions.md) | Cursor — INSTRUCTIONS.md playbook |
+| 6 | 2026-07-07 13:29:02 | [`ae01e12`](https://github.com/Vabian124/balance-board-controller/commit/ae01e12) | [Startup fixes and first-run wizard](2026-07-07_132902_ae01e12_startup-wizard-fix.md) | Cursor — first launch for user |
 
 ## Quick HEAD check
 
