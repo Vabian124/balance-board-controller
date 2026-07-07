@@ -26,8 +26,9 @@ public partial class MainWindow : Window
     {
         _startupOptions = startupOptions;
         _settings = _settingsStore.Load();
-        _session.LoadSettings(_settings);
+        _session.LoadSettings(_settings, initializeVJoy: false);
         InitializeComponent();
+        _uiReady = true;
         HookSession();
         HookFileLog();
         PopulateUi();
@@ -53,6 +54,7 @@ public partial class MainWindow : Window
         }
 
         BluetoothPairingService.Warmup();
+        _session.LoadSettings(_settings, initializeVJoy: true);
 
         if (_settings.ActiveProfileName != ActionPresets.GameController)
         {
@@ -64,9 +66,38 @@ public partial class MainWindow : Window
         Log($"vJoy: driver={(diag.DriverEnabled ? "OK" : "missing")}, status={diag.DeviceStatus}");
         RefreshVJoyStatus();
 
-        if (connectOnLaunch || _settings.AutoConnectOnStartup)
+        if (connectOnLaunch)
         {
-            BeginConnect();
+            Log("Launch flag --connect: starting full pairing flow.");
+            BeginConnect(ConnectionIntent.PairAndConnect);
+            return;
+        }
+
+        if (!_settings.HasConnectedBefore)
+        {
+            StatusText.Text = "Welcome — click Connect to pair your balance board.";
+            Log("First launch: waiting for you to click Connect (no automatic pairing).");
+            return;
+        }
+
+        if (_settings.AutoConnectOnStartup)
+        {
+            Log("Auto-reconnect: looking for a paired board…");
+            BeginConnect(ConnectionIntent.QuickReconnect, quiet: true);
+        }
+    }
+
+    public void OnActivatedFromSecondInstance()
+    {
+        Log("Another launch brought this window to the front.");
+        if (_session.IsConnected || _connectInProgress)
+        {
+            return;
+        }
+
+        if (_settings.HasConnectedBefore && _settings.AutoConnectOnStartup)
+        {
+            BeginConnect(ConnectionIntent.QuickReconnect, quiet: true);
         }
     }
 
@@ -90,7 +121,10 @@ public partial class MainWindow : Window
         });
     }
 
-    private void Window_Loaded(object sender, RoutedEventArgs e) => _uiReady = true;
+    private void Window_Loaded(object sender, RoutedEventArgs e)
+    {
+        // _uiReady is set in ctor so deferred startup can persist settings.
+    }
 
     private void Window_Closing(object? sender, System.ComponentModel.CancelEventArgs e)
     {
@@ -235,7 +269,7 @@ public partial class MainWindow : Window
     private void ConnectButton_Click(object sender, RoutedEventArgs e)
     {
         SaveSettingsFromUi();
-        BeginConnect();
+        BeginConnect(ConnectionIntent.PairAndConnect);
     }
 
     private void CancelButton_Click(object sender, RoutedEventArgs e) => CancelConnect();
@@ -250,32 +284,41 @@ public partial class MainWindow : Window
         }
     }
 
-    private async void BeginConnect()
+    private async void BeginConnect(ConnectionIntent intent, bool quiet = false)
     {
         if (_connectInProgress || _session.IsConnected) return;
 
         _connectInProgress = true;
         _connectCts = new CancellationTokenSource();
         UpdateConnectUi(isBusy: true);
-        StatusText.Text = "Searching — press SYNC on the board (red button under batteries)";
+        StatusText.Text = intent switch
+        {
+            ConnectionIntent.QuickReconnect => "Reconnecting to your balance board…",
+            _ => "Searching — press SYNC on the board (red button under batteries)",
+        };
 
         try
         {
             var token = _connectCts.Token;
             var connected = await Task.Run(
-                () => StaThread.Run(() => _session.ConnectOrPair(cancellationToken: token)),
+                () => StaThread.Run(() => _session.ConnectWithIntent(intent, cancellationToken: token)),
                 token);
 
             if (connected)
             {
-                _settings.SetupWizardCompleted = true;
-                SaveSettingsFromUi();
+                MarkConnectedSuccessfully();
                 StatusText.Text = "Connected — step on the board to play.";
                 Log("Connected.");
             }
             else if (!token.IsCancellationRequested)
             {
-                StatusText.Text = "Not found — press SYNC, then Connect again.";
+                StatusText.Text = intent == ConnectionIntent.QuickReconnect
+                    ? "Board offline — turn it on or press SYNC, then click Connect."
+                    : "Not found — press SYNC, then Connect again.";
+                if (!quiet)
+                {
+                    Log(StatusText.Text);
+                }
             }
         }
         catch (OperationCanceledException)
@@ -295,6 +338,13 @@ public partial class MainWindow : Window
             UpdateConnectUi(isBusy: false);
             UpdateConnectionChip(_session.IsConnected);
         }
+    }
+
+    private void MarkConnectedSuccessfully()
+    {
+        _settings.HasConnectedBefore = true;
+        _settings.SetupWizardCompleted = true;
+        _settingsStore.Save(_settings);
     }
 
     private void DisconnectButton_Click(object sender, RoutedEventArgs e)

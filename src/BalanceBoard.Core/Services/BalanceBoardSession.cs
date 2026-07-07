@@ -32,9 +32,19 @@ public sealed class BalanceBoardSession : IDisposable
         _pollTimer.AutoReset = true;
     }
 
-    public void LoadSettings(AppSettings settings)
+    public void LoadSettings(AppSettings settings, bool initializeVJoy = true)
     {
         _settings = settings;
+        if (!initializeVJoy)
+        {
+            return;
+        }
+
+        EnsureVJoyInitialized();
+    }
+
+    private void EnsureVJoyInitialized()
+    {
         if (_settings.EnableVJoy)
         {
             _vjoy.Initialize(_settings.VJoyDeviceId);
@@ -57,10 +67,16 @@ public sealed class BalanceBoardSession : IDisposable
         return ok;
     }
 
+    public bool IsBoardVisible() => DiscoverDevices().Count > 0;
+
     /// <summary>
-    /// Connect to an already-paired board, or automatically Bluetooth-pair then connect (WiiBalanceWalker PIN method).
+    /// QuickReconnect: HID only (boot / second-instance). PairAndConnect: pairing when user asks or --connect.
     /// </summary>
-    public bool ConnectOrPair(int deviceIndex = 0, int discoveryRounds = 4, CancellationToken cancellationToken = default)
+    public bool ConnectWithIntent(
+        ConnectionIntent intent,
+        int deviceIndex = 0,
+        int discoveryRounds = 4,
+        CancellationToken cancellationToken = default)
     {
         _connectCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
 
@@ -72,47 +88,12 @@ public sealed class BalanceBoardSession : IDisposable
                 return true;
             }
 
-            for (var round = 1; round <= discoveryRounds; round++)
+            if (intent == ConnectionIntent.QuickReconnect)
             {
-                ct.ThrowIfCancellationRequested();
-
-                if (round == 1)
-                {
-                    Log?.Invoke("Balance board not found — starting automatic Bluetooth pairing. Press the red SYNC button.");
-                }
-                else
-                {
-                    Log?.Invoke($"Still searching… press SYNC again (round {round}/{discoveryRounds}).");
-                }
-
-                var pairResult = _pairing.PairDiscoverableBoard(Log, ct);
-                Log?.Invoke(pairResult.Message);
-
-                if (!pairResult.Success)
-                {
-                    if (round < discoveryRounds && !ct.WaitHandle.WaitOne(TimeSpan.FromSeconds(3)))
-                    {
-                        // waited 3s
-                    }
-
-                    ct.ThrowIfCancellationRequested();
-                    continue;
-                }
-
-                if (!ct.WaitHandle.WaitOne(TimeSpan.FromMilliseconds(1500)))
-                {
-                    // settle delay
-                }
-
-                ct.ThrowIfCancellationRequested();
-                if (Connect(deviceIndex))
-                {
-                    return true;
-                }
+                return TryQuickReconnect(deviceIndex, ct);
             }
 
-            StatusChanged?.Invoke("Press SYNC on the board, then click Connect.");
-            return false;
+            return TryPairAndConnect(deviceIndex, discoveryRounds, ct);
         }
         catch (OperationCanceledException)
         {
@@ -125,6 +106,101 @@ public sealed class BalanceBoardSession : IDisposable
             _connectCts?.Dispose();
             _connectCts = null;
         }
+    }
+
+    /// <summary>
+    /// Legacy entry point — full pairing flow.
+    /// </summary>
+    public bool ConnectOrPair(int deviceIndex = 0, int discoveryRounds = 4, CancellationToken cancellationToken = default) =>
+        ConnectWithIntent(ConnectionIntent.PairAndConnect, deviceIndex, discoveryRounds, cancellationToken);
+
+    private bool TryQuickReconnect(int deviceIndex, CancellationToken ct)
+    {
+        Log?.Invoke("Looking for a paired balance board…");
+        _pairing.WakePairedDevices(Log);
+        ct.ThrowIfCancellationRequested();
+
+        if (!ct.WaitHandle.WaitOne(TimeSpan.FromMilliseconds(800)))
+        {
+            // settle
+        }
+
+        ct.ThrowIfCancellationRequested();
+        if (Connect(deviceIndex))
+        {
+            return true;
+        }
+
+        StatusChanged?.Invoke("Board offline — turn it on or press SYNC, then click Connect.");
+        return false;
+    }
+
+    private bool TryPairAndConnect(int deviceIndex, int discoveryRounds, CancellationToken ct)
+    {
+        Log?.Invoke("Press SYNC on the board if it is asleep.");
+        var wakeResult = _pairing.PairDiscoverableBoard(Log, ct, removeStalePairings: false);
+        if (wakeResult.Success)
+        {
+            if (!ct.WaitHandle.WaitOne(TimeSpan.FromMilliseconds(1500)))
+            {
+                // settle
+            }
+
+            ct.ThrowIfCancellationRequested();
+            if (Connect(deviceIndex))
+            {
+                return true;
+            }
+        }
+        else if (!string.IsNullOrWhiteSpace(wakeResult.Message))
+        {
+            Log?.Invoke(wakeResult.Message);
+        }
+
+        for (var round = 1; round <= discoveryRounds; round++)
+        {
+            ct.ThrowIfCancellationRequested();
+
+            if (round == 1)
+            {
+                Log?.Invoke("Starting automatic Bluetooth pairing. Press the red SYNC button.");
+            }
+            else
+            {
+                Log?.Invoke($"Still searching… press SYNC again (round {round}/{discoveryRounds}).");
+            }
+
+            var pairResult = _pairing.PairDiscoverableBoard(
+                Log,
+                ct,
+                removeStalePairings: round == 1);
+            Log?.Invoke(pairResult.Message);
+
+            if (!pairResult.Success)
+            {
+                if (round < discoveryRounds && !ct.WaitHandle.WaitOne(TimeSpan.FromSeconds(3)))
+                {
+                    // wait between rounds
+                }
+
+                ct.ThrowIfCancellationRequested();
+                continue;
+            }
+
+            if (!ct.WaitHandle.WaitOne(TimeSpan.FromMilliseconds(1500)))
+            {
+                // settle
+            }
+
+            ct.ThrowIfCancellationRequested();
+            if (Connect(deviceIndex))
+            {
+                return true;
+            }
+        }
+
+        StatusChanged?.Invoke("Press SYNC on the board, then click Connect.");
+        return false;
     }
 
     private void OnConnected()

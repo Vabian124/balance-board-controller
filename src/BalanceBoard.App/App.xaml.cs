@@ -1,5 +1,3 @@
-using System.IO;
-using System.Threading;
 using System.Windows;
 using System.Windows.Threading;
 using BalanceBoard.App.Services;
@@ -9,8 +7,6 @@ namespace BalanceBoard.App;
 
 public partial class App : Application
 {
-    private const string SingleInstancePipeName = "BalanceBoardApp_SingleInstance";
-    private Mutex? _singleInstanceMutex;
     private MainWindow? _mainWindow;
     private StartupOptions _options = new();
 
@@ -19,7 +15,7 @@ public partial class App : Application
         ShutdownMode = ShutdownMode.OnMainWindowClose;
         _options = StartupOptions.Parse(e.Args);
 
-        if (!_options.SkipSingleInstance && !TryAcquireSingleInstance())
+        if (!_options.SkipSingleInstance && !SingleInstanceService.TryBecomePrimary())
         {
             Shutdown();
             return;
@@ -28,10 +24,14 @@ public partial class App : Application
         DispatcherUnhandledException += OnDispatcherUnhandledException;
         SessionEnding += (_, _) => ReleaseResources();
 
-        // Show UI immediately — no blocking on Bluetooth/vJoy cleanup.
         _mainWindow = new MainWindow(_options);
         MainWindow = _mainWindow;
         _mainWindow.Show();
+
+        if (!_options.SkipSingleInstance)
+        {
+            SingleInstanceService.StartActivationListener(_mainWindow);
+        }
 
         _ = RunDeferredStartupAsync();
 
@@ -58,12 +58,6 @@ public partial class App : Application
         });
     }
 
-    private bool TryAcquireSingleInstance()
-    {
-        _singleInstanceMutex = new Mutex(true, SingleInstancePipeName, out var createdNew);
-        return createdNew;
-    }
-
     private void OnDispatcherUnhandledException(object sender, DispatcherUnhandledExceptionEventArgs e)
     {
         ReleaseResources();
@@ -75,9 +69,8 @@ public partial class App : Application
 
     protected override void OnExit(ExitEventArgs e)
     {
+        SingleInstanceService.Stop();
         ReleaseResources();
-        _singleInstanceMutex?.ReleaseMutex();
-        _singleInstanceMutex?.Dispose();
         base.OnExit(e);
     }
 

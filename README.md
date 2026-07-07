@@ -2,7 +2,7 @@
 
 A modern .NET 8 desktop app for using a **Nintendo Wii Fit Balance Board** on Windows as a **game controller** (via [vJoy](https://github.com/shauleiz/vJoy)) or as a hand-free input device.
 
-Built as a clean rewrite of [WiiBalanceWalker v0.5](https://github.com/lshachar/WiiBalanceWalker) with an updated UI, setup wizard, diagnostics, and safer process handling.
+Built as a clean rewrite of [WiiBalanceWalker v0.5](https://github.com/lshachar/WiiBalanceWalker) with an updated UI, automatic Bluetooth pairing, diagnostics, and safer process handling.
 
 > **AI assistants / coding agents:** read [INSTRUCTIONS.md](INSTRUCTIONS.md) (every-pass checklist), then [AGENTS.md](AGENTS.md) and [llms.txt](llms.txt). Full docs live in [`docs/`](docs/).
 
@@ -13,7 +13,7 @@ Built as a clean rewrite of [WiiBalanceWalker v0.5](https://github.com/lshachar/
 - **Hand-free desktop preset** — WASD + Shift + Space + mouse nudge (legacy WiiBalanceWalker bindings)
 - **Pedal / rudder preset** — maps four load sensors to extra vJoy axes
 - **Quick-start profiles** — dropdown + one-click presets on the Dashboard
-- **Setup wizard** — prerequisites, pairing help, calibration
+- **Smart connect** — first launch waits for you; returning users auto-reconnect without re-pairing
 - **Debug Suite** — one-click health check, session log, copy report, open log folder
 - **Safe startup** — automatically stops stale feeder apps that block vJoy
 - **File logging** — session logs saved under `%AppData%\BalanceBoardApp\logs\` (never committed to git)
@@ -30,7 +30,7 @@ Built as a clean rewrite of [WiiBalanceWalker v0.5](https://github.com/lshachar/
 
 1. Install **vJoy** and **reboot**.
 2. Open **vJoyConf** and enable **Device 1** with at least **X** and **Y** axes.
-3. Launch the app — it pairs automatically. **Press the red SYNC button** under the battery cover when prompted (no Windows Bluetooth menus).
+3. Launch the app — on first run click **Connect** and press the red **SYNC** button when prompted (no Windows Bluetooth menus). After that, the app reconnects automatically when the board is on.
 4. Build and run:
 
 ```powershell
@@ -40,7 +40,7 @@ dotnet build BalanceBoard.sln -c Release
 dotnet run --project src/BalanceBoard.App/BalanceBoard.App.csproj -c Release
 ```
 
-5. The app auto-connects on startup. Stand on the board → **Tare** if needed.
+5. Returning users: the app auto-reconnects if the board is already paired and on. Stand on the board → **Tare** if needed.
 6. Verify axes in **vJoy Monitor** (installed with vJoy).
 
 ### Publish (single folder)
@@ -56,9 +56,12 @@ dotnet publish src/BalanceBoard.App/BalanceBoard.App.csproj -c Release -r win-x6
 .\scripts\stop.ps1       # graceful exit, then force stop
 .\scripts\restart.ps1    # stop + start
 .\scripts\connect.ps1    # start and auto-connect
+.\scripts\test-flow.ps1  # smoke tests (no hardware)
 ```
 
-Use `--dev` to skip killing other instances. Use `--connect` to auto-pair on launch.
+See [docs/WORKFLOW.md](docs/WORKFLOW.md) and [docs/TEST_PLAN.md](docs/TEST_PLAN.md) for boot/connect behavior and edge-case testing.
+
+Use `--dev` to skip killing other instances. Use `--connect` to force full pairing on launch.
 
 ## Debug Suite
 

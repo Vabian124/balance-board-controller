@@ -36,7 +36,10 @@ public sealed class BluetoothPairingService
         }
     }
 
-    public BluetoothPairingResult PairDiscoverableBoard(Action<string>? log = null, CancellationToken cancellationToken = default)
+    public BluetoothPairingResult PairDiscoverableBoard(
+        Action<string>? log = null,
+        CancellationToken cancellationToken = default,
+        bool removeStalePairings = true)
     {
         try
         {
@@ -57,8 +60,12 @@ public sealed class BluetoothPairingService
 
             log?.Invoke($"Bluetooth adapter {WiiBluetoothPin.FormatMacForDisplay(hostMac)} — using automatic permanent Wii PIN.");
 
-            log?.Invoke("Removing stale Nintendo pairings…");
-            RemoveExistingNintendoDevices(btClient);
+            if (removeStalePairings)
+            {
+                log?.Invoke("Removing stale Nintendo pairings…");
+                RemoveExistingNintendoDevices(btClient);
+            }
+
             cancellationToken.ThrowIfCancellationRequested();
 
             log?.Invoke("Searching for balance board — press the red SYNC button under the battery cover.");
@@ -127,6 +134,8 @@ public sealed class BluetoothPairingService
             device.SetServiceState(BluetoothService.HumanInterfaceDevice, false);
         }
     }
+
+    public void WakePairedDevices(Action<string>? log = null) => WakePairedWiimotes(log);
 
     private static void WakePairedWiimotes(Action<string>? log)
     {
