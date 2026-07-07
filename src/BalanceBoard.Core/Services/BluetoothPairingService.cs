@@ -1,6 +1,6 @@
+using System.Reflection;
 using InTheHand.Net.Bluetooth;
 using InTheHand.Net.Sockets;
-using System.Reflection;
 using WiimoteLib;
 
 namespace BalanceBoard.Core.Services;
