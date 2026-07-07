@@ -155,6 +155,35 @@ public class ConnectFlowTests
     }
 
     [Fact]
+    public async Task Connect_logs_first_balance_reading()
+    {
+        using var session = CreateSession(new FakeBalanceBoardConnection(), new FakeBluetoothPairingService());
+        var lines = new List<string>();
+        session.Log += lines.Add;
+
+        var result = await session.ConnectWithIntentAsync(ConnectionIntent.QuickReconnect);
+        Assert.True(result.IsSuccess);
+
+        await Task.Delay(200);
+        Assert.Contains(
+            lines,
+            line => line.Contains("[CONNECT] First balance reading", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void Session_applies_profile_presets_without_forcing_game_on_relaunch()
+    {
+        using var session = CreateSession(new FakeBalanceBoardConnection(), new FakeBluetoothPairingService());
+        session.ApplyKeyboardPreset();
+        Assert.Equal(ActionPresets.KeyboardMovement, session.Settings.ActiveProfileName);
+        Assert.False(session.Settings.EnableVJoy);
+
+        session.ApplyPedalPreset();
+        Assert.Equal(ActionPresets.Pedal, session.Settings.ActiveProfileName);
+        Assert.True(session.Settings.SendLoadSensorsToAxes);
+    }
+
+    [Fact]
     public async Task Disconnect_stops_polling_without_crash()
     {
         using var session = CreateSession(new FakeBalanceBoardConnection(), new FakeBluetoothPairingService());

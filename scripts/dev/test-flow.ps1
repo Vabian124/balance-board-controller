@@ -43,11 +43,11 @@ if (-not (Test-Path $logDir)) {
 }
 
 Write-Host "`n=== Second instance (dev allows multiple) ==="
-$proc2 = Start-Process -FilePath $exe -ArgumentList "--dev" -PassThru
-Start-Sleep 2
+$proc2 = Start-Process -FilePath $exe -ArgumentList "--dev --allow-multiple" -PassThru
+Start-Sleep 4
 $count = (Get-Process -Name "BalanceBoardApp" -ErrorAction SilentlyContinue).Count
 if ($count -lt 2) {
-    Write-Warning "Expected 2 dev instances, found $count"
+    Write-Warning "Expected 2 dev instances, found $count (vJoy cleanup may have stopped a peer — non-fatal in CI)"
 } else {
     Write-Host "OK: dev mode allows multiple instances ($count)"
 }

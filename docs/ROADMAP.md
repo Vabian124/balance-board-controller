@@ -4,7 +4,7 @@ Planned improvements. Safe for agents to implement incrementally.
 
 ## Phase 2 — UX & accessibility
 
-- [ ] **Action mapping editor** — UI for all 8 `ActionBinding` slots (key picker, mouse button including X1/X2, move amount)
+- [x] **Action mapping editor** — collapsible controls section in `MainWindow` for all 8 `ActionBinding` slots
 - [ ] **Game profiles UI** — wire `SettingsStore.SaveProfile` / `LoadProfile` / `ListProfiles` to dropdown + save/load buttons
 - [ ] **Multi-device picker** — when `DiscoverDevices()` returns >1, show selection dialog before `Connect(index)`
 - [ ] **Tray icon** — minimize to tray, quick connect/disconnect

@@ -17,6 +17,12 @@ public static class FeederProcessCleanup
     public static IReadOnlyList<string> CompetingProcesses => CompetingProcessNames;
 
     /// <summary>
+    /// Dev / multi-instance mode — do not kill other BalanceBoardApp processes (see <c>--dev</c>).
+    /// </summary>
+    public static bool AllowMultipleAppInstances =>
+        string.Equals(Environment.GetEnvironmentVariable("BALANCEBOARD_DEV"), "1", StringComparison.Ordinal);
+
+    /// <summary>
     /// Terminates other feeder processes. Never kills the current process.
     /// </summary>
     public static int TerminateCompetingFeeders(int settleDelayMs = 500)
@@ -26,6 +32,11 @@ public static class FeederProcessCleanup
 
         foreach (var processName in CompetingProcessNames)
         {
+            if (AllowMultipleAppInstances
+                && processName.Equals("BalanceBoardApp", StringComparison.OrdinalIgnoreCase))
+            {
+                continue;
+            }
             Process[] processes;
             try
             {

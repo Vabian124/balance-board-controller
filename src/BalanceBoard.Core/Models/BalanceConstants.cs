@@ -19,8 +19,11 @@ public static class BalanceConstants
     public const int SessionPollIntervalMs = 50;
     public const int DisconnectGraceMs = 500;
     public const int HidCallbackDrainMs = 1200;
-    public const int PostPairSettleMs = 1500;
-    public const int PostWakeSettleMs = 800;
+    public const int PostPairSettleMs = 1000;
+    public const int PostWakeSettleMs = 500;
+    public const int BluetoothFinishWaitMs = 2000;
+    public const int PairRoundDelayMs = 1500;
+    public const int BluetoothInquirySeconds = 6;
 }
 
 /// <summary>

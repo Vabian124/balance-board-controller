@@ -20,6 +20,11 @@ public partial class App : Application
     {
         ShutdownMode = ShutdownMode.OnMainWindowClose;
         _options = StartupOptions.Parse(e.Args);
+        if (_options.SkipSingleInstance)
+        {
+            Environment.SetEnvironmentVariable("BALANCEBOARD_DEV", "1");
+        }
+
         GlobalExceptionLogging.Register(_fileLog);
         _fileLog.Write("Application starting.", "SESSION");
 

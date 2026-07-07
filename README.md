@@ -13,9 +13,12 @@ Clean rewrite of [WiiBalanceWalker v0.5](https://github.com/lshachar/WiiBalanceW
 
 ## Features
 
-- **Live dashboard** — balance visual, direction text, connection status
+- **Live dashboard** — Wii Fit–style balance visual, direction text, connection status
 - **Game controller mode** — lean → vJoy X/Y (works with most joystick games)
-- **Presets** — game controller, pedals/rudder, hand-free WASD desktop
+- **Presets** — game controller, pedals/rudder, hand-free WASD desktop, balance mouse
+- **In-app control mapping** — key / mouse bindings for all 8 action slots
+- **Dark mode** — follows Windows or force light/dark
+- **Sensitivity presets** — Low through Highly sensitive for kids and accessibility
 - **Smart connect** — first launch pairs on demand; returning users auto-reconnect
 - **Crash-safe connect** — dedicated STA `ConnectionWorker` for WiimoteLib (no thread-pool dispose races)
 - **Debug Suite** — health check, session log, copy report
@@ -47,6 +50,17 @@ Or double-click **`start.bat`** after a build — it auto-builds on first run.
 
 4. Click **Connect**, press **SYNC** on the board (first time).
 5. Stand on the board → **Tare** → verify in vJoy Monitor.
+
+<!-- Screenshots: add docs/images/dashboard.png and docs/images/connect.png when available -->
+
+### Real hardware vs simulate
+
+| Mode | Command | Use when |
+|------|---------|----------|
+| **Hardware** | `.\start.bat` or `BalanceBoardApp.exe` | Normal play — pairs over Bluetooth, persists last board ID |
+| **Simulate** | `dotnet run … -- --simulate-board --dev` | CI, UI dev, no board — does **not** save `SIM-BOARD-*` to settings |
+
+Sync vJoy DLLs after driver updates: `.\scripts\dev\sync-vjoy-dlls.ps1` then rebuild.
 
 ### Simulate (no hardware)
 
@@ -100,7 +114,7 @@ docs/                   Architecture, CODEMAP, testing guide
 | vJoy busy | App stops stale feeders; close vJoy Monitor |
 | vJoy missing | Reboot after install; check Device Manager |
 | Connect crash | See session log; ensure latest `main` (ConnectionWorker fix) |
-| DLL mismatch | Copy `vJoyInterface*.dll` from your vJoy install into `libs/x64/` |
+| DLL mismatch | Run `.\scripts\dev\sync-vjoy-dlls.ps1` or copy `vJoyInterface*.dll` from your vJoy install into `libs/x64/` |
 
 Logs: `%AppData%\BalanceBoardApp\logs\session-YYYY-MM-DD.log`
 

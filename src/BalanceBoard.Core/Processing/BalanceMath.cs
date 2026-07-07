@@ -94,11 +94,16 @@ public static class BalanceMath
             || balanceY > center + settings.TriggerModifierForwardBackward;
     }
 
-    public static bool EvaluateJump(float weightKg, DateTime utcNow, ref DateTime jumpTime)
+    public static bool EvaluateJump(
+        float weightKg,
+        float jumpThresholdKg,
+        double jumpHoldSeconds,
+        DateTime utcNow,
+        ref DateTime jumpTime)
     {
-        if (weightKg < BalanceConstants.JumpWeightThresholdKg)
+        if (weightKg < jumpThresholdKg)
         {
-            return utcNow.Subtract(jumpTime).TotalSeconds < BalanceConstants.JumpHoldSeconds;
+            return utcNow.Subtract(jumpTime).TotalSeconds < jumpHoldSeconds;
         }
 
         jumpTime = utcNow;
@@ -137,9 +142,10 @@ public static class BalanceMath
     public static (short JoyX, short JoyY) MapCenterOfGravityAxes(
         float balanceX,
         float balanceY,
-        AppSettings settings)
+        AppSettings settings,
+        bool onBoard = true)
     {
-        if (!settings.SendCenterOfGravityToAxes)
+        if (!settings.SendCenterOfGravityToAxes || !onBoard)
         {
             return (0, 0);
         }

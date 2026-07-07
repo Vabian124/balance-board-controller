@@ -62,6 +62,11 @@ public sealed class SettingsStore
 
     public void UpdateConnectionState(AppSettings settings, string? deviceId)
     {
+        if (!DeviceIdRules.ShouldPersistConnectionState(deviceId))
+        {
+            return;
+        }
+
         settings.HasConnectedBefore = true;
         settings.SetupWizardCompleted = true;
         settings.LastConnectedDeviceId = deviceId;
@@ -121,6 +126,22 @@ public sealed class SettingsStore
         if (settings.HasConnectedBefore && !rawJson.Contains("HasConnectedBefore", StringComparison.Ordinal))
         {
             changed = true;
+        }
+
+        if (DeviceIdRules.IsSimulated(settings.LastConnectedDeviceId))
+        {
+            settings.LastConnectedDeviceId = null;
+            settings.LastConnectedAtUtc = null;
+            changed = true;
+        }
+
+        foreach (var slot in ActionSlots.All)
+        {
+            if (!settings.Actions.ContainsKey(slot))
+            {
+                settings.Actions[slot] = new ActionBinding();
+                changed = true;
+            }
         }
 
         return changed;

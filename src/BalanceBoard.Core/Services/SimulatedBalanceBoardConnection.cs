@@ -15,12 +15,15 @@ public sealed class SimulatedBalanceBoardConnection : IBalanceBoardConnection
 #pragma warning disable CS0067
     public event Action<string>? Error;
 #pragma warning restore CS0067
+#pragma warning disable CS0067
+    public event Action? ReadingAvailable;
+#pragma warning restore CS0067
     public event Action<string>? ConnectLog;
 
     public bool IsConnected { get; private set; }
     public string? ConnectedDeviceId { get; private set; }
 
-    public IReadOnlyList<string> DiscoverDeviceIds() => ["SIM-BOARD-001"];
+    public IReadOnlyList<string> DiscoverDeviceIds() => [DeviceIdRules.SimulatedDeviceId];
 
     public bool Connect(int deviceIndex = 0)
     {

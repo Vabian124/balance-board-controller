@@ -19,8 +19,13 @@ public sealed class AppSettings
     public bool StartMinimized { get; set; }
     public double DeadzonePercent { get; set; } = 5;
     public double Sensitivity { get; set; } = 1.0;
+    public SensitivityLevel SensitivityLevel { get; set; } = SensitivityLevel.Medium;
+    public bool UseSimpleSensitivity { get; set; } = true;
+    public float JumpWeightThresholdKg { get; set; } = BalanceConstants.JumpWeightThresholdKg;
+    public double JumpHoldSeconds { get; set; } = BalanceConstants.JumpHoldSeconds;
     public bool InvertX { get; set; }
     public bool InvertY { get; set; }
+    public ThemePreference ThemePreference { get; set; } = ThemePreference.System;
     public string ActiveProfileName { get; set; } = "Default";
     public bool SetupWizardCompleted { get; set; }
     public Dictionary<string, ActionBinding> Actions { get; set; } = CreateDefaultActions();

@@ -13,12 +13,21 @@ public sealed class BalanceBoardConnection : IBalanceBoardConnection
     public event Action<string>? StatusChanged;
     public event Action<string>? Error;
     public event Action<string>? ConnectLog;
+    public event Action? ReadingAvailable;
 
     public bool IsConnected { get; private set; }
     public string? ConnectedDeviceId { get; private set; }
 
     public IReadOnlyList<string> DiscoverDeviceIds()
     {
+        lock (_sync)
+        {
+            if (IsConnected && !string.IsNullOrWhiteSpace(ConnectedDeviceId))
+            {
+                return [ConnectedDeviceId];
+            }
+        }
+
         try
         {
             return WiimoteCollectionHelper.DiscoverDeviceIds();
@@ -85,15 +94,17 @@ public sealed class BalanceBoardConnection : IBalanceBoardConnection
 
     private bool TryConnectDevice(Wiimote device, int index)
     {
-        var deviceId = ExtractDeviceId(device.HIDDevicePath);
+        var deviceId = DeviceIdRules.ExtractFromHidPath(device.HIDDevicePath);
         ConnectionFlowLogger.LogHidAttempt(ConnectLog, index, deviceId);
 
         try
         {
             _device = device;
             ConnectedDeviceId = deviceId;
+            _device.WiimoteChanged += OnWiimoteChanged;
             _device.Connect();
-            _device.SetReportType(InputReport.IRAccel, false);
+            // Continuous reports keep the dashboard and vJoy stream alive between lean changes.
+            _device.SetReportType(InputReport.IRAccel, true);
             _device.SetLEDs(true, false, false, false);
 
             var isBalanceBoard = _device.WiimoteState.ExtensionType == ExtensionType.BalanceBoard;
@@ -115,6 +126,16 @@ public sealed class BalanceBoardConnection : IBalanceBoardConnection
             ReportError(ex);
             return false;
         }
+    }
+
+    private void OnWiimoteChanged(object? sender, WiimoteChangedEventArgs e)
+    {
+        if (!IsConnected || e.WiimoteState.ExtensionType != ExtensionType.BalanceBoard)
+        {
+            return;
+        }
+
+        SafeCallbacks.Raise(ReadingAvailable);
     }
 
     public void Tare()
@@ -159,14 +180,28 @@ public sealed class BalanceBoardConnection : IBalanceBoardConnection
 
     public void Disconnect()
     {
+        Wiimote? device;
         WiimoteCollection? collection;
         lock (_sync)
         {
+            device = _device;
             collection = _collection;
             _device = null;
             _collection = null;
             IsConnected = false;
             ConnectedDeviceId = null;
+        }
+
+        if (device is not null)
+        {
+            try
+            {
+                device.WiimoteChanged -= OnWiimoteChanged;
+            }
+            catch
+            {
+                // Best-effort unsubscribe.
+            }
         }
 
         WiimoteCollectionHelper.ReleaseAll(collection);
@@ -183,7 +218,7 @@ public sealed class BalanceBoardConnection : IBalanceBoardConnection
 
     private static IReadOnlyList<string> EnumerateDeviceIds(WiimoteCollection collection) =>
         collection
-            .Select(d => ExtractDeviceId(d.HIDDevicePath))
+            .Select(d => DeviceIdRules.ExtractFromHidPath(d.HIDDevicePath))
             .Where(id => !string.IsNullOrWhiteSpace(id))
             .Cast<string>()
             .ToList();
@@ -201,12 +236,6 @@ public sealed class BalanceBoardConnection : IBalanceBoardConnection
             ButtonA = state.ButtonState.A,
             IsBalanceBoard = state.ExtensionType == ExtensionType.BalanceBoard,
         };
-    }
-
-    private static string? ExtractDeviceId(string hidPath)
-    {
-        var match = System.Text.RegularExpressions.Regex.Match(hidPath, "e_pid&.*?&(.*?)&", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
-        return match.Success ? match.Groups[1].Value.ToUpperInvariant() : hidPath;
     }
 
     public void Dispose() => Disconnect();

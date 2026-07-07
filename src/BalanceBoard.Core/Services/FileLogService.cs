@@ -30,7 +30,7 @@ public sealed class FileLogService
             $"Profile={settings.ActiveProfileName}",
             "SESSION");
 
-        if (!string.IsNullOrWhiteSpace(settings.LastConnectedDeviceId))
+        if (DeviceIdRules.ShouldPersistConnectionState(settings.LastConnectedDeviceId))
         {
             var when = settings.LastConnectedAtUtc?.ToString("u") ?? "unknown";
             Write($"Last board: {settings.LastConnectedDeviceId} at {when}", "SESSION");

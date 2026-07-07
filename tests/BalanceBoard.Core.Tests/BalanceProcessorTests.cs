@@ -57,7 +57,7 @@ public class BalanceMathTests
     public void EvaluateJump_holds_for_two_seconds_after_lift_off()
     {
         var jumpTime = DateTime.UtcNow.AddSeconds(-1);
-        var stillJumping = BalanceMath.EvaluateJump(0.5f, DateTime.UtcNow, ref jumpTime);
+        var stillJumping = BalanceMath.EvaluateJump(0.5f, 1f, 2, DateTime.UtcNow, ref jumpTime);
         Assert.True(stillJumping);
     }
 
@@ -65,7 +65,7 @@ public class BalanceMathTests
     public void EvaluateJump_resets_when_weight_returns()
     {
         var jumpTime = DateTime.UtcNow.AddSeconds(-5);
-        var jumped = BalanceMath.EvaluateJump(60f, DateTime.UtcNow, ref jumpTime);
+        var jumped = BalanceMath.EvaluateJump(60f, 1f, 2, DateTime.UtcNow, ref jumpTime);
         Assert.False(jumped);
         Assert.True(jumpTime > DateTime.UtcNow.AddSeconds(-1));
     }
@@ -194,6 +194,118 @@ public class BalanceProcessorTests
         Assert.True(processed.DiagonalRight);
         Assert.False(processed.DiagonalLeft);
     }
+
+    [Fact]
+    public void Process_idle_board_is_centered_with_neutral_vjoy()
+    {
+        var processor = new BalanceProcessor();
+        var settings = new AppSettings { SendCenterOfGravityToAxes = true };
+        var reading = new BalanceReading
+        {
+            WeightKg = 0,
+            TopLeftKg = 0,
+            TopRightKg = 0,
+            BottomLeftKg = 0,
+            BottomRightKg = 0,
+            IsBalanceBoard = true,
+        };
+
+        processor.Tare();
+        var processed = processor.Process(reading, settings);
+
+        Assert.Equal(BalanceConstants.BalanceCenterPercent, processed.BalanceX);
+        Assert.Equal(BalanceConstants.BalanceCenterPercent, processed.BalanceY);
+        Assert.Equal(0, processed.JoyX);
+        Assert.Equal(0, processed.JoyY);
+        Assert.False(processed.MoveLeft);
+        Assert.False(processed.Jump);
+    }
+
+    [Fact]
+    public void Process_jump_after_brief_lift_off()
+    {
+        var processor = new BalanceProcessor();
+        var settings = new AppSettings { JumpWeightThresholdKg = 1f, JumpHoldSeconds = 2 };
+        var onBoard = new BalanceReading
+        {
+            WeightKg = 60,
+            TopLeftKg = 15,
+            TopRightKg = 15,
+            BottomLeftKg = 15,
+            BottomRightKg = 15,
+            IsBalanceBoard = true,
+        };
+        var air = new BalanceReading
+        {
+            WeightKg = 0.2f,
+            TopLeftKg = 0.2f,
+            TopRightKg = 0.2f,
+            BottomLeftKg = 0.2f,
+            BottomRightKg = 0.2f,
+            IsBalanceBoard = true,
+        };
+
+        processor.Tare();
+        processor.Process(onBoard, settings);
+        var jumped = processor.Process(air, settings);
+
+        Assert.True(jumped.Jump);
+    }
+}
+
+public class ActionPresetsTests
+{
+    [Fact]
+    public void ApplyGameController_enables_vjoy_xy()
+    {
+        var settings = new AppSettings();
+        ActionPresets.ApplyGameController(settings);
+        Assert.Equal(ActionPresets.GameController, settings.ActiveProfileName);
+        Assert.True(settings.EnableVJoy);
+        Assert.True(settings.SendCenterOfGravityToAxes);
+        Assert.False(settings.SendLoadSensorsToAxes);
+        Assert.True(settings.DisableKeyboardActions);
+    }
+
+    [Fact]
+    public void ApplyPedal_enables_sensor_axes()
+    {
+        var settings = new AppSettings();
+        ActionPresets.ApplyPedal(settings);
+        Assert.False(settings.SendCenterOfGravityToAxes);
+        Assert.True(settings.SendLoadSensorsToAxes);
+    }
+
+    [Fact]
+    public void ApplyKeyboardMovement_binds_jump_to_mouse_click()
+    {
+        var settings = new AppSettings();
+        ActionPresets.ApplyKeyboardMovement(settings);
+        var jump = settings.Actions[ActionSlots.Jump];
+        Assert.Equal(ActionKind.MouseButton, jump.Kind);
+        Assert.Equal("Left", jump.MouseButton);
+    }
+
+    [Fact]
+    public void ApplyBalanceMouse_maps_lean_to_cursor()
+    {
+        var settings = new AppSettings();
+        ActionPresets.ApplyBalanceMouse(settings);
+        Assert.Equal(ActionKind.MouseMoveX, settings.Actions[ActionSlots.Left].Kind);
+        Assert.Equal(ActionKind.MouseMoveY, settings.Actions[ActionSlots.Forward].Kind);
+    }
+}
+
+public class SensitivityPresetsTests
+{
+    [Fact]
+    public void HighlySensitive_lowers_triggers()
+    {
+        var settings = new AppSettings();
+        SensitivityPresets.Apply(settings, SensitivityLevel.HighlySensitive);
+        Assert.Equal(3, settings.TriggerLeftRight);
+        Assert.Equal(2.0, settings.Sensitivity);
+    }
 }
 
 public class ActionEngineTests
@@ -210,6 +322,19 @@ public class ActionEngineTests
         engine.Apply(data, settings);
 
         Assert.Contains(backend.Events, e => e.Kind == "keydown" && e.Vk == 0x41);
+    }
+
+    [Fact]
+    public void Apply_presses_mouse_on_jump()
+    {
+        var backend = new RecordingInputBackend();
+        var engine = new ActionEngine(backend);
+        var settings = new AppSettings { Actions = AppSettings.CreateDefaultActions() };
+        settings.Actions[ActionSlots.Jump] = new() { Kind = ActionKind.MouseButton, MouseButton = "Left" };
+
+        engine.Apply(new ProcessedBalance { Jump = true }, settings);
+
+        Assert.Contains(backend.Events, e => e.Kind == "mousedown");
     }
 
     [Fact]
