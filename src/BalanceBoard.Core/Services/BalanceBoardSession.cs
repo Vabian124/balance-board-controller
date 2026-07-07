@@ -15,6 +15,7 @@ public sealed class BalanceBoardSession : IDisposable
     private bool _disposed;
     private CancellationTokenSource? _connectCts;
     private int _pollInProgress;
+    private bool _loggedFirstPoll;
 
     public void CancelConnect() => _connectCts?.Cancel();
 
@@ -31,6 +32,7 @@ public sealed class BalanceBoardSession : IDisposable
         _vjoy = gameController ?? new VJoyController();
         _input = actionSimulator ?? new InputSimulator();
         _connection.StatusChanged += msg => StatusChanged?.Invoke(msg);
+        _connection.ConnectLog += msg => Log?.Invoke(msg);
         _connection.Error += msg => Log?.Invoke($"Error: {msg}");
         if (_vjoy is VJoyController vjoyController)
         {
@@ -68,16 +70,10 @@ public sealed class BalanceBoardSession : IDisposable
 
     public bool Connect(int deviceIndex = 0)
     {
-        Log?.Invoke($"HID connect attempt (device index {deviceIndex})…");
         var ok = _connection.Connect(deviceIndex);
         if (ok)
         {
-            Log?.Invoke($"HID connected: {_connection.ConnectedDeviceId ?? "unknown device"}.");
             OnConnected();
-        }
-        else
-        {
-            Log?.Invoke("HID connect failed — no device or connection error.");
         }
 
         return ok;
@@ -94,6 +90,9 @@ public sealed class BalanceBoardSession : IDisposable
         int discoveryRounds = 4,
         CancellationToken cancellationToken = default)
     {
+        ConnectionFlowLogger.LogIntent(Log, intent);
+        ConnectionFlowLogger.LogHidDiscovery(Log, DiscoverDevices());
+
         _connectCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
 
         try
@@ -101,20 +100,22 @@ public sealed class BalanceBoardSession : IDisposable
             var ct = _connectCts.Token;
             if (Connect(deviceIndex))
             {
+                ConnectionFlowLogger.LogFlowComplete(Log, true);
                 return true;
             }
 
-            if (intent == ConnectionIntent.QuickReconnect)
-            {
-                return TryQuickReconnect(deviceIndex, ct);
-            }
+            var result = intent == ConnectionIntent.QuickReconnect
+                ? TryQuickReconnect(deviceIndex, ct)
+                : TryPairAndConnect(deviceIndex, discoveryRounds, ct);
 
-            return TryPairAndConnect(deviceIndex, discoveryRounds, ct);
+            ConnectionFlowLogger.LogFlowComplete(Log, result);
+            return result;
         }
         catch (OperationCanceledException)
         {
             Log?.Invoke("Connection cancelled.");
             StatusChanged?.Invoke("Connection cancelled.");
+            ConnectionFlowLogger.LogFlowComplete(Log, false);
             return false;
         }
         catch (Exception ex)
@@ -122,6 +123,7 @@ public sealed class BalanceBoardSession : IDisposable
             Log?.Invoke($"Connection error: {ex.Message}");
             Log?.Invoke(ex.StackTrace ?? string.Empty);
             StatusChanged?.Invoke("Connection error — see log.");
+            ConnectionFlowLogger.LogFlowComplete(Log, false);
             return false;
         }
         finally
@@ -183,6 +185,7 @@ public sealed class BalanceBoardSession : IDisposable
         for (var round = 1; round <= discoveryRounds; round++)
         {
             ct.ThrowIfCancellationRequested();
+            ConnectionFlowLogger.LogPairingRound(Log, round, discoveryRounds, removeStale: round == 1);
 
             if (round == 1)
             {
@@ -240,6 +243,8 @@ public sealed class BalanceBoardSession : IDisposable
 
     public void Disconnect()
     {
+        Log?.Invoke("[CONNECT] Disconnecting.");
+        _loggedFirstPoll = false;
         _pollTimer.Stop();
         _input.ReleaseAll();
         _vjoy.Center();
@@ -335,6 +340,12 @@ public sealed class BalanceBoardSession : IDisposable
         if (!reading.IsBalanceBoard)
         {
             return;
+        }
+
+        if (!_loggedFirstPoll)
+        {
+            _loggedFirstPoll = true;
+            Log?.Invoke($"[CONNECT] First balance reading (weight={reading.WeightKg:0.0} kg).");
         }
 
         ProcessedBalance processed;

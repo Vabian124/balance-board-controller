@@ -69,6 +69,8 @@ Pairing issues: lines with `Bluetooth adapter`, `Removing stale Nintendo`, `Pair
 
 Crashes: search for `[ERROR]` or `FATAL` — unhandled UI, background, and AppDomain exceptions are written with full stack traces before the process exits.
 
+Connection flow: search for `[CONNECT]` — intent, HID discovery, pairing rounds, HID attempts, first reading, and flow complete markers.
+
 ## Profiles directory
 
 `SettingsStore.SaveProfile` / `LoadProfile` / `ListProfiles` write JSON snapshots under `profiles\`. The main window preset dropdown uses built-in `ActionPresets` today; custom profile UI is planned ([ROADMAP.md](ROADMAP.md)).
