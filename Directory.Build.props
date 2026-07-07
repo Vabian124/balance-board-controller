@@ -9,7 +9,7 @@
     <EnforceCodeStyleInBuild>false</EnforceCodeStyleInBuild>
     <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
     <!-- Style-only diagnostics; enforced via dotnet format, not as build failures -->
-    <NoWarn>$(NoWarn);IDE0005;IDE0008;IDE0021;IDE0022;IDE0028;IDE0046;IDE0048;IDE0058;IDE0301;IDE0060;IDE0032;IDE0090;IDE0200</NoWarn>
+    <NoWarn>$(NoWarn);IDE0005;IDE0008;IDE0021;IDE0022;IDE0028;IDE0046;IDE0048;IDE0058;IDE0301;IDE0060;IDE0032;IDE0090;IDE0200;IDE0010;IDE0072</NoWarn>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)' == 'Release'">
