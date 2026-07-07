@@ -4,7 +4,8 @@
         xmlns:controls="clr-namespace:BalanceBoard.App.Controls"
         Title="Balance Board Controller"
         Height="820" Width="1180"
-        MinHeight="680" MinWidth="960">
+        MinHeight="680" MinWidth="960"
+        Loaded="Window_Loaded">
     <Grid Margin="24">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
@@ -49,7 +50,8 @@
                         <Grid>
                             <StackPanel>
                                 <TextBlock Text="LIVE BALANCE" Style="{StaticResource SectionTitle}"/>
-                                <TextBlock x:Name="DirectionText" FontSize="18" FontWeight="SemiBold" Margin="0,0,0,12"/>
+                                <TextBlock x:Name="DirectionText" FontSize="18" FontWeight="SemiBold" Margin="0,0,0,8"/>
+                                <TextBlock x:Name="ActiveActionsText" Foreground="{StaticResource AccentBrush}" FontSize="13" Margin="0,0,0,12"/>
                             </StackPanel>
                             <controls:BalanceBoardVisual x:Name="BoardVisual" Margin="0,36,0,48"/>
                             <StackPanel VerticalAlignment="Bottom">
@@ -63,6 +65,20 @@
                         <StackPanel>
                             <Border Style="{StaticResource Card}">
                                 <StackPanel>
+                                    <TextBlock Text="QUICK START" Style="{StaticResource SectionTitle}"/>
+                                    <TextBlock Text="Pick a profile, connect your board, and play." Foreground="{StaticResource TextMutedBrush}" Margin="0,0,0,8" TextWrapping="Wrap"/>
+                                    <ComboBox x:Name="ProfileCombo" SelectionChanged="ProfileCombo_SelectionChanged"/>
+                                    <WrapPanel Margin="0,8,0,0">
+                                        <Button Content="Play Games" Click="GamePreset_Click"/>
+                                        <Button Content="Hand-Free Desktop" Style="{StaticResource SecondaryButton}" Click="KeyboardPreset_Click"/>
+                                        <Button Content="Pedals" Style="{StaticResource GhostButton}" Click="PedalPreset_Click"/>
+                                    </WrapPanel>
+                                    <CheckBox x:Name="AutoConnectCheck" Content="Connect automatically on startup" Margin="0,8,0,0" Checked="SettingChanged" Unchecked="SettingChanged"/>
+                                </StackPanel>
+                            </Border>
+
+                            <Border Style="{StaticResource Card}">
+                                <StackPanel>
                                     <TextBlock Text="CONTROLLER OUTPUT" Style="{StaticResource SectionTitle}"/>
                                     <CheckBox x:Name="EnableVJoyCheck" Content="Use game controller (vJoy)" Checked="SettingChanged" Unchecked="SettingChanged"/>
                                     <CheckBox x:Name="SendCgCheck" Content="Map balance to X/Y axes" Checked="SettingChanged" Unchecked="SettingChanged"/>
@@ -72,10 +88,16 @@
                                         <TextBlock Text="vJoy device" VerticalAlignment="Center" Margin="0,0,8,0" Foreground="{StaticResource TextMutedBrush}"/>
                                         <ComboBox x:Name="VJoyDeviceCombo" Width="72" SelectionChanged="SettingChanged"/>
                                     </StackPanel>
-                                    <WrapPanel Margin="0,8,0,0">
-                                        <Button Content="Game Controller" Click="GamePreset_Click"/>
-                                        <Button Content="Pedal Preset" Style="{StaticResource SecondaryButton}" Click="PedalPreset_Click"/>
-                                    </WrapPanel>
+                                </StackPanel>
+                            </Border>
+
+                            <Border Style="{StaticResource Card}">
+                                <StackPanel>
+                                    <TextBlock Text="MOVEMENT TRIGGERS" Style="{StaticResource SectionTitle}"/>
+                                    <TextBlock x:Name="TriggerLeftRightLabel" Foreground="{StaticResource TextMutedBrush}"/>
+                                    <Slider x:Name="TriggerLeftRightSlider" Minimum="1" Maximum="30" Value="8" TickFrequency="1" IsSnapToTickEnabled="True" ValueChanged="SettingChanged"/>
+                                    <TextBlock x:Name="TriggerForwardBackwardLabel" Foreground="{StaticResource TextMutedBrush}"/>
+                                    <Slider x:Name="TriggerForwardBackwardSlider" Minimum="1" Maximum="30" Value="9" TickFrequency="1" IsSnapToTickEnabled="True" ValueChanged="SettingChanged"/>
                                 </StackPanel>
                             </Border>
 

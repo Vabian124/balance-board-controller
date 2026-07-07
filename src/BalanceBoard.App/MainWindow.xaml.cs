@@ -1,4 +1,4 @@
-﻿using System.Diagnostics;
+using System.Diagnostics;
 using System.IO;
 using System.Windows;
 using System.Windows.Controls;
@@ -68,11 +68,19 @@ public partial class MainWindow : Window
     private void PopulateUi()
     {
         _suppressSettingEvents = true;
+        ProfileCombo.ItemsSource = ActionPresets.All;
+        ProfileCombo.SelectedItem = ActionPresets.All.Contains(_settings.ActiveProfileName)
+            ? _settings.ActiveProfileName
+            : ActionPresets.Default;
+
         EnableVJoyCheck.IsChecked = _settings.EnableVJoy;
         SendCgCheck.IsChecked = _settings.SendCenterOfGravityToAxes;
         SendSensorsCheck.IsChecked = _settings.SendLoadSensorsToAxes;
         DisableActionsCheck.IsChecked = _settings.DisableKeyboardActions;
+        AutoConnectCheck.IsChecked = _settings.AutoConnectOnStartup;
         AutoTareCheck.IsChecked = _settings.AutoTareOnConnect;
+        TriggerLeftRightSlider.Value = _settings.TriggerLeftRight;
+        TriggerForwardBackwardSlider.Value = _settings.TriggerForwardBackward;
         DeadzoneSlider.Value = _settings.DeadzonePercent;
         SensitivitySlider.Value = _settings.Sensitivity;
         InvertXCheck.IsChecked = _settings.InvertX;
@@ -82,13 +90,50 @@ public partial class MainWindow : Window
         for (uint i = 1; i <= 16; i++) VJoyDeviceCombo.Items.Add(i);
         VJoyDeviceCombo.SelectedItem = _settings.VJoyDeviceId;
         _suppressSettingEvents = false;
+        UpdateActiveActionsSummary();
     }
 
     private void UpdateSliderLabels()
     {
         DeadzoneLabel.Text = $"Deadzone: {DeadzoneSlider.Value:0}%";
         SensitivityLabel.Text = $"Sensitivity: {SensitivitySlider.Value:0.0}x";
+        TriggerLeftRightLabel.Text = $"Left/right trigger: {TriggerLeftRightSlider.Value:0}%";
+        TriggerForwardBackwardLabel.Text = $"Forward/back trigger: {TriggerForwardBackwardSlider.Value:0}%";
     }
+
+    private void UpdateActiveActionsSummary()
+    {
+        if (!_uiReady) return;
+
+        ActiveActionsText.Text = _settings.DisableKeyboardActions
+            ? $"Profile: {_settings.ActiveProfileName} · vJoy output"
+            : $"Profile: {_settings.ActiveProfileName} · {DescribeBindings()}";
+    }
+
+    private string DescribeBindings()
+    {
+        var parts = new List<string>();
+        foreach (var pair in _settings.Actions.OrderBy(p => p.Key))
+        {
+            var label = DescribeBinding(pair.Value);
+            if (label is not null)
+            {
+                parts.Add($"{pair.Key}: {label}");
+            }
+        }
+
+        return parts.Count == 0 ? "No keyboard/mouse bindings" : string.Join(" · ", parts);
+    }
+
+    private static string? DescribeBinding(ActionBinding binding) =>
+        binding.Kind switch
+        {
+            ActionKind.Key => binding.KeyName,
+            ActionKind.MouseButton => binding.MouseButton,
+            ActionKind.MouseMoveX => $"mouse X {binding.Amount}",
+            ActionKind.MouseMoveY => $"mouse Y {binding.Amount}",
+            _ => null,
+        };
 
     private void OnProcessed(ProcessedBalance data)
     {
@@ -98,6 +143,7 @@ public partial class MainWindow : Window
             WeightText.Text = $"Weight: {data.WeightKg:0.0} kg";
             BalanceText.Text = $"Balance X/Y: {data.BalanceX:0.0}% / {data.BalanceY:0.0}%";
             DirectionText.Text = DescribeDirection(data);
+            ActiveActionsText.Text = DescribeActiveInputs(data);
             SensorText.Text =
                 $"TL {data.TopLeftKg:0.0}  TR {data.TopRightKg:0.0}  BL {data.BottomLeftKg:0.0}  BR {data.BottomRightKg:0.0}\n" +
                 $"vJoy axes  X={data.JoyX,6}  Y={data.JoyY,6}  Z={data.JoyZ,6}";
@@ -119,6 +165,28 @@ public partial class MainWindow : Window
         if (data.Jump) parts.Add("jump");
         if (parts.Count == 0) return "Centered";
         return "Leaning " + string.Join(" · ", parts);
+    }
+
+    private string DescribeActiveInputs(ProcessedBalance data)
+    {
+        if (data.WeightKg < 5)
+        {
+            return $"Profile: {_settings.ActiveProfileName}";
+        }
+
+        var active = new List<string>();
+        if (data.MoveForward) active.Add("Forward");
+        if (data.MoveBackward) active.Add("Backward");
+        if (data.MoveLeft) active.Add("Left");
+        if (data.MoveRight) active.Add("Right");
+        if (data.Modifier) active.Add("Modifier");
+        if (data.Jump) active.Add("Jump");
+        if (data.DiagonalLeft) active.Add("Diagonal left");
+        if (data.DiagonalRight) active.Add("Diagonal right");
+
+        return active.Count == 0
+            ? $"Profile: {_settings.ActiveProfileName} · Centered"
+            : $"Active: {string.Join(", ", active)}";
     }
 
     private void RefreshVJoyStatus()
@@ -162,7 +230,10 @@ public partial class MainWindow : Window
         _settings.SendCenterOfGravityToAxes = SendCgCheck.IsChecked == true;
         _settings.SendLoadSensorsToAxes = SendSensorsCheck.IsChecked == true;
         _settings.DisableKeyboardActions = DisableActionsCheck.IsChecked == true;
+        _settings.AutoConnectOnStartup = AutoConnectCheck.IsChecked == true;
         _settings.AutoTareOnConnect = AutoTareCheck.IsChecked == true;
+        _settings.TriggerLeftRight = (int)TriggerLeftRightSlider.Value;
+        _settings.TriggerForwardBackward = (int)TriggerForwardBackwardSlider.Value;
         _settings.DeadzonePercent = DeadzoneSlider.Value;
         _settings.Sensitivity = SensitivitySlider.Value;
         _settings.InvertX = InvertXCheck.IsChecked == true;
@@ -171,6 +242,7 @@ public partial class MainWindow : Window
         else if (VJoyDeviceCombo.SelectedItem is int intId) _settings.VJoyDeviceId = (uint)intId;
 
         UpdateSliderLabels();
+        UpdateActiveActionsSummary();
         _settingsStore.Save(_settings);
         _session.LoadSettings(_settings);
         RefreshVJoyStatus();
@@ -184,6 +256,51 @@ public partial class MainWindow : Window
     private void SettingChanged(object sender, SelectionChangedEventArgs e) => SaveSettingsFromUi();
 
     private void SettingChanged(object sender, TextChangedEventArgs e) => SaveSettingsFromUi();
+
+    private void Window_Loaded(object sender, RoutedEventArgs e)
+    {
+        if (!_settings.AutoConnectOnStartup || _session.IsConnected)
+        {
+            return;
+        }
+
+        Log("Auto-connect enabled — connecting to balance board...");
+        if (!_session.Connect())
+        {
+            Log("Auto-connect failed. Pair the board in Windows Bluetooth settings, then click Connect.");
+        }
+    }
+
+    private void ProfileCombo_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (!_uiReady || _suppressSettingEvents || ProfileCombo.SelectedItem is not string profile)
+        {
+            return;
+        }
+
+        _session.ApplyProfile(profile);
+        SyncUiFromSettings();
+        SaveSettingsFromUi();
+    }
+
+    private void SyncUiFromSettings()
+    {
+        _suppressSettingEvents = true;
+        EnableVJoyCheck.IsChecked = _settings.EnableVJoy;
+        SendCgCheck.IsChecked = _settings.SendCenterOfGravityToAxes;
+        SendSensorsCheck.IsChecked = _settings.SendLoadSensorsToAxes;
+        DisableActionsCheck.IsChecked = _settings.DisableKeyboardActions;
+        TriggerLeftRightSlider.Value = _settings.TriggerLeftRight;
+        TriggerForwardBackwardSlider.Value = _settings.TriggerForwardBackward;
+        if (ActionPresets.All.Contains(_settings.ActiveProfileName))
+        {
+            ProfileCombo.SelectedItem = _settings.ActiveProfileName;
+        }
+
+        _suppressSettingEvents = false;
+        UpdateSliderLabels();
+        UpdateActiveActionsSummary();
+    }
 
     private void ConnectButton_Click(object sender, RoutedEventArgs e)
     {
@@ -205,11 +322,8 @@ public partial class MainWindow : Window
         var wizard = new SetupWizardWindow(_session) { Owner = this };
         if (wizard.ShowDialog() == true)
         {
-            SaveSettingsFromUi();
             _session.ApplyControllerPreset();
-            EnableVJoyCheck.IsChecked = true;
-            DisableActionsCheck.IsChecked = true;
-            SendCgCheck.IsChecked = true;
+            SyncUiFromSettings();
             SaveSettingsFromUi();
         }
     }
@@ -221,23 +335,22 @@ public partial class MainWindow : Window
     private void GamePreset_Click(object sender, RoutedEventArgs e)
     {
         _session.ApplyControllerPreset();
-        EnableVJoyCheck.IsChecked = true;
-        DisableActionsCheck.IsChecked = true;
-        SendCgCheck.IsChecked = true;
-        SendSensorsCheck.IsChecked = false;
+        SyncUiFromSettings();
         SaveSettingsFromUi();
-        Log("Applied Game Controller preset.");
     }
 
     private void PedalPreset_Click(object sender, RoutedEventArgs e)
     {
         _session.ApplyPedalPreset();
-        EnableVJoyCheck.IsChecked = true;
-        DisableActionsCheck.IsChecked = true;
-        SendCgCheck.IsChecked = false;
-        SendSensorsCheck.IsChecked = true;
+        SyncUiFromSettings();
         SaveSettingsFromUi();
-        Log("Applied Pedal preset.");
+    }
+
+    private void KeyboardPreset_Click(object sender, RoutedEventArgs e)
+    {
+        _session.ApplyKeyboardPreset();
+        SyncUiFromSettings();
+        SaveSettingsFromUi();
     }
 
     private void RunHealthCheckButton_Click(object sender, RoutedEventArgs e)
