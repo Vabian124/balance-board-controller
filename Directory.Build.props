@@ -1,5 +1,14 @@
 <Project>
   <PropertyGroup>
+    <Version>1.0.0</Version>
+    <AssemblyVersion>1.0.0.0</AssemblyVersion>
+    <FileVersion>1.0.0.0</FileVersion>
+    <Company>Balance Board Controller Contributors</Company>
+    <Product>Balance Board Controller</Product>
+    <Copyright>Copyright (c) 2026 Balance Board Controller contributors</Copyright>
+    <Description>Wii Fit Balance Board to vJoy / keyboard controller for Windows</Description>
+    <RepositoryUrl>https://github.com/Vabian124/balance-board-controller</RepositoryUrl>
+    <Deterministic>true</Deterministic>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <LangVersion>latest</LangVersion>
