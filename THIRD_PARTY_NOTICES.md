@@ -7,7 +7,7 @@ This project includes or depends on components from other projects.
 - **Source:** https://github.com/lshachar/WiiBalanceWalker
 - **Authors:** Shachar Liberman (v0.5+), Richard Perry / GreyCube.com (v0.4 and earlier)
 - **License:** Microsoft Public License (MS-PL)
-- **Usage:** Algorithm reference and legacy WinForms source under `WiiBalanceWalker/`
+- **Usage:** Algorithm reference and legacy WinForms source under `reference/WiiBalanceWalker/`
 
 ## WiimoteLib
 

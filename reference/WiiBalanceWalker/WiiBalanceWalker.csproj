@@ -60,7 +60,7 @@
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="InTheHand.Net.Personal">
-      <HintPath>.\InTheHand.Net.Personal.dll</HintPath>
+      <HintPath>..\..\libs\x64\InTheHand.Net.Personal.dll</HintPath>
     </Reference>
     <Reference Include="System" />
     <Reference Include="System.Core" />
@@ -73,10 +73,10 @@
     <Reference Include="System.Windows.Forms" />
     <Reference Include="System.Xml" />
     <Reference Include="vJoyInterfaceWrap">
-      <HintPath>vjoystick\x64\vJoyInterfaceWrap.dll</HintPath>
+      <HintPath>..\..\libs\x64\vJoyInterfaceWrap.dll</HintPath>
     </Reference>
     <Reference Include="WiimoteLib">
-      <HintPath>.\WiimoteLib.dll</HintPath>
+      <HintPath>..\..\libs\x64\WiimoteLib.dll</HintPath>
     </Reference>
   </ItemGroup>
   <ItemGroup>
@@ -132,18 +132,4 @@
     </BootstrapperPackage>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
-  <PropertyGroup>
-    <PostBuildEvent>powershell compress-archive * $(ProjectName)_$(PlatformName) -f</PostBuildEvent>
-  </PropertyGroup>
-  <PropertyGroup>
-    <PreBuildEvent>copy $(ProjectDir)\readme_for_release  $(TargetDir)README.txt
-copy $(ProjectDir)\vjoy\$(PlatformName)\* $(TargetDir)</PreBuildEvent>
-  </PropertyGroup>
-  <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
-       Other similar extension points exist, see Microsoft.Common.targets.
-  <Target Name="BeforeBuild">
-  </Target>
-  <Target Name="AfterBuild">
-  </Target>
-  -->
 </Project>

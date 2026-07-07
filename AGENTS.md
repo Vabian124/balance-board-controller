@@ -81,7 +81,7 @@ UI: `MainWindow` binds to session events; settings via `SettingsStore` → `%App
 
 ## Do not
 
-- Commit `baseline/`, `reference/`, `*.log`, or user `%AppData%` data
+- Commit `baseline/`, loose binaries under `reference/` (except tracked legacy source), `*.log`, or user `%AppData%` data
 - Add heavy abstractions for one-off helpers
 - Break single-instance / feeder cleanup (causes vJoy `VJD_STAT_BUSY`)
 - Retarget away from Windows x64 without explicit request

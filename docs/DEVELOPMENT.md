@@ -133,7 +133,7 @@ Mismatch shows as warning in diagnostics; may still work.
 
 **Never commit:**
 
-- `baseline/`, `reference/` (local comparison artifacts)
+- `baseline/`, loose binaries in `reference/` (tracked legacy source is OK)
 - `*.log`, `logs/`
 - `bin/`, `obj/`, `.vs/`
 - User settings from `%AppData%`

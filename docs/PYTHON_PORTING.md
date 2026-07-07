@@ -138,8 +138,8 @@ dotnet test tests/BalanceBoard.Core.Tests/BalanceBoard.Core.Tests.csproj -c Rele
 4. `src/BalanceBoard.Core/Services/BluetoothPairingService.cs`
 5. `src/BalanceBoard.Core/Models/AppSettings.cs`
 6. `src/BalanceBoard.App/MainWindow.xaml.cs` (workflow only)
-7. `WiiBalanceWalker/` — original MS-PL reference for edge cases
+7. `reference/WiiBalanceWalker/` — original MS-PL reference for edge cases
 
 ## License note
 
-New code in this repo is **MIT**. `WiiBalanceWalker/` remains **MS-PL**. Python port should include compatible notices if copying algorithms from WiiBalanceWalker.
+New code in this repo is **MIT**. `reference/WiiBalanceWalker/` remains **MS-PL**. Python port should include compatible notices if copying algorithms from WiiBalanceWalker.

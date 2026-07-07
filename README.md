@@ -103,9 +103,12 @@ dotnet run --project tools/Validate/BalanceBoard.Validate.csproj -c Release
 | `docs/` | CODEMAP, ARCHITECTURE, DEVELOPMENT, GLOSSARY, ROADMAP |
 | `src/BalanceBoard.App/` | WPF application (UI, wizard, debug suite) |
 | `src/BalanceBoard.Core/` | Board connection, processing, vJoy, logging |
+| `scripts/` | `start.ps1`, `lint.ps1`, `test-flow.ps1`, etc. |
+| `tests/BalanceBoard.Core.Tests/` | Unit tests (portable core contract) |
+| `tools/UiSmoke/` | XAML load smoke test |
 | `tools/Validate/` | Command-line health check tool |
-| `libs/x64/` | WiimoteLib + vJoy wrapper DLLs |
-| `WiiBalanceWalker/` | Legacy v0.5 reference source (MS-PL) |
+| `libs/x64/` | WiimoteLib + vJoy wrapper DLLs (single canonical copy) |
+| `reference/` | Legacy MS-PL source and reference docs (not the active app) |
 
 ## Troubleshooting
 
@@ -130,7 +133,7 @@ Log files are excluded from git. They contain timestamps, device status, and con
 ## License
 
 - **Balance Board Controller** (new code in `src/`, `tools/`, and project docs): **[MIT License](LICENSE)** — free to use, fork, modify, and redistribute with minimal restrictions.
-- **WiiBalanceWalker** (legacy reference under `WiiBalanceWalker/`): Microsoft Public License — see [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)
+- **WiiBalanceWalker** (legacy reference under `reference/WiiBalanceWalker/`): Microsoft Public License — see [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)
 
 You may fork this repo and do what you want with the MIT-licensed portions. Keep the LICENSE file and third-party notices when you redistribute.
 
