@@ -24,6 +24,9 @@ dotnet run --project tools/Validate/BalanceBoard.Validate.csproj -c Release
 # Format (optional)
 dotnet format BalanceBoard.sln
 
+# Full lint + static analysis (format, build, Validate, UI smoke, lifecycle)
+.\scripts\lint.ps1
+
 # Publish self-contained folder
 dotnet publish src/BalanceBoard.App/BalanceBoard.App.csproj -c Release -r win-x64 --self-contained
 ```
@@ -37,6 +40,7 @@ Output EXE: `src/BalanceBoard.App/bin/Release/net8.0-windows/BalanceBoardApp.exe
 | `BalanceBoard.App` | Core | Contain device/vJoy logic |
 | `BalanceBoard.Core` | WiimoteLib, vJoy wrap | Reference WPF |
 | `BalanceBoard.Validate` | Core | Duplicate diagnostics logic |
+| `BalanceBoard.UiSmoke` | App | Headless MainWindow load test |
 
 ## Adding a feature — checklist
 
@@ -82,9 +86,22 @@ App kills prior `BalanceBoardApp` instances on startup. If debugging multiple in
 
 - Trigger: push/PR to `main`
 - Runner: `windows-latest`
-- Steps: restore → Release build → run Validate tool
+- Steps: restore → Release build → **format check** → Validate → **UI smoke** (loads `MainWindow` XAML on STA thread)
 
-Validate step builds via `dotnet run --no-restore` (compiles Validate if needed).
+### Linting and static analysis
+
+| Tool | What it catches |
+|------|-----------------|
+| `dotnet format` | C# style, import order |
+| Built-in .NET analyzers | Nullable, code quality (`AnalysisLevel=latest`) |
+| [WpfAnalyzers](https://www.nuget.org/packages/WpfAnalyzers) | WPF dependency property mistakes (on `BalanceBoard.App`) |
+| `tools/UiSmoke` | **Runtime XAML errors** — wrong resource types, broken templates (would have caught `CornerRadius` / `Double` bug) |
+| `tools/Validate` | vJoy driver, HID discovery |
+| `scripts/lint.ps1` | Runs all of the above + `test-flow.ps1` |
+
+**Note:** No existing XAML linter reliably validates `StaticResource` type compatibility at compile time on .NET 8. The **UI smoke test** is the practical guard.
+
+Optional IDE extension: [Rapid XAML Toolkit](https://marketplace.visualstudio.com/items?itemName=MattLaceyLtd.RapidXamlAnalysis) for in-editor XAML hints (not in CI — `RapidXaml.BuildAnalysis` NuGet is broken on SDK-style projects).
 
 ## Native DLLs
 
@@ -107,6 +124,8 @@ Mismatch shows as warning in diagnostics; may still work.
 ## Testing without hardware
 
 - Validate tool: vJoy driver + DLL checks
+- **UiSmoke tool:** constructs `MainWindow` — catches XAML runtime failures
+- `scripts/lint.ps1`: full pre-commit check suite
 - `DiscoverDevices()` returns empty if no Wii HID — expected
 - Unit tests: none yet; add under `tests/` if needed (not present today)
 

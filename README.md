@@ -71,6 +71,7 @@ dotnet publish src/BalanceBoard.App/BalanceBoard.App.csproj -c Release -r win-x6
 .\scripts\restart.ps1    # stop + start
 .\scripts\connect.ps1    # start and auto-connect
 .\scripts\test-flow.ps1  # smoke tests (no hardware)
+.\scripts\lint.ps1       # full lint + UI XAML smoke
 ```
 
 See [docs/WORKFLOW.md](docs/WORKFLOW.md) and [docs/TEST_PLAN.md](docs/TEST_PLAN.md) for boot/connect behavior and edge-case testing.

@@ -9,6 +9,7 @@
     <AssemblyName>BalanceBoardApp</AssemblyName>
     <RootNamespace>BalanceBoard.App</RootNamespace>
     <PlatformTarget>x64</PlatformTarget>
+    <NoWarn>$(NoWarn);WPF0041</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>
@@ -20,6 +21,13 @@
     <None Include="..\..\libs\x64\vJoyInterfaceWrap.dll" Link="vJoyInterfaceWrap.dll" CopyToOutputDirectory="PreserveNewest" />
     <None Include="..\..\libs\x64\WiimoteLib.dll" Link="WiimoteLib.dll" CopyToOutputDirectory="PreserveNewest" />
     <None Include="..\..\libs\x64\InTheHand.Net.Personal.dll" Link="InTheHand.Net.Personal.dll" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="WpfAnalyzers" Version="4.1.1">
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
   </ItemGroup>
 
 </Project>
