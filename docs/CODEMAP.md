@@ -19,13 +19,16 @@ Complete map of **maintained source** (ignore `bin/`, `obj/`, `.vs/`).
 |------|---------|
 | `App.xaml` | Application resources, theme merge |
 | `App.xaml.cs` | Instant UI, deferred startup, single-instance via `SingleInstanceService` |
-| `MainWindow.xaml` | Single-page dashboard: settings expanders, connect/cancel, debug log |
-| `MainWindow.xaml.cs` | UI ↔ session; smart connect policy; cancellable connect |
-| `Services/StartupOptions.cs` | CLI: `--dev`, `--connect`, `--no-cleanup`, `--allow-multiple` |
+| `MainWindow.xaml` | Tabbed UI: **Dashboard** (connect, balance visual), **Profiles** (presets, sensitivity, jump), **Advanced** (sliders, vJoy, bindings, debug) |
+| `MainWindow.xaml.cs` | UI ↔ session; `UiDetailLevel` visibility; smart connect; cancellable connect |
+| `Services/StartupOptions.cs` | CLI: `--dev`, `--connect`, `--simulate-board`, `--no-cleanup`, `--allow-multiple` |
 | `Services/SingleInstanceService.cs` | Mutex + named pipe; second launch activates window |
-| `Controls/BalanceBoardVisual.xaml(.cs)` | Live 2D balance dot visualization |
-| `Themes/Colors.xaml` | System light/dark aware brushes |
-| `Themes/Controls.xaml` | Shared control styles |
+| `Services/ThemeManager.cs` | System / Light / Dark theme switching |
+| `Controls/BalanceBoardVisual.xaml(.cs)` | Live 2D balance dot, jump banner |
+| `Controls/ActionBindingRow.xaml(.cs)` | Per-slot key/mouse binding editor row |
+| `Themes/Colors.xaml` | Shared brush keys |
+| `Themes/Colors.Light.xaml` / `Colors.Dark.xaml` | Theme-specific palettes (dropdown contrast fix in v1.1.1) |
+| `Themes/Controls.xaml` | Shared control styles, tab styles |
 | `BalanceBoard.App.csproj` | WPF exe, copies native DLLs from `libs/x64/` |
 
 ### UI event flow (`MainWindow.xaml.cs`)
@@ -33,6 +36,7 @@ Complete map of **maintained source** (ignore `bin/`, `obj/`, `.vs/`).
 - Constructor: `SettingsStore.Load()` → `session.LoadSettings(initializeVJoy: false)` → instant UI
 - `RunDeferredStartup`: warmup, vJoy init, quick reconnect or welcome message
 - `BeginConnect(ConnectionIntent)`: QuickReconnect vs PairAndConnect
+- `ApplyDetailLevelVisibility()`: show/hide Advanced tab and panels per `UiDetailLevel`
 
 ## `src/BalanceBoard.Core/` — business logic
 
@@ -40,12 +44,15 @@ Complete map of **maintained source** (ignore `bin/`, `obj/`, `.vs/`).
 
 | Path | Purpose |
 |------|---------|
-| `AppSettings.cs` | All user settings; `Actions` dict; trigger thresholds |
+| `AppSettings.cs` | All user settings; `Actions` dict; `UiDetailLevel`, `JumpLevel`, theme |
 | `ActionSlots.cs` | Canonical action slot names (Left, Right, …) |
 | `BalanceConstants.cs` | Thresholds, joy scaling, poll interval — **port verbatim** |
 | `ActionConstants.cs` | Mouse-move timer interval for action engine |
 | `VirtualKeyCodes.cs` | Key name → VK code lookup (no WinForms) |
-| `ActionPresets.cs` | Named profiles: Game Controller, Pedal, Hand-Free Desktop |
+| `ActionPresets.cs` | Named profiles: Game Controller, Minecraft, Pedal, Desktop, Balance Mouse |
+| `JumpPresets.cs` | Easy / Normal / Hard jump thresholds + `UiDetailLevel` enum |
+| `SensitivityPresets.cs` | Low / Medium / High / Highly sensitive bundles |
+| `DeviceIdRules.cs` | `ExtractFromHidPath`, simulated ID rules, persist guards |
 | `ActionBinding.cs` | In `AppSettings.cs` — Key/MouseButton/MouseMove binding |
 | `BalanceReading.cs` | Raw sensor snapshot from WiimoteLib |
 | `ProcessedBalance.cs` | Processed lean, movement flags, vJoy axis values |
@@ -55,6 +62,7 @@ Complete map of **maintained source** (ignore `bin/`, `obj/`, `.vs/`).
 | Path | Purpose |
 |------|---------|
 | `BalanceMath.cs` | Stateless balance math (deadzone, triggers, axes) |
+| `BalanceDisplay.cs` | Balance dot position / direction text (shared with unit tests) |
 | `MovementMapper.cs` | `ProcessedBalance` flags → `ActionSlots` |
 | `ActionEngine.cs` | Portable action-slot state machine |
 
@@ -70,19 +78,20 @@ Complete map of **maintained source** (ignore `bin/`, `obj/`, `.vs/`).
 
 | Path | Purpose |
 |------|---------|
-| `BalanceBoardSession.cs` | **Orchestrator**: `ConnectWithIntent`, poll (50 ms), route to vJoy + input |
+| `BalanceBoardSession.cs` | **Orchestrator**: `ConnectWithIntent`, poll on `ConnectionWorker` (50 ms), route to vJoy + input |
+| `ConnectionWorker.cs` | Dedicated STA thread for WiimoteLib / BT / poll timer |
 | `ConnectionIntent.cs` | `QuickReconnect` vs `PairAndConnect` |
-| `BalanceBoardConnection.cs` | WiimoteLib wrapper: discover, connect, tare, read corners |
+| `BalanceBoardConnection.cs` | WiimoteLib wrapper: discover, connect, tare, read corners; disconnect hardening |
 | `BalanceProcessor.cs` | Stateful tare/center; delegates math to `BalanceMath` |
-| `VJoyController.cs` | `IGameControllerOutput` — acquire vJoy, `WriteAxes` |
+| `VJoyController.cs` | `IGameControllerOutput` — acquire vJoy, coalesced `WriteAxes` |
 | `VJoyDiagnostics.cs` | Read driver status, axis capabilities, DLL version match |
 | `InputSimulator.cs` | Facade: `ActionEngine` + `Win32InputBackend` |
 | `Win32InputBackend.cs` | `SendInput` keyboard/mouse (Windows only) |
-| `BluetoothPairingService.cs` | Automatic Wii BT pairing (reversed host MAC PIN, WiiBalanceWalker method) |
+| `BluetoothPairingService.cs` | Automatic Wii BT pairing (reversed host MAC PIN) |
 | `WiiBluetoothPin.cs` | Host MAC → Wii permanent pairing PIN |
 | `SettingsStore.cs` | JSON settings in `%AppData%\BalanceBoardApp\`; atomic save; connection state |
 | `AppDataPaths.cs` | Canonical paths for settings, logs, profiles |
-| `FileLogService.cs` | Daily session log with SESSION header block |
+| `FileLogService.cs` | Daily session log with SESSION header + structured tags |
 | `DiagnosticsReport.cs` | Structured health check for UI + clipboard |
 
 ## `tools/Validate/`
@@ -96,22 +105,33 @@ Complete map of **maintained source** (ignore `bin/`, `obj/`, `.vs/`).
 
 | Path | Purpose |
 |------|---------|
-| `Program.cs` | STA-thread `MainWindow` load — catches runtime XAML/theme errors |
+| `Program.cs` | STA-thread `MainWindow` load + Minecraft preset — catches XAML/theme errors |
 | `BalanceBoard.UiSmoke.csproj` | Console app referencing App |
 
 ## `scripts/`
 
 | Path | Purpose |
 |------|---------|
-| `lint.ps1` | Full lint: format, build, unit tests, Validate, UiSmoke, test-flow |
-| `test-flow.ps1` | Process lifecycle smoke tests |
-| `start.ps1` / `stop.ps1` / `restart.ps1` / `connect.ps1` | Dev launch helpers |
+| `lint.ps1` | Entry point → delegates to `scripts/ci/lint.ps1` |
+| `ci/lint.ps1` | Full gate: format, build, tests, Validate, UiSmoke, test-flow |
+| `ci/test-all.ps1` | Lint + optional `-IncludeHardware` |
+| `ci/verify-tests.ps1` | Meta: test projects wired in solution |
+| `ci/check-crash-safety.ps1` | Grep guard for unsafe patterns |
+| `ci/publish-release.ps1` | Package win-x64 zip for GitHub Releases |
+| `dev/start.ps1` / `stop.ps1` / `restart.ps1` / `connect.ps1` | Dev launch helpers |
+| `dev/test-flow.ps1` | Process lifecycle smoke tests |
+| `dev/sync-vjoy-dlls.ps1` | Copy vJoy DLLs from install into `libs/x64/` |
 
-## `tests/BalanceBoard.Core.Tests/`
+## `tests/`
 
-| Path | Purpose |
-|------|---------|
-| `BalanceProcessorTests.cs` | Golden tests: `BalanceMath`, `BalanceProcessor`, `ActionEngine`, `VirtualKeyCodes` |
+| Project | Purpose |
+|---------|---------|
+| `BalanceBoard.Core.Tests` | Unit: `BalanceMath`, `BalanceProcessor`, `JumpPresets`, `ActionEngine`, migrations |
+| `BalanceBoard.Integration.Tests` | Session, disconnect, simulated board |
+| `BalanceBoard.Fuzz.Tests` | FsCheck property tests |
+| `BalanceBoard.Automation` | Spawns exe with `--simulate-board` |
+| `BalanceBoard.Testing` | Shared fakes for integration tests |
+| `hardware/` | Optional scripts when physical board present |
 
 ## `libs/x64/`
 

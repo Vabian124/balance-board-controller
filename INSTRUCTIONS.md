@@ -43,8 +43,7 @@ Run through this list **at the start and end** of each turn where you touch the 
 On sessions where you implement features, fix bugs, or change docs structure, also do:
 
 1. **Update the audit log** ([docs/updates/](docs/updates/))
-   - After each meaningful commit, add `YYYY-MM-DD_HHMMSS_<short-hash>_<slug>.md`
-   - Append a row to `docs/updates/README.md` index
+   - After each meaningful commit, add a row to `docs/updates/README.md` index
    - List **what was done** and **what was NOT done**
 
 2. **Keep docs truthful**

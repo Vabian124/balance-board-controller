@@ -10,6 +10,7 @@ flowchart TB
     end
 
     subgraph core [BalanceBoard.Core]
+        CW[ConnectionWorker STA]
         BBC[BalanceBoardConnection]
         BP[BalanceProcessor]
         BBS[BalanceBoardSession]
@@ -19,7 +20,8 @@ flowchart TB
     end
 
     subgraph ui [BalanceBoard.App]
-        MW[MainWindow]
+        MW[MainWindow tabs]
+        TM[ThemeManager]
         SIS[SingleInstanceService]
         FLS[FileLogService]
     end
@@ -30,12 +32,14 @@ flowchart TB
     end
 
     BB --> BT --> BBC
-    BBS --> BBC
+    CW --> BBC
+    BBS --> CW
     BBS --> BP
     BBS --> VJ
     BBS --> IS
     MW --> BBS
     MW --> SS
+    MW --> TM
     MW --> FLS
     App --> SIS
     VJ --> VJoyDrv
@@ -44,15 +48,15 @@ flowchart TB
 
 ## Poll loop
 
-`BalanceBoardSession` uses a `System.Timers.Timer` at **50 ms** (20 Hz):
+`BalanceBoardSession` schedules a **50 ms** poll on `ConnectionWorker` (dedicated STA thread for WiimoteLib):
 
-1. `BalanceBoardConnection.GetCurrentReading()` → `BalanceReading`
+1. `_worker.Invoke` → `BalanceBoardConnection.GetCurrentReading()` → `BalanceReading`
 2. `BalanceProcessor.Process(reading, settings)` → `ProcessedBalance`
-3. Raise `Processed` event (UI updates)
-4. If `EnableVJoy` && `VJoyController.IsReady` → `VJoyController.Update(processed)`
+3. Raise `Processed` event (UI updates via `Dispatcher.BeginInvoke`)
+4. If `EnableVJoy` && `VJoyController.IsReady` → `VJoyController.Update(processed)` (axis coalescing skips unchanged values)
 5. If `!DisableKeyboardActions` → `InputSimulator.Apply(processed, settings)`
 
-No duplicate event subscription on `ReadingReceived` — polling only.
+All WiimoteLib / Bluetooth HID calls stay on `ConnectionWorker`. Do not add a second poll path.
 
 ## Processing pipeline
 
@@ -60,14 +64,14 @@ No duplicate event subscription on `ReadingReceived` — polling only.
 
 1. **Tare** — tracks per-corner minimum (auto zero)
 2. **Center offset** — optional user-defined standing position
-3. **Balance %** — X/Y from corner weight distribution
-4. **Deadzone / sensitivity / invert** — from `AppSettings`
+3. **Balance %** — X/Y from corner weight distribution (`BalanceDisplay` helper)
+4. **Deadzone / sensitivity / invert** — from `AppSettings` or `SensitivityPresets`
 5. **Movement triggers** — compare balance % to thresholds:
    - `TriggerLeftRight` (default 8%)
    - `TriggerForwardBackward` (default 9%)
    - `TriggerModifierLeftRight` (15%)
    - `TriggerModifierForwardBackward` (16%)
-6. **Jump** — rapid weight change detection
+6. **Jump** — weight below `JumpWeightThresholdKg` for `JumpHoldSeconds` (`JumpPresets`: Easy / Normal / Hard)
 7. **vJoy axes** — map COG and/or load sensors per flags:
    - `SendCenterOfGravityToAxes` → X, Y
    - `SendLoadSensorsToAxes` → Z, RX, RY, RZ
@@ -78,13 +82,25 @@ Output: `ProcessedBalance` with booleans (`MoveLeft`, `Jump`, …) and `short` a
 
 `ActionPresets` mutates `AppSettings` in place:
 
-| Preset | vJoy | Keyboard | Axis mapping |
-|--------|------|----------|--------------|
-| Game Controller | on | off | COG → X/Y |
-| Pedal / Rudder | on | off | sensors → Z/RX/RY/RZ |
-| Hand-Free Desktop | off | on | legacy WASD + Shift + Space + mouse X nudge |
+| Preset | vJoy | Keyboard | Axis mapping | Notes |
+|--------|------|----------|--------------|-------|
+| Game Controller | on | off | COG → X/Y | Default gaming |
+| Minecraft (Controlify) | on | off | COG → X/Y | Button 1 = jump; Medium sensitivity |
+| Pedal / Rudder | on | off | sensors → Z/RX/RY/RZ | Flight sim pedals |
+| Hand-Free Desktop | off | on | WASD + Shift + mouse click jump | No vJoy |
+| Balance Mouse | off | on | lean → cursor, jump → click | Desktop accessibility |
 
 `BalanceBoardSession.ApplyProfile(name)` calls preset + `LoadSettings`.
+
+## UI detail levels
+
+`UiDetailLevel` (Simple / Standard / Advanced) controls progressive disclosure in `MainWindow`:
+
+| Level | Tabs | Settings visible |
+|-------|------|------------------|
+| Simple | Dashboard + Profiles | Jump preset, sensitivity preset, profile buttons |
+| Standard | + theme, calibration, invert on Profiles | |
+| Advanced | + Advanced tab | Full sliders, vJoy, bindings, Debug Suite |
 
 ## Input simulation
 
@@ -104,7 +120,7 @@ Initialize(deviceId)
   → GetVJDStatus
   → if BUSY: FeederProcessCleanup + retry
   → AcquireVJD
-Update(processed) each poll
+Update(processed) each poll (coalesced writes)
 Shutdown / Dispose
   → Center axes
   → RelinquishVJD
@@ -112,27 +128,39 @@ Shutdown / Dispose
 
 ## Startup sequence (`App.xaml.cs`)
 
-1. Single-instance mutex (`BalanceBoardApp_SingleInstance`)
-2. `FeederProcessCleanup.TerminateCompetingFeeders()`
-3. `WaitForVJoyDeviceFree(1)`
-4. Create `MainWindow`, show
-5. If `AutoConnectOnStartup` → `session.Connect()` on `Loaded`
+1. Single-instance mutex (`BalanceBoardApp_SingleInstance`) unless `--dev`
+2. Show `MainWindow` immediately (settings loaded before `InitializeComponent`)
+3. `RunDeferredStartup` on background: feeder cleanup, BT warmup, vJoy init
+4. If `HasConnectedBefore` && `AutoConnectOnStartup` → `QuickReconnect` via `ConnectionWorker`
 
 ## Threading notes
 
-- WiimoteLib reads happen on timer thread
-- UI updates via `Dispatcher.Invoke` in `MainWindow`
+- WiimoteLib and Bluetooth pairing run on `ConnectionWorker` STA thread only
+- UI updates via `Dispatcher.BeginInvoke` in `MainWindow` (never block worker on `Invoke`)
 - `FileLogService` appends on caller thread; UI subscribes to `LineWritten`
-- vJoy and SendInput are called from timer thread (same as legacy app)
+- vJoy and SendInput are called from the poll callback on `ConnectionWorker`
+
+## Logging
+
+Session log lines use structured prefixes for grep-friendly support:
+
+| Tag | When |
+|-----|------|
+| `[CONNECT]` | Pairing, HID discovery, first reading |
+| `[DISCONNECT]` | Teardown, callback drain |
+| `[JUMP]` | Jump threshold crossed |
+| `[VJOY]` | Acquire, relinquish, axis state |
+| `[SETTINGS]` | Profile / detail level / preset changes |
+| `[ERROR]` | Recoverable failures with context |
 
 ## Extension points
 
 | Extension | Suggested approach |
 |-----------|-------------------|
-| New preset | Add method in `ActionPresets`, name in `All`, wire UI |
-| Custom action mapping UI | Edit `AppSettings.Actions`, reuse `InputSimulator` |
-| Multi-device picker | `DiscoverDevices()` already returns IDs; add dialog before `Connect(index)` |
+| New preset | Add method in `ActionPresets`, name in `All`, wire Profiles tab |
+| Custom profile files | `SettingsStore.SaveProfile` / `LoadProfile` — add UI on Profiles tab |
+| Multi-device picker | `DiscoverDevices()` returns IDs; modal before `Connect(index)` |
 | Tray / minimized start | `AppSettings.StartMinimized`, notify icon in App |
-| Game profiles | `SettingsStore.SaveProfile` / `LoadProfile` already exist; add UI |
+| BT auto-reconnect | Session watchdog on `ConnectionWorker` with backoff |
 
 See [ROADMAP.md](ROADMAP.md) for planned items.

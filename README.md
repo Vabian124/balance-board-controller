@@ -5,24 +5,25 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Platform](https://img.shields.io/badge/Platform-Windows%20x64-0078D4?logo=windows)](https://github.com/Vabian124/balance-board-controller)
 
-A production-quality **.NET 8** desktop app that turns a **Nintendo Wii Fit Balance Board** into a **virtual game controller** ([vJoy](https://github.com/shauleiz/vJoy)) or hand-free keyboard/mouse input.
+**v1.1.1** — A production-quality **.NET 8** desktop app that turns a **Nintendo Wii Fit Balance Board** into a **virtual game controller** ([vJoy](https://github.com/shauleiz/vJoy)) or hand-free keyboard/mouse input.
 
-Clean rewrite of [WiiBalanceWalker v0.5](https://github.com/lshachar/WiiBalanceWalker) with automatic Bluetooth pairing, structured connect flows, diagnostics, fuzz/integration tests, and crash-hardened device handling.
+Clean rewrite of [WiiBalanceWalker v0.5](https://github.com/lshachar/WiiBalanceWalker) with tabbed UI, progressive detail levels, automatic Bluetooth pairing, structured diagnostics, and crash-hardened device handling.
 
 > **Contributors & agents:** [CONTRIBUTING.md](CONTRIBUTING.md) · [INSTRUCTIONS.md](INSTRUCTIONS.md) · [AGENTS.md](AGENTS.md) · [docs/](docs/)
 
 ## Features
 
-- **Live dashboard** — Wii Fit–style balance visual, direction text, connection status
-- **Game controller mode** — lean → vJoy X/Y (works with most joystick games)
-- **Presets** — game controller, **Minecraft (Controlify)**, pedals/rudder, hand-free WASD desktop, balance mouse
-- **In-app control mapping** — key / mouse bindings for all 8 action slots
-- **Dark mode** — follows Windows or force light/dark
-- **Sensitivity presets** — Low through Highly sensitive for kids and accessibility
+- **Tabbed UI** — **Dashboard** (connect, balance visual, direction), **Profiles** (presets + sensitivity), **Advanced** (sliders, vJoy, bindings, debug suite)
+- **UI detail levels** — **Simple** / **Standard** / **Advanced** progressive disclosure (persisted)
+- **Jump presets** — **Easy** / **Normal** / **Hard** for one-foot and lighter users; jump banner on balance visual
+- **Game profiles** — Game Controller, **Minecraft (Controlify)**, Pedal/Rudder, Hand-Free Desktop, Balance Mouse
+- **Theme** — System / Light / Dark with accessible dropdown contrast in both themes
+- **Sensitivity presets** — Low through Highly sensitive; advanced sliders when detail level is Advanced
 - **Smart connect** — first launch pairs on demand; returning users auto-reconnect
-- **Crash-safe connect** — dedicated STA `ConnectionWorker` for WiimoteLib (no thread-pool dispose races)
+- **Crash-safe lifecycle** — dedicated STA `ConnectionWorker` for WiimoteLib; hardened disconnect (no post-dispose HID callbacks)
+- **Structured logs** — `[CONNECT]`, `[DISCONNECT]`, `[JUMP]`, `[VJOY]`, `[SETTINGS]`, `[ERROR]` tags in session log
 - **Debug Suite** — health check, session log, copy report
-- **Quality gate** — format, Roslyn analyzers, unit/integration/fuzz/automation tests in CI
+- **Quality gate** — format, Roslyn analyzers, unit/integration/fuzz/automation tests in CI ([`ci.yml`](.github/workflows/ci.yml))
 
 ## Requirements
 
@@ -31,13 +32,20 @@ Clean rewrite of [WiiBalanceWalker v0.5](https://github.com/lshachar/WiiBalanceW
 - [vJoy](https://github.com/shauleiz/vJoy) — reboot after install
 - Bluetooth adapter + Wii Fit Balance Board
 
-**Full install guide:** [docs/INSTALL.md](docs/INSTALL.md) (build steps, releases, antivirus notes).
+**Full install guide:** [docs/INSTALL.md](docs/INSTALL.md) (releases, build steps, antivirus notes).
 
 ## Quick start
 
+### Option A — Download a release (easiest)
+
 1. Install **vJoy**, reboot, enable **Device 1** (X/Y) in vJoyConf.
-2. Install **.NET 8 Desktop Runtime** (or SDK).
-3. Clone, build, run:
+2. Install **.NET 8 Desktop Runtime**.
+3. Download the latest zip from [GitHub Releases](https://github.com/Vabian124/balance-board-controller/releases) (tag `v1.1.1` or newer).
+4. Extract and run `BalanceBoardApp.exe`.
+5. Click **Connect**, press **SYNC** on the board (first time).
+6. Stand on the board → **Tare** → verify in vJoy Monitor.
+
+### Option B — Build from source
 
 ```powershell
 git clone https://github.com/Vabian124/balance-board-controller.git
@@ -48,17 +56,21 @@ cd balance-board-controller
 
 Or double-click **`start.bat`** after a build — it auto-builds on first run.
 
-4. Click **Connect**, press **SYNC** on the board (first time).
-5. Stand on the board → **Tare** → verify in vJoy Monitor.
+### First-time UI tips
+
+| Setting | Where | What it does |
+|---------|-------|----------------|
+| **UI detail** | Profiles tab | Simple hides Advanced tab; Standard adds theme/calibration; Advanced shows full sliders and bindings |
+| **Jump feel** | Profiles tab (Simple) or Advanced | Easy / Normal / Hard — how much weight must leave the board to jump |
+| **Profile** | Profiles tab | Pick a preset; **Minecraft (Controlify)** for modded Minecraft with vJoy |
+| **Theme** | Advanced tab (Standard+) | System / Light / Dark |
 
 ### Minecraft with Controlify (Modrinth / Fabric)
 
-1. Install [Controlify](https://modrinth.com/mod/controlify) in your Minecraft instance (launcher choice does not matter).
+1. Install [Controlify](https://modrinth.com/mod/controlify) in your Minecraft instance.
 2. In this app, select profile **Minecraft (Controlify)** — lean drives vJoy **left stick** (move), one-foot jump sends **vJoy button 1** (gamepad A).
-3. In Minecraft: **Options → Controls → Controlify** — bind **vJoy Device 1**; map left stick to walk/strafe and button A to jump. Use mouse or right stick for look.
+3. In Minecraft: **Options → Controls → Controlify** — bind **vJoy Device 1**; map left stick to walk/strafe and button A to jump.
 4. Disable Steam Input if it overrides Controlify on Steam Deck.
-
-<!-- Screenshots: add docs/images/dashboard.png and docs/images/connect.png when available -->
 
 ### Real hardware vs simulate
 
@@ -69,8 +81,6 @@ Or double-click **`start.bat`** after a build — it auto-builds on first run.
 
 Sync vJoy DLLs after driver updates: `.\scripts\dev\sync-vjoy-dlls.ps1` then rebuild.
 
-### Simulate (no hardware)
-
 ```powershell
 dotnet run --project src/BalanceBoard.App/BalanceBoard.App.csproj -c Release -- --simulate-board --dev
 ```
@@ -78,8 +88,8 @@ dotnet run --project src/BalanceBoard.App/BalanceBoard.App.csproj -c Release -- 
 ## Quality & CI
 
 ```powershell
-.\scripts\lint.ps1          # full gate: format, analyzers, all tests, smoke
-.\scripts\ci\test-all.ps1   # lint + optional -IncludeHardware
+.\scripts\lint.ps1              # full gate (delegates to scripts/ci/lint.ps1)
+.\scripts\ci\test-all.ps1       # lint + optional -IncludeHardware
 ```
 
 CI runs the same gate on every push/PR ([`.github/workflows/ci.yml`](.github/workflows/ci.yml)).
@@ -88,7 +98,7 @@ CI runs the same gate on every push/PR ([`.github/workflows/ci.yml`](.github/wor
 |--------|------|
 | Format | `dotnet format --verify-no-changes` |
 | Static analysis | .NET analyzers + `-warnaserror` (Release) |
-| Tests | 22 unit · 14 integration · 4 fuzz · 1 automation |
+| Tests | unit · integration · fuzz · automation |
 | Tools | `Validate`, `UiSmoke`, lifecycle `test-flow` |
 
 See [docs/testing/README.md](docs/testing/README.md).
@@ -97,7 +107,7 @@ See [docs/testing/README.md](docs/testing/README.md).
 
 ```
 src/
-  BalanceBoard.App/     WPF UI
+  BalanceBoard.App/     WPF UI (tabbed MainWindow)
   BalanceBoard.Core/    Device logic, processing, vJoy (no WPF)
 tests/
   BalanceBoard.*.Tests/ Unit, integration, fuzz, automation
@@ -108,7 +118,7 @@ tools/
   UiSmoke/              XAML load smoke
 scripts/
   ci/                   lint.ps1, verify-tests.ps1, test-all.ps1
-  dev/                  start, stop, restart, connect, test-flow
+  dev/                  start, stop, restart, connect, test-flow, sync-vjoy-dlls
 reference/              Legacy WiiBalanceWalker (MS-PL, not in solution)
 libs/x64/               WiimoteLib + vJoy native DLLs
 docs/                   Architecture, CODEMAP, testing guide
@@ -120,10 +130,11 @@ docs/                   Architecture, CODEMAP, testing guide
 |---------|-----|
 | vJoy busy | App stops stale feeders; close vJoy Monitor |
 | vJoy missing | Reboot after install; check Device Manager |
-| Connect crash | See session log; ensure latest `main` (ConnectionWorker fix) |
-| DLL mismatch | Run `.\scripts\dev\sync-vjoy-dlls.ps1` or copy `vJoyInterface*.dll` from your vJoy install into `libs/x64/` |
+| Connect / disconnect crash | Update to v1.1.1+; check session log for `[DISCONNECT]` / `[ERROR]` |
+| DLL mismatch | Run `.\scripts\dev\sync-vjoy-dlls.ps1` or copy `vJoyInterface*.dll` from vJoy install into `libs/x64/` |
+| Dark dropdown unreadable | Fixed in v1.1.1 — update theme brushes or switch to Light |
 
-Logs: `%AppData%\BalanceBoardApp\logs\session-YYYY-MM-DD.log`
+Logs: `%AppData%\BalanceBoardApp\logs\session-YYYY-MM-DD.log` — search for structured tags (`[CONNECT]`, `[JUMP]`, etc.).
 
 ## Security & antivirus
 

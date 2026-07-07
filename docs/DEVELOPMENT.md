@@ -26,6 +26,8 @@ dotnet format BalanceBoard.sln
 
 # Full lint + static analysis (format, build, tests, Validate, UI smoke, lifecycle)
 .\scripts\lint.ps1
+# or directly:
+.\scripts\ci\lint.ps1
 
 # Dev scripts live under scripts/dev/
 .\scripts\dev\start.ps1
@@ -83,7 +85,7 @@ Common statuses:
 
 ### Single instance during dev
 
-App kills prior `BalanceBoardApp` instances on startup. If debugging multiple instances, be aware of mutex + feeder cleanup behavior in `App.xaml.cs`.
+Production `start.bat` enforces single instance. Use `scripts/dev/start.ps1 --dev` for parallel instances. Be aware of mutex + feeder cleanup behavior in `App.xaml.cs`.
 
 ## CI
 
@@ -102,7 +104,8 @@ App kills prior `BalanceBoardApp` instances on startup. If debugging multiple in
 | [WpfAnalyzers](https://www.nuget.org/packages/WpfAnalyzers) | WPF dependency property mistakes (on `BalanceBoard.App`) |
 | `tools/UiSmoke` | **Runtime XAML errors** — wrong resource types, broken templates (would have caught `CornerRadius` / `Double` bug) |
 | `tools/Validate` | vJoy driver, HID discovery |
-| `scripts/lint.ps1` | Runs all of the above + `test-flow.ps1` |
+| `scripts/ci/lint.ps1` | Runs all of the above + `test-flow.ps1` |
+| `scripts/lint.ps1` | Thin wrapper → `scripts/ci/lint.ps1` |
 
 **Note:** No existing XAML linter reliably validates `StaticResource` type compatibility at compile time on .NET 8. The **UI smoke test** is the practical guard.
 
@@ -129,10 +132,10 @@ Mismatch shows as warning in diagnostics; may still work.
 ## Testing without hardware
 
 - Validate tool: vJoy driver + DLL checks
-- **UiSmoke tool:** constructs `MainWindow` — catches XAML runtime failures
-- `scripts/lint.ps1`: full pre-commit check suite
+- **UiSmoke tool:** constructs `MainWindow`, applies Minecraft preset — catches XAML/theme failures
+- `scripts/lint.ps1` or `scripts/ci/lint.ps1`: full pre-commit check suite
 - `DiscoverDevices()` returns empty if no Wii HID — expected
-- Unit tests: none yet; add under `tests/` if needed (not present today)
+- Unit/integration/fuzz/automation tests under `tests/` — see [testing/README.md](testing/README.md)
 
 ## Git hygiene
 

@@ -25,6 +25,9 @@ Written by `SettingsStore.Save()` using **atomic replace** (write `.tmp`, then m
 | `TriggerLeftRight`, `TriggerForwardBackward`, … | Balance / input tuning |
 | `EnableVJoy`, `VJoyDeviceId` | Virtual joystick output |
 | `ActiveProfileName`, `Actions` | Preset and bindings |
+| `UiDetailLevel` | Simple / Standard / Advanced — tab and panel visibility |
+| `JumpLevel` | Easy / Normal / Hard — jump threshold bundle |
+| `ThemeMode` | System / Light / Dark appearance |
 | `AutoConnectOnStartup` | Quick reconnect on launch (returning users) |
 | `HasConnectedBefore` | `false` = first-launch welcome; `true` = returning user |
 | `LastConnectedDeviceId` | HID device id from last successful connect (e.g. `002331987181`) |
@@ -51,7 +54,7 @@ Written by `SettingsStore.Save()` using **atomic replace** (write `.tmp`, then m
 Path: `%AppData%\BalanceBoardApp\logs\session-YYYY-MM-DD.log`
 
 - **Append-only** for the day; each app launch writes a `=== Session start ===` block with settings path and connection flags.
-- Categories: `SESSION`, `INFO`, `ERROR` (stack traces), `FATAL` (unhandled crashes)
+- Categories: `SESSION`, `INFO`, structured tags (`[CONNECT]`, `[DISCONNECT]`, `[JUMP]`, `[VJOY]`, `[SETTINGS]`, `[ERROR]`), `FATAL` (unhandled crashes)
 - **Clear View** in the UI clears the on-screen log only; the file is kept.
 - Open log folder: Debug Suite → **Open Log Folder**, or `explorer %AppData%\BalanceBoardApp\logs`.
 
@@ -71,9 +74,11 @@ Crashes: search for `[ERROR]` or `FATAL` — unhandled UI, background, and AppDo
 
 Connection flow: search for `[CONNECT]` — intent, HID discovery, pairing rounds, HID attempts, first reading, and flow complete markers.
 
+Disconnect issues: search for `[DISCONNECT]` — teardown steps and benign callback-drain messages.
+
 ## Profiles directory
 
-`SettingsStore.SaveProfile` / `LoadProfile` / `ListProfiles` write JSON snapshots under `profiles\`. The main window preset dropdown uses built-in `ActionPresets` today; custom profile UI is planned ([ROADMAP.md](ROADMAP.md)).
+`SettingsStore.SaveProfile` / `LoadProfile` / `ListProfiles` write JSON snapshots under `profiles\`. The **Profiles** tab uses built-in `ActionPresets` buttons today; save/load UI for custom named profiles is planned ([ROADMAP.md](ROADMAP.md)).
 
 ## Reset / first-time simulation
 
