@@ -45,6 +45,7 @@ internal static class WiimoteCollectionHelper
     private static int WakeDevicesCore(Action<string>? log)
     {
         WiimoteCollection? collection = null;
+        var wokeCount = 0;
         try
         {
             collection = new WiimoteCollection();
@@ -65,14 +66,13 @@ internal static class WiimoteCollectionHelper
             }
 
             log?.Invoke($"[CONNECT] wake probe: {collection.Count} Wii HID device(s) found.");
-            var woke = 0;
 
             foreach (var wii in collection)
             {
                 try
                 {
                     BalanceBoardProtocol.WakeDeviceSession(wii, log);
-                    woke++;
+                    wokeCount++;
                 }
                 catch (Exception ex)
                 {
@@ -80,7 +80,7 @@ internal static class WiimoteCollectionHelper
                 }
             }
 
-            return woke;
+            return wokeCount;
         }
         catch (Exception ex)
         {
@@ -94,7 +94,15 @@ internal static class WiimoteCollectionHelper
         }
         finally
         {
-            ReleaseAll(collection, extendedDrain: true);
+            ReleaseAll(collection, extendedDrain: false);
+            // #region agent log
+            DebugSessionTrace.Write(
+                "WiimoteCollectionHelper.cs:WakeDevicesCore",
+                "wake teardown complete",
+                "H4",
+                new { woke = wokeCount },
+                "post-fix");
+            // #endregion
         }
     }
 

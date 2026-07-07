@@ -9,7 +9,7 @@ public static class OneFootPresets
     {
         settings.OneFootMode = true;
         settings.UseSimpleSensitivity = false;
-        SensitivityPresets.Apply(settings, SensitivityLevel.HighlySensitive);
+        SensitivityPresets.Apply(settings, SensitivityLevel.HairTrigger);
         JumpPresets.Apply(settings, JumpLevel.Easy);
         settings.ResponseCurve = ResponseCurve.EaseInOut;
     }

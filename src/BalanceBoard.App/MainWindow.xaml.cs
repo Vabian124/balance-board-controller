@@ -143,7 +143,8 @@ public partial class MainWindow : Window
             {
                 SafeLog(status);
                 StatusText.Text = FormatStatusForUser(status);
-                UpdateConnectionChip(_session.ConnectionPhase);
+                // Do not read ConnectionPhase here — connect runs on ConnectionWorker and
+                // TryInvoke from the UI thread would deadlock while StatusChanged fires mid-connect.
             }
             catch (Exception ex)
             {
@@ -273,7 +274,9 @@ public partial class MainWindow : Window
     private void UpdateSliderLabels()
     {
         DeadzoneLabel.Text = $"Deadzone: {DeadzoneSlider.Value:0}%";
-        SensitivityLabel.Text = $"Sensitivity: {SensitivitySlider.Value:0.0}×";
+        var sens = SensitivitySlider.Value;
+        var leanForFull = sens >= 0.25 ? 50.0 / sens : 50.0;
+        SensitivityLabel.Text = $"Sensitivity: {sens:0.0}× (~{leanForFull:0.#}% lean → full stick)";
         TriggerLeftRightLabel.Text = $"Left/right trigger: {TriggerLeftRightSlider.Value:0}%";
         TriggerForwardBackwardLabel.Text = $"Forward/back trigger: {TriggerForwardBackwardSlider.Value:0}%";
         JumpThresholdLabel.Text = _settings.UiDetailLevel == UiDetailLevel.Simple
@@ -295,7 +298,6 @@ public partial class MainWindow : Window
         StandardSensitivityPanel.Visibility = showTuning ? Visibility.Visible : Visibility.Collapsed;
         AdvancedSensitivityPanel.Visibility = showAdvancedTuning ? Visibility.Visible : Visibility.Collapsed;
         FineTuneHintText.Visibility = useSimplePresets ? Visibility.Visible : Visibility.Collapsed;
-        ProfilesTuningHintText.Visibility = showTuning ? Visibility.Visible : Visibility.Collapsed;
         UpdateSensitivityPresetButtons();
     }
 
@@ -320,6 +322,7 @@ public partial class MainWindow : Window
         SetPresetButtonStyle(SensitivityMediumButton, _settings.SensitivityLevel == SensitivityLevel.Medium);
         SetPresetButtonStyle(SensitivityHighButton, _settings.SensitivityLevel == SensitivityLevel.High);
         SetPresetButtonStyle(SensitivityHighlyButton, _settings.SensitivityLevel == SensitivityLevel.HighlySensitive);
+        SetPresetButtonStyle(SensitivityHairTriggerButton, _settings.SensitivityLevel == SensitivityLevel.HairTrigger);
     }
 
     private void UpdateProfileButtonStyles()
@@ -431,13 +434,14 @@ public partial class MainWindow : Window
 
         DetailLevelDescription.Text = detail switch
         {
-            UiDetailLevel.Simple => "Simple — Dashboard and Profiles only; we handle the rest.",
-            UiDetailLevel.Standard => "Standard — deadzone, sensitivity, invert, and jump threshold when presets are off.",
-            UiDetailLevel.Advanced => "Advanced — full sliders, response curves, vJoy, bindings, and diagnostics.",
+            UiDetailLevel.Simple => "Simple — Dashboard, Profiles, and Fine Tuning presets; we handle the rest.",
+            UiDetailLevel.Standard => "Standard — presets or sliders on Fine Tuning; vJoy and bindings on Advanced.",
+            UiDetailLevel.Advanced => "Advanced — full sliders on Fine Tuning; response curves, vJoy, bindings, and diagnostics on Advanced.",
             _ => string.Empty,
         };
 
         AdvancedTab.Visibility = showAdvancedTab ? Visibility.Visible : Visibility.Collapsed;
+        FineTuningTab.Visibility = Visibility.Visible;
         if (!showAdvancedTab && MainTabControl.SelectedItem == AdvancedTab)
         {
             MainTabControl.SelectedIndex = 0;
@@ -484,6 +488,7 @@ public partial class MainWindow : Window
         SensitivityMediumButton.MinHeight = touchHeight;
         SensitivityHighButton.MinHeight = touchHeight;
         SensitivityHighlyButton.MinHeight = touchHeight;
+        SensitivityHairTriggerButton.MinHeight = touchHeight;
         JumpEasyButton.MinHeight = touchHeight;
         JumpNormalButton.MinHeight = touchHeight;
         JumpHardButton.MinHeight = touchHeight;
@@ -702,7 +707,7 @@ public partial class MainWindow : Window
     {
         ConnectButton.IsEnabled = !isBusy;
         CancelButton.Visibility = isBusy ? Visibility.Visible : Visibility.Collapsed;
-        DisconnectButton.IsEnabled = !isBusy && _session.IsConnected;
+        DisconnectButton.IsEnabled = !isBusy && !_connectInProgress && _session.IsConnected;
     }
 
     private void Log(string message) => SafeLog(message);
@@ -792,9 +797,21 @@ public partial class MainWindow : Window
         try
         {
             SaveSettingsFromUi();
-            BeginConnect(_settings.HasConnectedBefore
-                ? ConnectionIntent.QuickReconnect
-                : ConnectionIntent.PairAndConnect);
+            // Manual Connect always runs full pairing (WiiBalanceWalker: BT add + HID connect).
+            // QuickReconnect is reserved for auto-connect on startup.
+            const ConnectionIntent intent = ConnectionIntent.PairAndConnect;
+            DebugSessionTrace.Write(
+                "MainWindow.xaml.cs:ConnectButton_Click",
+                "connect intent chosen",
+                "H2",
+                new
+                {
+                    intent = intent.ToString(),
+                    hasConnectedBefore = _settings.HasConnectedBefore,
+                    lastDeviceId = _settings.LastConnectedDeviceId,
+                    simulateBoard = _startupOptions.SimulateBoard,
+                });
+            BeginConnect(intent);
         }
         catch (Exception ex)
         {
@@ -1102,6 +1119,7 @@ public partial class MainWindow : Window
     private void SensitivityMedium_Click(object sender, RoutedEventArgs e) => ApplySensitivityPreset(SensitivityLevel.Medium);
     private void SensitivityHigh_Click(object sender, RoutedEventArgs e) => ApplySensitivityPreset(SensitivityLevel.High);
     private void SensitivityHighly_Click(object sender, RoutedEventArgs e) => ApplySensitivityPreset(SensitivityLevel.HighlySensitive);
+    private void SensitivityHairTrigger_Click(object sender, RoutedEventArgs e) => ApplySensitivityPreset(SensitivityLevel.HairTrigger);
 
     private void DetailLevelCombo_SelectionChanged(object sender, SelectionChangedEventArgs e) => SaveSettingsFromUi();
 

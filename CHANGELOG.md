@@ -2,6 +2,22 @@
 
 All notable user-facing changes. For detailed agent work logs see [`docs/updates/`](docs/updates/).
 
+## [1.2.4] - 2026-07-07
+
+Connect reliability, Fine Tuning tab, and hair-trigger stick sensitivity.
+
+### Added
+- **Fine Tuning tab** — sensitivity/jump presets and sliders between Profiles and Advanced
+- **Hair trigger** sensitivity preset (~2.5% lean → full vJoy stick); slider range extended to 25×
+- **Windows HID instance ID** parsing (`37A15347` instead of product id `0306`)
+- Debug session trace (`DebugSessionTrace`) for connect-flow diagnostics
+
+### Fixed
+- **False “Bluetooth off”** — trust readable adapter MAC when InTheHand reports stale `PowerOff`
+- **Post-SYNC crash** — minimal wake probe (LED only, no continuous 0x34) after pairing
+- **Connect button** — always `PairAndConnect` on manual Connect; UI deadlock removed from `StatusChanged`
+- **Stick mapping** — sensitivity now controls how little lean is needed for full throw
+
 ## [1.2.3] - 2026-07-07
 
 Wake paired boards without SYNC: Bluetooth reconnect before HID ping, crash-safe HID gate, and smarter Connect button.

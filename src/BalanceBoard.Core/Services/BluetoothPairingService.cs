@@ -20,10 +20,110 @@ public sealed class BluetoothPairingService : IBluetoothPairingService
 {
     public bool IsBluetoothAvailable()
     {
+        var mac = TryGetLocalAdapterMac();
+        if (!string.IsNullOrWhiteSpace(mac))
+        {
+            return true;
+        }
+
+        return ProbeRadio(out _) && GetRadioMode() != RadioMode.PowerOff;
+    }
+
+    /// <summary>WiimoteLib HID probes can briefly break InTheHand — retry with warmup.</summary>
+    public bool EnsureBluetoothReady(Action<string>? log = null)
+    {
+        var mac = TryGetLocalAdapterMac();
+        if (!string.IsNullOrWhiteSpace(mac))
+        {
+            if (ProbeRadio(out var modeName) && GetRadioMode() == RadioMode.PowerOff)
+            {
+                log?.Invoke(
+                    $"[CONNECT] Adapter {WiiBluetoothPin.FormatMacForDisplay(mac)} readable — " +
+                    $"continuing despite stale radio mode ({modeName}).");
+                DebugSessionTrace.Write(
+                    "BluetoothPairingService.cs:EnsureBluetoothReady",
+                    "trust mac over poweroff",
+                    "H7",
+                    new { mac, mode = modeName },
+                    "post-fix");
+            }
+
+            return true;
+        }
+
+        for (var attempt = 1; attempt <= 3; attempt++)
+        {
+            if (ProbeRadio(out var modeName))
+            {
+                var mode = GetRadioMode();
+                if (mode is not null && mode != RadioMode.PowerOff)
+                {
+                    if (attempt > 1)
+                    {
+                        log?.Invoke($"[CONNECT] Bluetooth radio ready after recovery (mode={mode}, attempt={attempt}).");
+                    }
+
+                    DebugSessionTrace.Write(
+                        "BluetoothPairingService.cs:EnsureBluetoothReady",
+                        "radio ready",
+                        "H7",
+                        new { mode = modeName, attempt },
+                        "post-fix");
+                    return true;
+                }
+
+                DebugSessionTrace.Write(
+                    "BluetoothPairingService.cs:EnsureBluetoothReady",
+                    "radio in power-off mode",
+                    "H7",
+                    new { mode = modeName, attempt },
+                    "post-fix");
+            }
+            else
+            {
+                DebugSessionTrace.Write(
+                    "BluetoothPairingService.cs:EnsureBluetoothReady",
+                    "primary radio probe failed",
+                    "H7",
+                    new { attempt },
+                    "post-fix");
+            }
+
+            if (attempt < 3)
+            {
+                Warmup();
+                Thread.Sleep(250);
+            }
+        }
+
+        return false;
+    }
+
+    private static RadioMode? GetRadioMode()
+    {
+        try
+        {
+            return BluetoothRadio.PrimaryRadio?.Mode;
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    private static bool ProbeRadio(out string? modeName)
+    {
+        modeName = null;
         try
         {
             var radio = BluetoothRadio.PrimaryRadio;
-            return radio is not null && radio.Mode != RadioMode.PowerOff;
+            if (radio is null)
+            {
+                return false;
+            }
+
+            modeName = radio.Mode.ToString();
+            return true;
         }
         catch
         {
@@ -197,17 +297,23 @@ public sealed class BluetoothPairingService : IBluetoothPairingService
             if (bt.Success)
             {
                 log?.Invoke($"[CONNECT] wake probe: Bluetooth reconnect succeeded ({bt.DevicesPaired} device(s)).");
-                Thread.Sleep(BalanceConstants.PostPairSettleMs);
+                Thread.Sleep(BalanceConstants.PostPairHidEnumerateMs);
             }
         }
 
         var woke = 0;
         for (var attempt = 1; attempt <= BalanceConstants.PostPairHidRetryAttempts; attempt++)
         {
+            if (WiimoteCollectionHelper.DiscoverDeviceIds().Count > 0)
+            {
+                log?.Invoke("[CONNECT] wake probe: HID visible — skipping connect/disconnect ping.");
+                return;
+            }
+
             woke = WiimoteCollectionHelper.WakeDevices(log);
             if (woke > 0)
             {
-                log?.Invoke($"[CONNECT] wake probe: held {woke} session(s) for {BalanceConstants.WakeProbeHoldMs} ms.");
+                log?.Invoke($"[CONNECT] wake probe: brief wake on {woke} device(s).");
                 Thread.Sleep(BalanceConstants.PostWakeSettleMs);
                 return;
             }

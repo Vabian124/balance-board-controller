@@ -6,7 +6,8 @@ Short index for AI assistants. User-facing history: [CHANGELOG.md](../../CHANGEL
 
 | Commit | Summary |
 |--------|---------|
-| [`e0ef78b`](https://github.com/Vabian124/balance-board-controller/commit/e0ef78b) | **v1.2.3** — BT wake before HID ping for paired blinking boards, HidGate crash hardening, QuickReconnect on Connect |
+| [`867577a`](https://github.com/Vabian124/balance-board-controller/commit/867577a) | **v1.2.4** — BT MAC trust, wake-probe crash fix, Fine Tuning tab, hair-trigger sensitivity, HID instance IDs |
+| [`fe1bca6`](https://github.com/Vabian124/balance-board-controller/commit/fe1bca6) | Docs: add v1.2.3 agent update log entry. |
 | [`cec9107`](https://github.com/Vabian124/balance-board-controller/commit/cec9107) | **Dashboard UI revamp** — collapsible session log (default collapsed, last-line preview), visual-first Dashboard layout, `SessionLogExpanded` setting |
 | [`b39e435`](https://github.com/Vabian124/balance-board-controller/commit/b39e435) | Agent log entry for zero-touch BT wake |
 | [`a53b292`](https://github.com/Vabian124/balance-board-controller/commit/a53b292) | **WiiBrew protocol** — `BalanceBoardProtocol`, wake/connect `0x34`, extension `0x0402` logs, CONNECTION_PROTOCOL reference |

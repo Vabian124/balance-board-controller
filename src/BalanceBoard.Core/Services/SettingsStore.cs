@@ -140,6 +140,14 @@ public sealed class SettingsStore
             changed = true;
         }
 
+        // Older builds saved the Wii product id (0306) instead of the unique instance id.
+        if (string.Equals(settings.LastConnectedDeviceId, "0306", StringComparison.OrdinalIgnoreCase))
+        {
+            settings.LastConnectedDeviceId = null;
+            settings.LastConnectedAtUtc = null;
+            changed = true;
+        }
+
         foreach (var slot in ActionSlots.All)
         {
             if (!settings.Actions.ContainsKey(slot))

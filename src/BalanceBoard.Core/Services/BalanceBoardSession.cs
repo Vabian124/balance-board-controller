@@ -27,6 +27,8 @@ public sealed class BalanceBoardSession : IDisposable
     private volatile bool _staleHidHandled;
     private int _connectActive;
 
+    private bool _adapterMacConfirmedAtConnectStart;
+
     public void CancelConnect() => _connectCts?.Cancel();
 
     public event Action<ProcessedBalance>? Processed;
@@ -204,15 +206,16 @@ public sealed class BalanceBoardSession : IDisposable
         StopRecovery();
         _manualDisconnect = false;
         _adapterMacChanged = false;
+        _adapterMacConfirmedAtConnectStart = false;
         LogBluetoothAdapterState();
         ConnectionFlowLogger.LogIntent(Log, intent);
-        ConnectionFlowLogger.LogHidDiscovery(Log, _connection.DiscoverDeviceIds());
 
         _connectCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
 
         try
         {
             var ct = _connectCts.Token;
+            // Probe Bluetooth before WiimoteLib HID — HID enumeration can spuriously break InTheHand.
             if (!WaitForBluetoothAtConnectStart(ct))
             {
                 if (ct.IsCancellationRequested)
@@ -227,6 +230,8 @@ public sealed class BalanceBoardSession : IDisposable
                 ConnectionFlowLogger.LogFlowComplete(Log, false);
                 return ConnectResult.Fail(ConnectStatus.BluetoothUnavailable);
             }
+
+            ConnectionFlowLogger.LogHidDiscovery(Log, _connection.DiscoverDeviceIds());
 
             var preferredDeviceId = ResolvePreferredDeviceId();
 
@@ -256,6 +261,7 @@ public sealed class BalanceBoardSession : IDisposable
             {
                 _pairing.WakePairedDevices(Log);
                 ct.ThrowIfCancellationRequested();
+                EnsureBluetoothReady();
             }
 
             if (TryConnect(deviceIndex, preferredDeviceId))
@@ -310,6 +316,14 @@ public sealed class BalanceBoardSession : IDisposable
 
     private ConnectResult TryQuickReconnect(int deviceIndex, string? preferredDeviceId, CancellationToken ct)
     {
+        var visible = _connection.DiscoverDeviceIds();
+        if (visible.Count > 0)
+        {
+            Log?.Invoke("[CONNECT] HID reconnect: board visible — opening session (WiiBalanceWalker fast path).");
+            StatusChanged?.Invoke("Finding board…");
+            return TryConnectWithHidRetries(deviceIndex, preferredDeviceId, ct);
+        }
+
         Log?.Invoke("[CONNECT] HID reconnect: wake probe then open preferred device.");
         StatusChanged?.Invoke("Finding board…");
         _pairing.WakePairedDevices(Log);
@@ -340,6 +354,11 @@ public sealed class BalanceBoardSession : IDisposable
         }
 
         StatusChanged?.Invoke("Board not found — trying again soon.");
+        DebugSessionTrace.Write(
+            "BalanceBoardSession.cs:TryQuickReconnect",
+            "quick reconnect failed",
+            "H2",
+            new { preferredDeviceId, hidVisible = _connection.DiscoverDeviceIds().Count });
         return ConnectResult.Fail(ConnectStatus.NoDevices);
     }
 
@@ -369,6 +388,11 @@ public sealed class BalanceBoardSession : IDisposable
             }
         }
 
+        DebugSessionTrace.Write(
+            "BalanceBoardSession.cs:TryConnectWithHidRetries",
+            "hid retries exhausted",
+            "H3",
+            new { preferredDeviceId, hidVisible = _connection.DiscoverDeviceIds().Count });
         return ConnectResult.Fail(ConnectStatus.HidFailed, "Paired but HID connect failed.");
     }
 
@@ -391,6 +415,29 @@ public sealed class BalanceBoardSession : IDisposable
         return TryConnectWithHidRetries(deviceIndex, preferredDeviceId, ct);
     }
 
+    /// <summary>After Bluetooth pairing: wait for HID, brief wake ping, then open session (WiiBalanceWalker FormBluetooth).</summary>
+    private ConnectResult TryHidAfterBluetoothPair(int deviceIndex, string? preferredDeviceId, CancellationToken ct)
+    {
+        Log?.Invoke("[CONNECT] Post-pair: waiting for Windows HID enumeration…");
+        var deadline = DateTime.UtcNow.AddMilliseconds(BalanceConstants.PostPairHidEnumerateMs);
+        while (DateTime.UtcNow < deadline && !ct.IsCancellationRequested)
+        {
+            if (_connection.DiscoverDeviceIds().Count > 0)
+            {
+                Log?.Invoke("[CONNECT] Post-pair: Wii HID device(s) visible.");
+                break;
+            }
+
+            if (ct.WaitHandle.WaitOne(BalanceConstants.PostPairHidRetryMs))
+            {
+                ct.ThrowIfCancellationRequested();
+            }
+        }
+
+        ct.ThrowIfCancellationRequested();
+        return TryConnectWithHidRetries(deviceIndex, preferredDeviceId, ct);
+    }
+
     private ConnectResult TryPairAndConnect(int deviceIndex, int discoveryRounds, CancellationToken ct)
     {
         Log?.Invoke("[CONNECT] Pair-and-connect: automatic Bluetooth pairing with permanent host PIN.");
@@ -398,13 +445,8 @@ public sealed class BalanceBoardSession : IDisposable
         var wakeResult = _pairing.PairDiscoverableBoard(Log, ct, removeStalePairings: false);
         if (wakeResult.Success)
         {
-            if (!ct.WaitHandle.WaitOne(TimeSpan.FromMilliseconds(BalanceConstants.PostPairSettleMs)))
-            {
-                // settle after pairing
-            }
-
             ct.ThrowIfCancellationRequested();
-            var connected = TryWakeAndConnect(deviceIndex, ResolvePreferredDeviceId(), ct, wakeFirst: false);
+            var connected = TryHidAfterBluetoothPair(deviceIndex, ResolvePreferredDeviceId(), ct);
             if (connected.IsSuccess)
             {
                 return ConnectResult.Ok(wakeResult.Message);
@@ -459,13 +501,8 @@ public sealed class BalanceBoardSession : IDisposable
                 continue;
             }
 
-            if (!ct.WaitHandle.WaitOne(TimeSpan.FromMilliseconds(BalanceConstants.PostPairSettleMs)))
-            {
-                // settle
-            }
-
             ct.ThrowIfCancellationRequested();
-            var roundConnect = TryWakeAndConnect(deviceIndex, ResolvePreferredDeviceId(), ct, wakeFirst: false);
+            var roundConnect = TryHidAfterBluetoothPair(deviceIndex, ResolvePreferredDeviceId(), ct);
             if (roundConnect.IsSuccess)
             {
                 return ConnectResult.Ok(pairResult.Message);
@@ -538,6 +575,7 @@ public sealed class BalanceBoardSession : IDisposable
     private void LogBluetoothAdapterState()
     {
         var currentMac = _pairing.TryGetLocalAdapterMac();
+        _adapterMacConfirmedAtConnectStart = currentMac is not null;
         if (currentMac is null)
         {
             Log?.Invoke("[CONNECT] Bluetooth adapter MAC unavailable (no radio or driver error).");
@@ -901,7 +939,7 @@ public sealed class BalanceBoardSession : IDisposable
                     continue;
                 }
 
-                if (!_pairing.IsBluetoothAvailable())
+                if (!EnsureBluetoothReady())
                 {
                     if (!radioWasOffline)
                     {
@@ -1028,15 +1066,19 @@ public sealed class BalanceBoardSession : IDisposable
 
     private bool WaitForBluetoothAtConnectStart(CancellationToken ct)
     {
+        if (EnsureBluetoothReady())
+        {
+            return true;
+        }
+
         var radioWasOffline = false;
         while (!ct.IsCancellationRequested)
         {
-            if (_pairing.IsBluetoothAvailable())
+            if (EnsureBluetoothReady())
             {
                 if (radioWasOffline)
                 {
                     Log?.Invoke("[CONNECT] Bluetooth radio available — continuing connect.");
-                    return WaitForBluetoothRadioReady(ct);
                 }
 
                 return true;
@@ -1046,6 +1088,11 @@ public sealed class BalanceBoardSession : IDisposable
             {
                 Log?.Invoke("[CONNECT] Bluetooth radio unavailable — waiting to turn on.");
                 StatusChanged?.Invoke("Waiting for Bluetooth… Turn Bluetooth on in Windows settings.");
+                DebugSessionTrace.Write(
+                    "BalanceBoardSession.cs:WaitForBluetooth",
+                    "radio unavailable",
+                    "H7",
+                    new { adapterMacConfirmed = _adapterMacConfirmedAtConnectStart });
             }
 
             radioWasOffline = true;
@@ -1060,12 +1107,22 @@ public sealed class BalanceBoardSession : IDisposable
         return false;
     }
 
+    private bool EnsureBluetoothReady()
+    {
+        if (_pairing is BluetoothPairingService bt)
+        {
+            return bt.EnsureBluetoothReady(Log);
+        }
+
+        return _pairing.IsBluetoothAvailable();
+    }
+
     private bool WaitForBluetoothRadioReady(CancellationToken ct)
     {
         var stablePolls = 0;
         while (!ct.IsCancellationRequested)
         {
-            if (_pairing.IsBluetoothAvailable())
+            if (EnsureBluetoothReady())
             {
                 stablePolls++;
                 if (stablePolls >= BalanceConstants.BtRadioReadyStablePolls)

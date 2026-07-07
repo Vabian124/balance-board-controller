@@ -30,12 +30,14 @@ public static class BalanceConstants
     /// <summary>Extra drain after wake-probe disconnect so WiimoteLib OnReadData callbacks finish.</summary>
     public const int WakeProbePostDisconnectDrainMs = 2000;
     public const int PostPairSettleMs = 1000;
+    /// <summary>After Bluetooth pairing, wait for Windows HID enumeration (WiiBalanceWalker uses 4s).</summary>
+    public const int PostPairHidEnumerateMs = 4000;
     public const int PostWakeSettleMs = 500;
     /// <summary>Retry delay when HID is not visible yet after Bluetooth reconnect (board still booting).</summary>
     public const int PostPairHidRetryMs = 750;
     public const int PostPairHidRetryAttempts = 4;
-    /// <summary>Hold wake HID session (report mode + LED) before disconnect so the board stays paired and awake.</summary>
-    public const int WakeProbeHoldMs = 500;
+    /// <summary>Hold wake HID session before disconnect (WiiBalanceWalker disconnects immediately after LED).</summary>
+    public const int WakeProbeMinimalHoldMs = 50;
     public const int BluetoothFinishWaitMs = 2000;
     public const int PairRoundDelayMs = 1500;
     public const int BluetoothInquirySeconds = 6;

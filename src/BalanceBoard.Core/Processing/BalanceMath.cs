@@ -175,15 +175,34 @@ public static class BalanceMath
             y = ApplyDeadzone(y, settings.DeadzonePercent);
         }
 
-        if (settings.ResponseCurve != ResponseCurve.Linear)
+        return (
+            MapLeanToJoyAxis(x, settings.Sensitivity, settings.InvertX, settings.ResponseCurve),
+            MapLeanToJoyAxis(y, settings.Sensitivity, settings.InvertY, settings.ResponseCurve));
+    }
+
+    /// <summary>
+    /// Maps balance percent (0–100, center 50) to a vJoy axis.
+    /// Sensitivity is “gain”: higher values need less lean for full stick (e.g. 10× ≈ 5% lean → max).
+    /// </summary>
+    public static short MapLeanToJoyAxis(float balancePercent, double sensitivity, bool invert, ResponseCurve curve)
+    {
+        var center = BalanceConstants.BalanceCenterPercent;
+        var delta = balancePercent - center;
+        if (Math.Abs(delta) < 1e-6f)
         {
-            x = SensitivityCurve.ApplyToPercent(x, settings.ResponseCurve);
-            y = SensitivityCurve.ApplyToPercent(y, settings.ResponseCurve);
+            return 0;
         }
 
-        return (
-            ToJoyAxis(x, settings.Sensitivity, settings.InvertX),
-            ToJoyAxis(y, settings.Sensitivity, settings.InvertY));
+        var throwAt = center / Math.Max(0.25, sensitivity);
+        var t = Math.Clamp(Math.Abs(delta) / throwAt, 0, 1);
+        if (curve != ResponseCurve.Linear)
+        {
+            t = SensitivityCurve.Map((float)t, curve);
+        }
+
+        var magnitude = (int)(t * short.MaxValue);
+        var sign = invert ? -1 : 1;
+        return (short)(Math.Sign(delta) * sign * magnitude);
     }
 
     public static (short Z, short Rx, short Ry, short Rz) MapLoadSensorAxes(BalanceReading reading, AppSettings settings)

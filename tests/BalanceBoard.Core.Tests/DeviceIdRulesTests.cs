@@ -28,6 +28,21 @@ public class DeviceIdRulesTests
         const string path = @"\\?\hid#vid_057e&pid_0306&col01#e_pid&0001a2b3c4d5&0&0000{00000000-0000-0000-0000-000000000000}";
         Assert.Equal("0001A2B3C4D5", DeviceIdRules.ExtractFromHidPath(path));
     }
+
+    [Fact]
+    public void ExtractFromHidPath_uses_instance_segment_not_product_id()
+    {
+        const string path = @"\\?\hid#vid_057e&pid_0306&col01#e_pid&0306&37a15347&0&0000{00000000-0000-0000-0000-000000000000}";
+        Assert.Equal("37A15347", DeviceIdRules.ExtractFromHidPath(path));
+    }
+
+    [Fact]
+    public void ExtractFromHidPath_parses_windows_hid_instance_segment()
+    {
+        const string path =
+            @"\\?\hid#{00001124-0000-1000-8000-00805f9b34fb}_vid&0002057e_pid&0306#9&37a15347&9&0000#{4d1e55b2-f16f-11cf-88cb-001111000030}";
+        Assert.Equal("37A15347", DeviceIdRules.ExtractFromHidPath(path));
+    }
 }
 
 public class SettingsStoreTests

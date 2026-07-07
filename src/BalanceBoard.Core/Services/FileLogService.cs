@@ -5,6 +5,7 @@ namespace BalanceBoard.Core.Services;
 public static class LogTags
 {
     public const string Connect = "CONNECT";
+    public const string Hid = "HID";
     public const string Jump = "JUMP";
     public const string VJoy = "VJOY";
     public const string Settings = "SETTINGS";

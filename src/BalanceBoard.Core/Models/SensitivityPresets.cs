@@ -6,6 +6,8 @@ public enum SensitivityLevel
     Medium,
     High,
     HighlySensitive,
+    /// <summary>Tiny lean reaches full stick throw (~2–3% from center).</summary>
+    HairTrigger,
 }
 
 public enum ThemePreference
@@ -47,12 +49,21 @@ public static class SensitivityPresets
                 settings.DeadzonePercent = 3;
                 break;
             case SensitivityLevel.HighlySensitive:
-                settings.Sensitivity = 2.0;
+                settings.Sensitivity = 8.0;
                 settings.TriggerLeftRight = 3;
                 settings.TriggerForwardBackward = 3;
                 settings.TriggerModifierLeftRight = 6;
                 settings.TriggerModifierForwardBackward = 7;
-                settings.DeadzonePercent = 1;
+                settings.DeadzonePercent = 0;
+                break;
+            case SensitivityLevel.HairTrigger:
+                settings.Sensitivity = 20.0;
+                settings.TriggerLeftRight = 2;
+                settings.TriggerForwardBackward = 2;
+                settings.TriggerModifierLeftRight = 4;
+                settings.TriggerModifierForwardBackward = 5;
+                settings.DeadzonePercent = 0;
+                settings.ResponseCurve = ResponseCurve.Linear;
                 break;
         }
     }

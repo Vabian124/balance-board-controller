@@ -31,20 +31,21 @@ public static class BalanceBoardProtocol
         log?.Invoke($"[CONNECT] Report mode {ContinuousReportModeHex} (continuous ButtonsExtension / 0x{WeightReportId:X2})");
     }
 
-    /// <summary>Short HID wake: connect, extension init (0x55 via WiimoteLib), report mode, LED, hold, then caller disconnects.</summary>
+    /// <summary>Short HID wake: connect + LED only (WiiBalanceWalker FormBluetooth — no continuous 0x34 reports).</summary>
     public static void WakeDeviceSession(Wiimote device, Action<string>? log = null)
     {
-        log?.Invoke("[CONNECT] wake probe: opening HID session (status + 0x34 continuous).");
+        log?.Invoke("[CONNECT] wake probe: brief HID wake (LED only).");
         device.Connect();
-        var extensionType = device.WiimoteState.ExtensionType;
-        if (extensionType == ExtensionType.BalanceBoard)
-        {
-            ConnectionFlowLogger.LogExtensionType(log, extensionType);
-            ApplyContinuousWeightReports(device, log);
-        }
-
         device.SetLEDs(true, false, false, false);
-        Thread.Sleep(BalanceConstants.WakeProbeHoldMs);
+        Thread.Sleep(BalanceConstants.WakeProbeMinimalHoldMs);
+        // #region agent log
+        DebugSessionTrace.Write(
+            "BalanceBoardProtocol.cs:WakeDeviceSession",
+            "wake session complete",
+            "H4",
+            new { extensionType = device.WiimoteState.ExtensionType.ToString() },
+            "post-fix");
+        // #endregion
     }
 
     public static string FormatExtensionDiagnostic(ExtensionType type)

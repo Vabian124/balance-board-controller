@@ -153,7 +153,33 @@ public class BalanceMathTests
     }
 
     [Fact]
-    public void MapCenterOfGravityAxes_exponential_curve_boosts_edge_output()
+    public void MapCenterOfGravityAxes_high_sensitivity_small_lean_reaches_full_stick()
+    {
+        var settings = new AppSettings
+        {
+            SendCenterOfGravityToAxes = true,
+            DeadzonePercent = 0,
+            Sensitivity = 20.0,
+            ResponseCurve = ResponseCurve.Linear,
+        };
+
+        var (joyX, _) = BalanceMath.MapCenterOfGravityAxes(52.5f, 50f, settings);
+
+        Assert.InRange(Math.Abs(joyX), 30000, short.MaxValue);
+    }
+
+    [Fact]
+    public void MapLeanToJoyAxis_sensitivity_one_needs_full_lean_for_max()
+    {
+        var half = BalanceMath.MapLeanToJoyAxis(75f, 1.0, invert: false, ResponseCurve.Linear);
+        var full = BalanceMath.MapLeanToJoyAxis(100f, 1.0, invert: false, ResponseCurve.Linear);
+
+        Assert.InRange(Math.Abs(half), 16000, 17000);
+        Assert.Equal(short.MaxValue, full);
+    }
+
+    [Fact]
+    public void MapCenterOfGravityAxes_exponential_curve_reduces_mid_range_output()
     {
         var linear = new AppSettings
         {
@@ -197,10 +223,10 @@ public class OneFootPresetsTests
 
         Assert.True(settings.OneFootMode);
         Assert.False(settings.UseSimpleSensitivity);
-        Assert.Equal(SensitivityLevel.HighlySensitive, settings.SensitivityLevel);
+        Assert.Equal(SensitivityLevel.HairTrigger, settings.SensitivityLevel);
         Assert.Equal(JumpLevel.Easy, settings.JumpLevel);
         Assert.Equal(ResponseCurve.EaseInOut, settings.ResponseCurve);
-        Assert.Equal(1, settings.DeadzonePercent);
+        Assert.Equal(0, settings.DeadzonePercent);
     }
 }
 
@@ -657,7 +683,18 @@ public class SensitivityPresetsTests
         var settings = new AppSettings();
         SensitivityPresets.Apply(settings, SensitivityLevel.HighlySensitive);
         Assert.Equal(3, settings.TriggerLeftRight);
-        Assert.Equal(2.0, settings.Sensitivity);
+        Assert.Equal(8.0, settings.Sensitivity);
+        Assert.Equal(0, settings.DeadzonePercent);
+    }
+
+    [Fact]
+    public void HairTrigger_uses_maximum_gain_and_zero_deadzone()
+    {
+        var settings = new AppSettings();
+        SensitivityPresets.Apply(settings, SensitivityLevel.HairTrigger);
+
+        Assert.Equal(20.0, settings.Sensitivity);
+        Assert.Equal(0, settings.DeadzonePercent);
     }
 }
 

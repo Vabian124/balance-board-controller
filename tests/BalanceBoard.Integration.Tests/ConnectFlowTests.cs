@@ -221,18 +221,18 @@ public class ConnectFlowTests
     }
 
     [Fact]
-    public async Task Auto_connect_path_wakes_paired_devices()
+    public async Task Auto_connect_path_wakes_paired_devices_when_hid_not_visible()
     {
         var pairing = new FakeBluetoothPairingService();
-        var connection = new FakeBalanceBoardConnection();
+        var connection = new FakeBalanceBoardConnection { DiscoveredDevices = Array.Empty<string>() };
         using var session = CreateSession(connection, pairing);
         var result = await session.ConnectWithIntentAsync(ConnectionIntent.QuickReconnect);
-        Assert.True(result.IsSuccess);
-        Assert.Equal(1, pairing.WakeCallCount);
+        Assert.False(result.IsSuccess);
+        Assert.True(pairing.WakeCallCount >= 1);
     }
 
     [Fact]
-    public async Task QuickReconnect_always_wakes_before_hid_connect()
+    public async Task QuickReconnect_skips_wake_when_hid_already_visible()
     {
         var pairing = new FakeBluetoothPairingService();
         var connection = new FakeBalanceBoardConnection();
@@ -243,8 +243,8 @@ public class ConnectFlowTests
         var result = await session.ConnectWithIntentAsync(ConnectionIntent.QuickReconnect);
 
         Assert.True(result.IsSuccess);
-        Assert.Equal(1, pairing.WakeCallCount);
-        Assert.Contains(lines, line => line.Contains("wake probe", StringComparison.OrdinalIgnoreCase));
+        Assert.Equal(0, pairing.WakeCallCount);
+        Assert.Contains(lines, line => line.Contains("fast path", StringComparison.OrdinalIgnoreCase));
     }
 
     [Fact]
@@ -275,7 +275,7 @@ public class ConnectFlowTests
     }
 
     [Fact]
-    public async Task PairAndConnect_skips_wake_after_successful_pair()
+    public async Task PairAndConnect_runs_post_pair_hid_wake_after_successful_pair()
     {
         var pairing = new FakeBluetoothPairingService();
         pairing.EnqueuePairResult(new BluetoothPairingResult
@@ -298,7 +298,7 @@ public class ConnectFlowTests
 
         Assert.True(result.IsSuccess);
         Assert.Equal(0, pairing.WakeCallCount);
-        Assert.Contains(lines, line => line.Contains("Skipping wake probe", StringComparison.Ordinal));
+        Assert.Contains(lines, line => line.Contains("Post-pair", StringComparison.Ordinal));
     }
 
     [Fact]
