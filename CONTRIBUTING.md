@@ -15,6 +15,19 @@ Thanks for improving Balance Board Controller. This repo is structured for portf
 
 5. Open a PR (template provided)
 
+## `main` branch protection
+
+`main` is protected on GitHub:
+
+| Rule | Effect |
+|------|--------|
+| **CI must pass** | Merges require the **Quality gate** check (same as `scripts/lint.ps1`) |
+| **Up to date** | Branch must include latest `main` before merge |
+| **No force-push** | History on `main` cannot be rewritten |
+| **No deletion** | `main` cannot be deleted accidentally |
+
+Work on a feature branch, open a PR, wait for green CI, then merge. Repo admins can still bypass in an emergency (`enforce_admins` is off).
+
 ## Quality requirements
 
 All PRs must pass **CI** (same as `scripts/ci/lint.ps1`):
