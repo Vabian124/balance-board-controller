@@ -58,8 +58,9 @@ Complete map of **maintained source** (ignore `bin/`, `obj/`, `.vs/`).
 | `InputSimulator.cs` | `SendInput` keyboard/mouse; supports X1/X2 side buttons |
 | `BluetoothPairingService.cs` | Automatic Wii BT pairing (reversed host MAC PIN, WiiBalanceWalker method) |
 | `WiiBluetoothPin.cs` | Host MAC → Wii permanent pairing PIN |
-| `SettingsStore.cs` | JSON settings in `%AppData%\BalanceBoardApp\` |
-| `FileLogService.cs` | Session log file `logs/session-YYYY-MM-DD.log` |
+| `SettingsStore.cs` | JSON settings in `%AppData%\BalanceBoardApp\`; atomic save; connection state |
+| `AppDataPaths.cs` | Canonical paths for settings, logs, profiles |
+| `FileLogService.cs` | Daily session log with SESSION header block |
 | `DiagnosticsReport.cs` | Structured health check for UI + clipboard |
 
 ## `tools/Validate/`

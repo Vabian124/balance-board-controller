@@ -42,7 +42,7 @@ public partial class MainWindow : Window
         }
 
         Log("Ready.");
-        Log($"Log file: {_fileLog.CurrentLogPath}");
+        _fileLog.WriteSessionHeader(_settingsStore.SettingsPath, _settings);
         UpdateConnectionChip(false);
     }
 
@@ -342,9 +342,11 @@ public partial class MainWindow : Window
 
     private void MarkConnectedSuccessfully()
     {
-        _settings.HasConnectedBefore = true;
-        _settings.SetupWizardCompleted = true;
-        _settingsStore.Save(_settings);
+        var deviceId = _session.ConnectedDeviceId;
+        _settingsStore.UpdateConnectionState(_settings, deviceId);
+        Log(deviceId is not null
+            ? $"Saved connection state for board {deviceId}."
+            : "Saved connection state.");
     }
 
     private void DisconnectButton_Click(object sender, RoutedEventArgs e)

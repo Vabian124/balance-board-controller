@@ -95,6 +95,8 @@ All steps honour **Cancel** (`CancellationToken`).
 
 Settings file: `%AppData%\BalanceBoardApp\settings.json`
 
+See [docs/STORAGE.md](docs/STORAGE.md) for settings fields, logs, profiles, and reset commands.
+
 ## CLI flags
 
 | Flag | Effect |

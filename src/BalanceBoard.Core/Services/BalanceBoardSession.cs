@@ -21,6 +21,7 @@ public sealed class BalanceBoardSession : IDisposable
     public event Action<string>? StatusChanged;
 
     public bool IsConnected => _connection.IsConnected;
+    public string? ConnectedDeviceId => _connection.ConnectedDeviceId;
     public AppSettings Settings => _settings;
 
     public BalanceBoardSession()

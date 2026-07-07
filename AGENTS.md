@@ -29,9 +29,10 @@ Upstream inspiration: [WiiBalanceWalker v0.5](https://github.com/lshachar/WiiBal
 3. [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) — data flow, threading, extension points
 4. [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) — build, run, debug, CI
 5. [docs/TEST_PLAN.md](docs/TEST_PLAN.md) — edge-case matrix and smoke tests
-6. [docs/GLOSSARY.md](docs/GLOSSARY.md) — domain terms
-7. [docs/ROADMAP.md](docs/ROADMAP.md) — planned work (safe to implement)
-8. [docs/updates/README.md](docs/updates/README.md) — **what past agents did** (timestamped, per commit)
+6. [docs/STORAGE.md](docs/STORAGE.md) — settings.json, logs, profiles, connection state
+7. [docs/GLOSSARY.md](docs/GLOSSARY.md) — domain terms
+8. [docs/ROADMAP.md](docs/ROADMAP.md) — planned work (safe to implement)
+9. [docs/updates/README.md](docs/updates/README.md) — **what past agents did** (timestamped, per commit)
 
 ## Architecture in 30 seconds
 

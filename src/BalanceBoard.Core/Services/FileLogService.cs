@@ -1,3 +1,5 @@
+using BalanceBoard.Core.Models;
+
 namespace BalanceBoard.Core.Services;
 
 public sealed class FileLogService
@@ -8,10 +10,7 @@ public sealed class FileLogService
 
     public FileLogService(string? baseDirectory = null)
     {
-        var root = baseDirectory ?? Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-            "BalanceBoardApp",
-            "logs");
+        var root = baseDirectory ?? AppDataPaths.LogsDirectory;
         Directory.CreateDirectory(root);
         _logDirectory = root;
         _currentLogPath = Path.Combine(root, $"session-{DateTime.Now:yyyy-MM-dd}.log");
@@ -22,6 +21,29 @@ public sealed class FileLogService
     public string CurrentLogPath => _currentLogPath;
 
     public event Action<string>? LineWritten;
+
+    public void WriteSessionHeader(string settingsPath, AppSettings settings)
+    {
+        Write("=== Session start ===", "SESSION");
+        Write($"Settings file: {settingsPath}", "SESSION");
+        Write(
+            $"Flags: HasConnectedBefore={settings.HasConnectedBefore}, " +
+            $"AutoConnectOnStartup={settings.AutoConnectOnStartup}, " +
+            $"Profile={settings.ActiveProfileName}",
+            "SESSION");
+
+        if (!string.IsNullOrWhiteSpace(settings.LastConnectedDeviceId))
+        {
+            var when = settings.LastConnectedAtUtc?.ToString("u") ?? "unknown";
+            Write($"Last board: {settings.LastConnectedDeviceId} at {when}", "SESSION");
+        }
+        else
+        {
+            Write("Last board: (none saved yet)", "SESSION");
+        }
+
+        Write($"Log file: {_currentLogPath}", "SESSION");
+    }
 
     public void Write(string message, string category = "INFO")
     {
