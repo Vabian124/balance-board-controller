@@ -23,6 +23,7 @@
 | 2 | 2026-07-07 13:10:44 | [`fb82a5d`](https://github.com/Vabian124/balance-board-controller/commit/fb82a5d) | [Profile presets, input, CI](2026-07-07_131044_fb82a5d_profile-presets-and-ci.md) | Cursor — finish todos, lint, push |
 | 3 | 2026-07-07 13:14:39 | [`238405a`](https://github.com/Vabian124/balance-board-controller/commit/238405a) | [LLM-friendly docs and Cursor rules](2026-07-07_131439_238405a_llm-friendly-docs.md) | Cursor — make repo LLM-friendly |
 | 4 | 2026-07-07 13:19:23 | [`5dff713`](https://github.com/Vabian124/balance-board-controller/commit/5dff713) | [Agent update log folder](2026-07-07_131923_5dff713_agent-update-log.md) | Cursor — update MD audit trail |
+| 5 | 2026-07-07 13:23:44 | [`b451e12`](https://github.com/Vabian124/balance-board-controller/commit/b451e12) | [Every-pass LLM instructions](2026-07-07_132344_b451e12_llm-instructions.md) | Cursor — INSTRUCTIONS.md playbook |
 
 ## Quick HEAD check
 
