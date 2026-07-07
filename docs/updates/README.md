@@ -27,7 +27,7 @@
 | 6 | 2026-07-07 13:29:02 | [`ae01e12`](https://github.com/Vabian124/balance-board-controller/commit/ae01e12) | [Startup fixes and first-run wizard](2026-07-07_132902_ae01e12_startup-wizard-fix.md) | Cursor — first launch for user |
 | 7 | 2026-07-07 13:44:30 | [`7c1859c`](https://github.com/Vabian124/balance-board-controller/commit/7c1859c) | [Automatic Bluetooth pairing](2026-07-07_134430_7c1859c_auto-bluetooth-pairing.md) | Cursor — Wii PIN pairing |
 | 8 | 2026-07-07 14:00:00 | [`5256356`](https://github.com/Vabian124/balance-board-controller/commit/5256356) | [UI redesign](2026-07-07_140000_5256356_ui-redesign.md) | Cursor — system themes, scripts |
-| 9 | 2026-07-07 15:00:00 | *(pending)* | [Smart connect workflow](2026-07-07_150000_smart-connect-workflow.md) | Cursor — edge cases, test plan |
+| 9 | 2026-07-07 15:00:00 | [`4942277`](https://github.com/Vabian124/balance-board-controller/commit/4942277) | [Smart connect workflow](2026-07-07_150000_smart-connect-workflow.md) | Cursor — edge cases, test plan |
 
 ## Quick HEAD check
 

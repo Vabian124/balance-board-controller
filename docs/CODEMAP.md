@@ -17,20 +17,21 @@ Complete map of **maintained source** (ignore `bin/`, `obj/`, `.vs/`).
 | Path | Purpose |
 |------|---------|
 | `App.xaml` | Application resources, theme merge |
-| `App.xaml.cs` | Single-instance mutex, feeder cleanup on startup, exception handlers |
-| `MainWindow.xaml` | Dashboard + Debug Suite tabs, quick-start profiles, sliders |
-| `MainWindow.xaml.cs` | UI ↔ session bridge, settings sync, auto-connect, health check UI |
-| `SetupWizardWindow.xaml(.cs)` | First-run: prerequisites, connect, tare, preset |
+| `App.xaml.cs` | Instant UI, deferred startup, single-instance via `SingleInstanceService` |
+| `MainWindow.xaml` | Single-page dashboard: settings expanders, connect/cancel, debug log |
+| `MainWindow.xaml.cs` | UI ↔ session; smart connect policy; cancellable connect |
+| `Services/StartupOptions.cs` | CLI: `--dev`, `--connect`, `--no-cleanup`, `--allow-multiple` |
+| `Services/SingleInstanceService.cs` | Mutex + named pipe; second launch activates window |
 | `Controls/BalanceBoardVisual.xaml(.cs)` | Live 2D balance dot visualization |
-| `Themes/ModernTheme.xaml` | Dark theme: colors, buttons, cards, pills |
+| `Themes/Colors.xaml` | System light/dark aware brushes |
+| `Themes/Controls.xaml` | Shared control styles |
 | `BalanceBoard.App.csproj` | WPF exe, copies native DLLs from `libs/x64/` |
 
 ### UI event flow (`MainWindow.xaml.cs`)
 
-- Constructor: `SettingsStore.Load()` → `session.LoadSettings()` → `InitializeComponent()` → `PopulateUi()`
-- `SaveSettingsFromUi()` writes settings and calls `session.LoadSettings`
-- Preset buttons call `session.Apply*Preset()` then `SyncUiFromSettings()`
-- `OnProcessed` updates visual + direction text (dispatcher)
+- Constructor: `SettingsStore.Load()` → `session.LoadSettings(initializeVJoy: false)` → instant UI
+- `RunDeferredStartup`: warmup, vJoy init, quick reconnect or welcome message
+- `BeginConnect(ConnectionIntent)`: QuickReconnect vs PairAndConnect
 
 ## `src/BalanceBoard.Core/` — business logic
 
@@ -48,7 +49,8 @@ Complete map of **maintained source** (ignore `bin/`, `obj/`, `.vs/`).
 
 | Path | Purpose |
 |------|---------|
-| `BalanceBoardSession.cs` | **Orchestrator**: connect, poll (50 ms), route to vJoy + input |
+| `BalanceBoardSession.cs` | **Orchestrator**: `ConnectWithIntent`, poll (50 ms), route to vJoy + input |
+| `ConnectionIntent.cs` | `QuickReconnect` vs `PairAndConnect` |
 | `BalanceBoardConnection.cs` | WiimoteLib wrapper: discover, connect, tare, read corners |
 | `BalanceProcessor.cs` | Tare, center offset, deadzone, triggers → `ProcessedBalance` |
 | `VJoyController.cs` | Acquire vJoy device, map axes, center on shutdown |
