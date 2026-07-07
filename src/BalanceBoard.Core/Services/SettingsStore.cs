@@ -1,4 +1,3 @@
-using System.Runtime.InteropServices;
 using System.Text.Json;
 using BalanceBoard.Core.Models;
 
@@ -11,11 +10,16 @@ public sealed class SettingsStore
 
     public SettingsStore(string? baseDirectory = null)
     {
-        var root = baseDirectory ?? Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-            "BalanceBoardApp");
-        Directory.CreateDirectory(root);
-        _settingsPath = Path.Combine(root, "settings.json");
+        if (baseDirectory is not null)
+        {
+            Directory.CreateDirectory(baseDirectory);
+            _settingsPath = Path.Combine(baseDirectory, "settings.json");
+        }
+        else
+        {
+            AppDataPaths.EnsureRoot();
+            _settingsPath = AppDataPaths.SettingsFile;
+        }
     }
 
     public string SettingsPath => _settingsPath;
@@ -33,7 +37,11 @@ public sealed class SettingsStore
         {
             var json = File.ReadAllText(_settingsPath);
             var settings = JsonSerializer.Deserialize<AppSettings>(json) ?? new AppSettings();
-            MigrateLegacyFlags(settings);
+            if (ApplyMigrations(settings, json))
+            {
+                Save(settings);
+            }
+
             return settings;
         }
         catch
@@ -45,15 +53,21 @@ public sealed class SettingsStore
     public void Save(AppSettings settings)
     {
         var json = JsonSerializer.Serialize(settings, _jsonOptions);
-        File.WriteAllText(_settingsPath, json);
+        var directory = Path.GetDirectoryName(_settingsPath)!;
+        Directory.CreateDirectory(directory);
+        var tempPath = _settingsPath + ".tmp";
+
+        File.WriteAllText(tempPath, json);
+        File.Move(tempPath, _settingsPath, overwrite: true);
     }
 
-    private static void MigrateLegacyFlags(AppSettings settings)
+    public void UpdateConnectionState(AppSettings settings, string? deviceId)
     {
-        if (!settings.HasConnectedBefore && settings.SetupWizardCompleted)
-        {
-            settings.HasConnectedBefore = true;
-        }
+        settings.HasConnectedBefore = true;
+        settings.SetupWizardCompleted = true;
+        settings.LastConnectedDeviceId = deviceId;
+        settings.LastConnectedAtUtc = DateTime.UtcNow;
+        Save(settings);
     }
 
     public string ProfilesDirectory
@@ -89,5 +103,24 @@ public sealed class SettingsStore
         var path = Path.Combine(ProfilesDirectory, $"{safeName}.json");
         if (!File.Exists(path)) return null;
         return JsonSerializer.Deserialize<AppSettings>(File.ReadAllText(path));
+    }
+
+    private static bool ApplyMigrations(AppSettings settings, string rawJson)
+    {
+        var changed = false;
+
+        if (!settings.HasConnectedBefore && settings.SetupWizardCompleted)
+        {
+            settings.HasConnectedBefore = true;
+            changed = true;
+        }
+
+        // Older builds never wrote HasConnectedBefore — persist it when wizard was completed.
+        if (settings.HasConnectedBefore && !rawJson.Contains("HasConnectedBefore", StringComparison.Ordinal))
+        {
+            changed = true;
+        }
+
+        return changed;
     }
 }

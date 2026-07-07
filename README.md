@@ -30,8 +30,23 @@ Built as a clean rewrite of [WiiBalanceWalker v0.5](https://github.com/lshachar/
 
 1. Install **vJoy** and **reboot**.
 2. Open **vJoyConf** and enable **Device 1** with at least **X** and **Y** axes.
-3. Launch the app — on first run click **Connect** and press the red **SYNC** button when prompted (no Windows Bluetooth menus). After that, the app reconnects automatically when the board is on.
-4. Build and run:
+3. **Launch the app** — easiest way:
+
+   **Double-click `start.bat`** in the project folder.
+
+   Or from PowerShell:
+
+   ```powershell
+   .\start.bat
+   # or
+   .\scripts\start.ps1
+   ```
+
+4. **First run:** click **Connect** and press the red **SYNC** button on the board when prompted.
+5. **Returning users:** the app reconnects automatically when the board is on (toggle in settings).
+6. Stand on the board → **Tare** if needed. Verify axes in **vJoy Monitor**.
+
+### Build from source (optional)
 
 ```powershell
 git clone https://github.com/Vabian124/balance-board-controller.git
@@ -39,9 +54,6 @@ cd balance-board-controller
 dotnet build BalanceBoard.sln -c Release
 dotnet run --project src/BalanceBoard.App/BalanceBoard.App.csproj -c Release
 ```
-
-5. Returning users: the app auto-reconnects if the board is already paired and on. Stand on the board → **Tare** if needed.
-6. Verify axes in **vJoy Monitor** (installed with vJoy).
 
 ### Publish (single folder)
 
@@ -52,7 +64,9 @@ dotnet publish src/BalanceBoard.App/BalanceBoard.App.csproj -c Release -r win-x6
 ### Dev scripts (start / stop / restart)
 
 ```powershell
-.\scripts\start.ps1      # launch instantly (dev mode, no hang)
+.\start.bat              # double-click or run from repo root
+.\stop.bat               # stop the app
+.\scripts\start.ps1      # same as start.bat (PowerShell)
 .\scripts\stop.ps1       # graceful exit, then force stop
 .\scripts\restart.ps1    # stop + start
 .\scripts\connect.ps1    # start and auto-connect
