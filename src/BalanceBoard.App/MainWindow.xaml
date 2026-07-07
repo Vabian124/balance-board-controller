@@ -4,8 +4,8 @@
         xmlns:controls="clr-namespace:BalanceBoard.App.Controls"
         Title="Balance Board Controller"
         Icon="Assets/balance-board-icon.ico"
-        Height="780" Width="1100"
-        MinHeight="640" MinWidth="900"
+        Height="780" Width="1000"
+        MinHeight="600" MinWidth="860"
         Background="{DynamicResource Brush.Background}"
         FontFamily="{StaticResource Font.UI}"
         Loaded="Window_Loaded"
@@ -15,240 +15,276 @@
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
-            <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
 
-        <!-- Header -->
-        <Grid Grid.Row="0" Margin="0,0,0,16">
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="*"/>
-                <ColumnDefinition Width="Auto"/>
-            </Grid.ColumnDefinitions>
+        <!-- Title bar -->
+        <TextBlock Grid.Row="0" Text="Balance Board Controller" Style="{DynamicResource Text.Title}" Margin="0,0,0,12"/>
 
-            <StackPanel>
-                <TextBlock Text="Balance Board Controller" Style="{StaticResource Text.Title}"/>
-                <TextBlock x:Name="StatusText" Style="{StaticResource Text.Subtitle}" Margin="0,4,0,8"
-                           Text="Ready — click Connect when you're set."/>
-                <StackPanel Orientation="Horizontal">
-                    <Border x:Name="ConnectionChip" Style="{StaticResource StatusChip}" Margin="0,0,8,0">
-                        <TextBlock x:Name="ConnectionChipText" Text="Board: offline" FontSize="12"/>
-                    </Border>
-                    <Border x:Name="VJoyChip" Style="{StaticResource StatusChip}">
-                        <TextBlock x:Name="VJoyChipText" Text="vJoy: …" FontSize="12"/>
-                    </Border>
-                </StackPanel>
-            </StackPanel>
-
-            <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Top">
-                <Button x:Name="ConnectButton" Content="Connect" MinHeight="44" Style="{StaticResource Button.Primary}" Click="ConnectButton_Click"
-                        AutomationProperties.Name="Connect to balance board"
-                        AutomationProperties.HelpText="Pair and connect your Wii Balance Board over Bluetooth."/>
-                <Button x:Name="CancelButton" Content="Cancel" MinHeight="44" Style="{StaticResource Button.Secondary}" Click="CancelButton_Click" Visibility="Collapsed"/>
-                <Button x:Name="DisconnectButton" Content="Disconnect" MinHeight="44" Style="{StaticResource Button.Secondary}" Click="DisconnectButton_Click"/>
-                <Button x:Name="ExitButton" Content="Exit" MinHeight="44" Style="{StaticResource Button.Ghost}" Click="ExitButton_Click"/>
-            </StackPanel>
-        </Grid>
-
-        <!-- Main content -->
-        <Grid Grid.Row="1">
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="1.35*"/>
-                <ColumnDefinition Width="*"/>
-            </Grid.ColumnDefinitions>
-
-            <!-- Live balance -->
-            <Border x:Name="BalancePanel" Grid.Column="0" Style="{StaticResource Card}" Margin="0,0,12,0">
+        <!-- Tabbed content -->
+        <TabControl x:Name="MainTabControl" Grid.Row="1" Style="{StaticResource TabControl.Main}">
+            <!-- Dashboard -->
+            <TabItem Header="Dashboard" Style="{StaticResource TabItem.Main}">
                 <Grid>
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto"/>
                         <RowDefinition Height="*"/>
-                        <RowDefinition Height="Auto"/>
                     </Grid.RowDefinitions>
 
-                    <StackPanel Grid.Row="0">
-                        <TextBlock Text="LIVE BALANCE" Style="{StaticResource Text.Section}"/>
-                        <TextBlock x:Name="DirectionText" FontSize="20" FontWeight="SemiBold"
-                                   Foreground="{DynamicResource Brush.Foreground}" Margin="0,0,0,4"
-                                   Text="Connect your board to begin"
-                                   AutomationProperties.Name="Movement and jump feedback"
-                                   AutomationProperties.LiveSetting="Assertive"/>
-                        <TextBlock x:Name="ActiveActionsText" Style="{StaticResource Text.Subtitle}"/>
-                        <WrapPanel x:Name="CalibrationButtonsPanel" Margin="0,10,0,0">
-                            <Button x:Name="TareButton" Content="Tare" MinHeight="44" Style="{StaticResource Button.Primary}" Click="Tare_Click"/>
-                            <Button x:Name="SetCenterButton" Content="Set center" MinHeight="44" Style="{StaticResource Button.Secondary}" Click="SetCenter_Click"/>
-                            <Button x:Name="ResetCenterButton" Content="Reset center" MinHeight="44" Style="{StaticResource Button.Ghost}" Click="ResetCenter_Click"/>
-                        </WrapPanel>
-                    </StackPanel>
+                    <!-- Connection strip -->
+                    <Grid Grid.Row="0" Margin="0,0,0,12">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
 
-                    <controls:BalanceBoardVisual x:Name="BoardVisual" Grid.Row="1" Margin="0,8,0,8" MinHeight="260"/>
-
-                    <StackPanel Grid.Row="2">
-                        <TextBlock x:Name="WeightText" Style="{StaticResource Text.Body}" FontWeight="SemiBold"
-                                   Text="Weight: — kg"/>
-                        <TextBlock x:Name="BalanceText" Style="{StaticResource Text.Subtitle}" Margin="0,4,0,0"
-                                   Text="Balance: — / —"/>
-                        <TextBlock x:Name="SensorText" Style="{StaticResource Text.Mono}" Margin="0,8,0,0"
-                                   Text="Sensors: connect to see corner loads"/>
-                        <TextBlock x:Name="BoardButtonText" Style="{StaticResource Text.Subtitle}" Margin="0,4,0,0"
-                                   Text="Board button: —"/>
-                    </StackPanel>
-                </Grid>
-            </Border>
-
-            <!-- Settings -->
-            <ScrollViewer Grid.Column="1" VerticalScrollBarVisibility="Auto">
-                <StackPanel>
-
-                    <Border x:Name="DetailLevelCard" Style="{StaticResource Card}" Margin="0,0,0,12">
                         <StackPanel>
-                            <TextBlock Text="SETTINGS DETAIL" Style="{StaticResource Text.Section}"/>
-                            <ComboBox x:Name="DetailLevelCombo" Margin="0,8,0,4"
-                                      SelectionChanged="DetailLevelCombo_SelectionChanged"
-                                      ToolTip="How much of the settings panel to show."/>
-                            <TextBlock x:Name="DetailLevelDescription" Style="{StaticResource Text.Subtitle}" TextWrapping="Wrap"/>
-                        </StackPanel>
-                    </Border>
-
-                    <Border x:Name="ProfileCard" Style="{StaticResource Card}">
-                        <StackPanel>
-                            <TextBlock Text="PROFILE" Style="{StaticResource Text.Section}"/>
-                            <ComboBox x:Name="ProfileCombo" Margin="0,0,0,8" SelectionChanged="ProfileCombo_SelectionChanged"
-                                      ToolTip="Output profile — presets configure vJoy and keyboard bindings."/>
-                            <TextBlock x:Name="ProfileHintText" Style="{StaticResource Text.Subtitle}" Margin="0,0,0,8"
-                                       Visibility="Collapsed" TextWrapping="Wrap"/>
-                            <UniformGrid x:Name="ProfileButtonGrid" Columns="3" Margin="0,0,0,8">
-                                <Button x:Name="GamePresetButton" Content="Games" MinHeight="44" Style="{StaticResource Button.Secondary}" Margin="0,0,4,4" Click="GamePreset_Click"
-                                        AutomationProperties.Name="Games profile"
-                                        ToolTip="Game controller preset — vJoy left stick for movement."/>
-                                <Button x:Name="MinecraftPresetButton" Content="Minecraft" MinHeight="44" Style="{StaticResource Button.Secondary}" Margin="0,0,4,4" Click="MinecraftPreset_Click"
-                                        AutomationProperties.Name="Minecraft profile"
-                                        ToolTip="vJoy Device 1 in Controlify: lean = left stick (move), jump = A button."/>
-                                <Button x:Name="DesktopPresetButton" Content="Desktop" MinHeight="44" Style="{StaticResource Button.Secondary}" Margin="0,0,0,4" Click="KeyboardPreset_Click"
-                                        AutomationProperties.Name="Desktop keyboard profile"
-                                        ToolTip="Keyboard movement preset for desktop use."/>
-                                <Button x:Name="PedalPresetButton" Content="Pedals" MinHeight="44" Style="{StaticResource Button.Secondary}" Margin="0,0,4,0" Click="PedalPreset_Click"
-                                        AutomationProperties.Name="Pedals profile"
-                                        ToolTip="Pedal-style axis preset."/>
-                                <Button x:Name="MousePresetButton" Content="Mouse" MinHeight="44" Style="{StaticResource Button.Secondary}" Margin="0,0,4,0" Click="MousePreset_Click"
-                                        AutomationProperties.Name="Mouse profile"
-                                        ToolTip="Balance board controls the mouse cursor."/>
-                            </UniformGrid>
-                            <StackPanel x:Name="ThemeOptionsPanel">
-                                <CheckBox x:Name="AutoConnectCheck" Content="Connect automatically on launch"
-                                          Checked="SettingChanged" Unchecked="SettingChanged"/>
-                                <StackPanel x:Name="ThemeRow" Orientation="Horizontal" Margin="0,8,0,0">
-                                <TextBlock Text="Theme" VerticalAlignment="Center" Style="{StaticResource Text.Subtitle}" Margin="0,0,8,0"/>
-                                <ComboBox x:Name="ThemeCombo" Width="140" SelectionChanged="ThemeCombo_SelectionChanged"/>
-                                </StackPanel>
+                            <TextBlock x:Name="StatusText" Style="{DynamicResource Text.Subtitle}" Margin="0,0,0,8"
+                                       Text="Ready — click Connect when you're set."/>
+                            <StackPanel Orientation="Horizontal">
+                                <Border x:Name="ConnectionChip" Style="{StaticResource StatusChip}" Margin="0,0,8,0">
+                                    <TextBlock x:Name="ConnectionChipText" Text="Board: offline" FontSize="12"
+                                               Foreground="{DynamicResource Brush.Foreground}"/>
+                                </Border>
+                                <Border x:Name="VJoyChip" Style="{StaticResource StatusChip}">
+                                    <TextBlock x:Name="VJoyChipText" Text="vJoy: …" FontSize="12"
+                                               Foreground="{DynamicResource Brush.Foreground}"/>
+                                </Border>
                             </StackPanel>
                         </StackPanel>
-                    </Border>
 
-                    <Expander x:Name="KeyboardExpander" Header="Keyboard &amp; mouse controls" IsExpanded="False">
-                        <StackPanel Margin="0,8,0,0">
-                            <TextBlock Style="{StaticResource Text.Subtitle}" TextWrapping="Wrap" Margin="0,0,0,8"
-                                       Text="Map lean directions to keys or mouse actions. Disable vJoy keyboard block to use these while gaming."/>
-                            <controls:ActionBindingRow x:Name="BindLeft" SlotDisplayName="Left" BindingChanged="ActionBinding_Changed"/>
-                            <controls:ActionBindingRow x:Name="BindRight" SlotDisplayName="Right" BindingChanged="ActionBinding_Changed"/>
-                            <controls:ActionBindingRow x:Name="BindForward" SlotDisplayName="Forward" BindingChanged="ActionBinding_Changed"/>
-                            <controls:ActionBindingRow x:Name="BindBackward" SlotDisplayName="Backward" BindingChanged="ActionBinding_Changed"/>
-                            <controls:ActionBindingRow x:Name="BindJump" SlotDisplayName="Jump" BindingChanged="ActionBinding_Changed"/>
-                            <controls:ActionBindingRow x:Name="BindModifier" SlotDisplayName="Modifier" BindingChanged="ActionBinding_Changed"/>
-                            <controls:ActionBindingRow x:Name="BindDiagonalLeft" SlotDisplayName="Diagonal left" BindingChanged="ActionBinding_Changed"/>
-                            <controls:ActionBindingRow x:Name="BindDiagonalRight" SlotDisplayName="Diagonal right" BindingChanged="ActionBinding_Changed"/>
+                        <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Top">
+                            <Button x:Name="ConnectButton" Content="Connect" MinHeight="44" Style="{StaticResource Button.Primary}" Click="ConnectButton_Click"
+                                    AutomationProperties.Name="Connect to balance board"
+                                    AutomationProperties.HelpText="Pair and connect your Wii Balance Board over Bluetooth."/>
+                            <Button x:Name="CancelButton" Content="Cancel" MinHeight="44" Style="{StaticResource Button.Secondary}" Click="CancelButton_Click" Visibility="Collapsed"/>
+                            <Button x:Name="DisconnectButton" Content="Disconnect" MinHeight="44" Style="{StaticResource Button.Secondary}" Click="DisconnectButton_Click"/>
+                            <Button x:Name="ExitButton" Content="Exit" MinHeight="44" Style="{StaticResource Button.Ghost}" Click="ExitButton_Click"/>
                         </StackPanel>
-                    </Expander>
+                    </Grid>
 
-                    <Expander x:Name="VJoyExpander" Header="Controller output (vJoy)" IsExpanded="True">
-                        <StackPanel Margin="0,8,0,0">
-                            <CheckBox x:Name="EnableVJoyCheck" Content="Use virtual game controller" Checked="SettingChanged" Unchecked="SettingChanged"/>
-                            <CheckBox x:Name="SendCgCheck" Content="Balance → X/Y axes" Checked="SettingChanged" Unchecked="SettingChanged"/>
-                            <CheckBox x:Name="SendSensorsCheck" Content="Load sensors → Z/RX/RY/RZ" Checked="SettingChanged" Unchecked="SettingChanged"/>
-                            <CheckBox x:Name="DisableActionsCheck" Content="Disable keyboard/mouse output" Checked="SettingChanged" Unchecked="SettingChanged"/>
-                            <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
-                                <TextBlock Text="vJoy device" VerticalAlignment="Center" Style="{StaticResource Text.Subtitle}" Margin="0,0,8,0"/>
-                                <ComboBox x:Name="VJoyDeviceCombo" Width="64" SelectionChanged="SettingChanged"/>
-                            </StackPanel>
-                        </StackPanel>
-                    </Expander>
+                    <!-- Live balance -->
+                    <Border x:Name="BalancePanel" Grid.Row="1" Style="{StaticResource Card}" Margin="0">
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="*"/>
+                                <RowDefinition Height="Auto"/>
+                            </Grid.RowDefinitions>
 
-                    <Expander x:Name="CalibrationExpander" Header="Calibration">
-                        <StackPanel Margin="0,8,0,0">
-                            <TextBlock Style="{StaticResource Text.Subtitle}" TextWrapping="Wrap"
-                                       Text="Tare zeros the board while you are off it. Set center while standing in your neutral pose."/>
-                            <CheckBox x:Name="AutoTareCheck" Content="Auto-tare when connected" Margin="0,8,0,0" Checked="SettingChanged" Unchecked="SettingChanged"/>
-                        </StackPanel>
-                    </Expander>
-
-                    <Expander x:Name="SensitivityExpander" Header="Sensitivity &amp; triggers" IsExpanded="True">
-                        <StackPanel Margin="0,8,0,0">
-                            <CheckBox x:Name="SimpleSensitivityCheck" Content="Simple presets (kids / accessibility)"
-                                      IsChecked="True" Checked="SettingChanged" Unchecked="SettingChanged"/>
-                            <WrapPanel x:Name="SimpleSensitivityPanel" Margin="0,8,0,0">
-                                <Button x:Name="SensitivityLowButton" Content="Low" MinHeight="44" Style="{StaticResource Button.Secondary}" Click="SensitivityLow_Click"/>
-                                <Button x:Name="SensitivityMediumButton" Content="Medium" MinHeight="44" Style="{StaticResource Button.Secondary}" Click="SensitivityMedium_Click"/>
-                                <Button x:Name="SensitivityHighButton" Content="High" MinHeight="44" Style="{StaticResource Button.Secondary}" Click="SensitivityHigh_Click"/>
-                                <Button x:Name="SensitivityHighlyButton" Content="Highly sensitive" MinHeight="44" Style="{StaticResource Button.Secondary}" Click="SensitivityHighly_Click"/>
-                            </WrapPanel>
-                            <StackPanel x:Name="SimpleJumpPanel" Margin="0,12,0,0">
-                                <TextBlock x:Name="SimpleJumpLabel" Text="Jump difficulty" Style="{StaticResource Text.Subtitle}"/>
-                                <WrapPanel x:Name="SimpleJumpButtonsPanel" Margin="0,6,0,0">
-                                    <Button x:Name="JumpEasyButton" Content="Easy to jump" MinHeight="44" Style="{StaticResource Button.Secondary}" Click="JumpEasy_Click"/>
-                                    <Button x:Name="JumpNormalButton" Content="Normal jump" MinHeight="44" Style="{StaticResource Button.Secondary}" Click="JumpNormal_Click"/>
-                                    <Button x:Name="JumpHardButton" Content="Hard to jump" MinHeight="44" Style="{StaticResource Button.Secondary}" Click="JumpHard_Click"/>
+                            <StackPanel Grid.Row="0">
+                                <TextBlock Text="LIVE BALANCE" Style="{DynamicResource Text.Section}"/>
+                                <TextBlock x:Name="DirectionText" FontSize="20" FontWeight="SemiBold"
+                                           Foreground="{DynamicResource Brush.Foreground}" Margin="0,0,0,4"
+                                           Text="Connect your board to begin"
+                                           AutomationProperties.Name="Movement and jump feedback"
+                                           AutomationProperties.LiveSetting="Assertive"/>
+                                <TextBlock x:Name="ActiveActionsText" Style="{DynamicResource Text.Subtitle}"/>
+                                <WrapPanel x:Name="CalibrationButtonsPanel" Margin="0,10,0,0">
+                                    <Button x:Name="TareButton" Content="Tare" MinHeight="44" Style="{StaticResource Button.Primary}" Click="Tare_Click"/>
+                                    <Button x:Name="SetCenterButton" Content="Set center" MinHeight="44" Style="{StaticResource Button.Secondary}" Click="SetCenter_Click"/>
+                                    <Button x:Name="ResetCenterButton" Content="Reset center" MinHeight="44" Style="{StaticResource Button.Ghost}" Click="ResetCenter_Click"/>
                                 </WrapPanel>
                             </StackPanel>
-                            <StackPanel x:Name="AdvancedSensitivityPanel" Margin="0,8,0,0" Visibility="Collapsed">
-                                <TextBlock x:Name="TriggerLeftRightLabel" Style="{StaticResource Text.Subtitle}"/>
-                                <Slider x:Name="TriggerLeftRightSlider" Minimum="1" Maximum="30" Value="8" TickFrequency="1" IsSnapToTickEnabled="True" ValueChanged="SettingChanged"/>
-                                <TextBlock x:Name="TriggerForwardBackwardLabel" Style="{StaticResource Text.Subtitle}"/>
-                                <Slider x:Name="TriggerForwardBackwardSlider" Minimum="1" Maximum="30" Value="9" TickFrequency="1" IsSnapToTickEnabled="True" ValueChanged="SettingChanged"/>
-                                <TextBlock x:Name="DeadzoneLabel" Style="{StaticResource Text.Subtitle}" Margin="0,8,0,0"/>
-                                <Slider x:Name="DeadzoneSlider" Minimum="0" Maximum="20" Value="5" TickFrequency="1" IsSnapToTickEnabled="True" ValueChanged="SettingChanged"/>
-                                <TextBlock x:Name="SensitivityLabel" Style="{StaticResource Text.Subtitle}"/>
-                                <Slider x:Name="SensitivitySlider" Minimum="0.5" Maximum="3" Value="1" TickFrequency="0.1" ValueChanged="SettingChanged"/>
-                                <TextBlock x:Name="JumpThresholdLabel" Style="{StaticResource Text.Subtitle}" Margin="0,8,0,0"/>
-                                <Slider x:Name="JumpThresholdSlider" Minimum="0.2" Maximum="80" Value="1" TickFrequency="0.5" ValueChanged="SettingChanged"/>
-                                <TextBlock x:Name="JumpHoldLabel" Style="{StaticResource Text.Subtitle}"/>
-                                <Slider x:Name="JumpHoldSlider" Minimum="0.5" Maximum="4" Value="2" TickFrequency="0.1" ValueChanged="SettingChanged"/>
+
+                            <controls:BalanceBoardVisual x:Name="BoardVisual" Grid.Row="1" Margin="0,8,0,8" MinHeight="280"/>
+
+                            <StackPanel Grid.Row="2">
+                                <TextBlock x:Name="WeightText" Style="{DynamicResource Text.Body}" FontWeight="SemiBold"
+                                           Text="Weight: — kg"/>
+                                <TextBlock x:Name="BalanceText" Style="{DynamicResource Text.Subtitle}" Margin="0,4,0,0"
+                                           Text="Balance: — / —"/>
+                                <TextBlock x:Name="SensorText" Style="{DynamicResource Text.Mono}" Margin="0,8,0,0"
+                                           Text="Sensors: connect to see corner loads"/>
+                                <TextBlock x:Name="BoardButtonText" Style="{DynamicResource Text.Subtitle}" Margin="0,4,0,0"
+                                           Text="Board button: —"/>
+                                <TextBlock x:Name="VJoyAxesText" Style="{DynamicResource Text.Mono}" Margin="0,8,0,0"/>
                             </StackPanel>
-                            <StackPanel x:Name="InvertPanel" Margin="0,8,0,0">
-                                <CheckBox x:Name="InvertXCheck" Content="Invert X" Checked="SettingChanged" Unchecked="SettingChanged"/>
-                                <CheckBox x:Name="InvertYCheck" Content="Invert Y" Checked="SettingChanged" Unchecked="SettingChanged"/>
+                        </Grid>
+                    </Border>
+                </Grid>
+            </TabItem>
+
+            <!-- Profiles -->
+            <TabItem Header="Profiles" Style="{StaticResource TabItem.Main}">
+                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                    <StackPanel>
+
+                        <Border x:Name="DetailLevelCard" Style="{StaticResource Card}">
+                            <StackPanel>
+                                <TextBlock Text="SETTINGS DETAIL" Style="{DynamicResource Text.Section}"/>
+                                <ComboBox x:Name="DetailLevelCombo" Margin="0,8,0,4"
+                                          SelectionChanged="DetailLevelCombo_SelectionChanged"
+                                          ToolTip="How much of the settings panel to show."/>
+                                <TextBlock x:Name="DetailLevelDescription" Style="{DynamicResource Text.Subtitle}" TextWrapping="Wrap"/>
                             </StackPanel>
-                        </StackPanel>
-                    </Expander>
+                        </Border>
 
-                    <Expander x:Name="DiagnosticsExpander" Header="Diagnostics">
-                        <StackPanel Margin="0,8,0,0">
-                            <TextBlock x:Name="HealthSummaryText" Style="{StaticResource Text.Subtitle}" Margin="0,0,0,8"
-                                       Text="Run a health check to verify vJoy and Bluetooth."/>
-                            <TextBlock x:Name="VJoyStatusText" Style="{StaticResource Text.Mono}" Margin="0,0,0,8"/>
-                            <TextBlock x:Name="VJoyAxesText" Style="{StaticResource Text.Mono}" Margin="0,0,0,8"/>
-                            <WrapPanel Margin="0,12,0,0">
-                                <Button Content="Health check" Style="{StaticResource Button.Primary}" Click="RunHealthCheckButton_Click"/>
-                                <Button Content="Copy report" Style="{StaticResource Button.Secondary}" Click="CopyReportButton_Click"/>
-                                <Button Content="Open logs" Style="{StaticResource Button.Secondary}" Click="OpenLogFolderButton_Click"/>
-                            </WrapPanel>
-                        </StackPanel>
-                    </Expander>
+                        <Border x:Name="ProfileCard" Style="{StaticResource Card}">
+                            <StackPanel>
+                                <TextBlock Text="PROFILE" Style="{DynamicResource Text.Section}"/>
+                                <ComboBox x:Name="ProfileCombo" Margin="0,0,0,8" SelectionChanged="ProfileCombo_SelectionChanged"
+                                          ToolTip="Output profile — presets configure vJoy and keyboard bindings."/>
+                                <TextBlock x:Name="ProfileHintText" Style="{DynamicResource Text.Subtitle}" Margin="0,0,0,8"
+                                           Visibility="Collapsed" TextWrapping="Wrap"/>
+                                <UniformGrid x:Name="ProfileButtonGrid" Columns="3" Margin="0,0,0,8">
+                                    <Button x:Name="GamePresetButton" Content="Games" MinHeight="44" Style="{StaticResource Button.Secondary}" Margin="0,0,4,4" Click="GamePreset_Click"
+                                            AutomationProperties.Name="Games profile"
+                                            ToolTip="Game controller preset — vJoy left stick for movement."/>
+                                    <Button x:Name="MinecraftPresetButton" Content="Minecraft" MinHeight="44" Style="{StaticResource Button.Secondary}" Margin="0,0,4,4" Click="MinecraftPreset_Click"
+                                            AutomationProperties.Name="Minecraft profile"
+                                            ToolTip="vJoy Device 1 in Controlify: lean = left stick (move), jump = A button."/>
+                                    <Button x:Name="DesktopPresetButton" Content="Desktop" MinHeight="44" Style="{StaticResource Button.Secondary}" Margin="0,0,0,4" Click="KeyboardPreset_Click"
+                                            AutomationProperties.Name="Desktop keyboard profile"
+                                            ToolTip="Keyboard movement preset for desktop use."/>
+                                    <Button x:Name="PedalPresetButton" Content="Pedals" MinHeight="44" Style="{StaticResource Button.Secondary}" Margin="0,0,4,0" Click="PedalPreset_Click"
+                                            AutomationProperties.Name="Pedals profile"
+                                            ToolTip="Pedal-style axis preset."/>
+                                    <Button x:Name="MousePresetButton" Content="Mouse" MinHeight="44" Style="{StaticResource Button.Secondary}" Margin="0,0,4,0" Click="MousePreset_Click"
+                                            AutomationProperties.Name="Mouse profile"
+                                            ToolTip="Balance board controls the mouse cursor."/>
+                                </UniformGrid>
+                            </StackPanel>
+                        </Border>
 
-                </StackPanel>
-            </ScrollViewer>
-        </Grid>
+                        <Border x:Name="SensitivityCard" Style="{StaticResource Card}">
+                            <StackPanel>
+                                <TextBlock Text="SENSITIVITY &amp; TRIGGERS" Style="{DynamicResource Text.Section}"/>
+                                <CheckBox x:Name="SimpleSensitivityCheck" Content="Simple presets (kids / accessibility)"
+                                          IsChecked="True" Checked="SettingChanged" Unchecked="SettingChanged"/>
+                                <WrapPanel x:Name="SimpleSensitivityPanel" Margin="0,8,0,0">
+                                    <Button x:Name="SensitivityLowButton" Content="Low" MinHeight="44" Style="{StaticResource Button.Secondary}" Click="SensitivityLow_Click"/>
+                                    <Button x:Name="SensitivityMediumButton" Content="Medium" MinHeight="44" Style="{StaticResource Button.Secondary}" Click="SensitivityMedium_Click"/>
+                                    <Button x:Name="SensitivityHighButton" Content="High" MinHeight="44" Style="{StaticResource Button.Secondary}" Click="SensitivityHigh_Click"/>
+                                    <Button x:Name="SensitivityHighlyButton" Content="Highly sensitive" MinHeight="44" Style="{StaticResource Button.Secondary}" Click="SensitivityHighly_Click"/>
+                                </WrapPanel>
+                                <StackPanel x:Name="SimpleJumpPanel" Margin="0,12,0,0">
+                                    <TextBlock x:Name="SimpleJumpLabel" Text="Jump difficulty" Style="{DynamicResource Text.Subtitle}"/>
+                                    <WrapPanel x:Name="SimpleJumpButtonsPanel" Margin="0,6,0,0">
+                                        <Button x:Name="JumpEasyButton" Content="Easy to jump" MinHeight="44" Style="{StaticResource Button.Secondary}" Click="JumpEasy_Click"/>
+                                        <Button x:Name="JumpNormalButton" Content="Normal jump" MinHeight="44" Style="{StaticResource Button.Secondary}" Click="JumpNormal_Click"/>
+                                        <Button x:Name="JumpHardButton" Content="Hard to jump" MinHeight="44" Style="{StaticResource Button.Secondary}" Click="JumpHard_Click"/>
+                                    </WrapPanel>
+                                </StackPanel>
+                            </StackPanel>
+                        </Border>
 
-        <!-- Log strip -->
-        <Expander x:Name="SessionLogExpander" Grid.Row="2" Header="Session log" Margin="0,12,0,0" IsExpanded="False">
-            <Grid Height="140" Margin="0,8,0,0">
-                <TextBox x:Name="LogBox" IsReadOnly="True" TextWrapping="Wrap"
-                         VerticalScrollBarVisibility="Auto" AcceptsReturn="True"
-                         FontFamily="{StaticResource Font.Mono}" FontSize="12"
-                         Background="{DynamicResource Brush.Card}"
-                         Foreground="{DynamicResource Brush.Foreground}"
-                         BorderBrush="{DynamicResource Brush.CardBorder}" BorderThickness="1"/>
-                <Button Content="Clear view" Style="{StaticResource Button.Ghost}" HorizontalAlignment="Right" VerticalAlignment="Top"
-                        Margin="8" Click="ClearLogViewButton_Click"/>
-            </Grid>
-        </Expander>
+                        <Border x:Name="ThemeCard" Style="{StaticResource Card}">
+                            <StackPanel x:Name="ThemeOptionsPanel">
+                                <TextBlock Text="APPEARANCE &amp; STARTUP" Style="{DynamicResource Text.Section}"/>
+                                <CheckBox x:Name="AutoConnectCheck" Content="Connect automatically on launch" Margin="0,4,0,0"
+                                          Checked="SettingChanged" Unchecked="SettingChanged"/>
+                                <StackPanel x:Name="ThemeRow" Orientation="Horizontal" Margin="0,8,0,0">
+                                    <TextBlock Text="Theme" VerticalAlignment="Center" Style="{DynamicResource Text.Subtitle}" Margin="0,0,8,0"/>
+                                    <ComboBox x:Name="ThemeCombo" Width="140" SelectionChanged="ThemeCombo_SelectionChanged"/>
+                                </StackPanel>
+                            </StackPanel>
+                        </Border>
+
+                    </StackPanel>
+                </ScrollViewer>
+            </TabItem>
+
+            <!-- Advanced -->
+            <TabItem x:Name="AdvancedTab" Header="Advanced" Style="{StaticResource TabItem.Main}">
+                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                    <StackPanel>
+
+                        <Border x:Name="KeyboardSection" Style="{StaticResource Card}">
+                            <StackPanel>
+                                <TextBlock Text="KEYBOARD &amp; MOUSE" Style="{DynamicResource Text.Section}"/>
+                                <TextBlock Style="{DynamicResource Text.Subtitle}" TextWrapping="Wrap" Margin="0,0,0,8"
+                                           Text="Map lean directions to keys or mouse actions. Disable vJoy keyboard block to use these while gaming."/>
+                                <controls:ActionBindingRow x:Name="BindLeft" SlotDisplayName="Left" BindingChanged="ActionBinding_Changed"/>
+                                <controls:ActionBindingRow x:Name="BindRight" SlotDisplayName="Right" BindingChanged="ActionBinding_Changed"/>
+                                <controls:ActionBindingRow x:Name="BindForward" SlotDisplayName="Forward" BindingChanged="ActionBinding_Changed"/>
+                                <controls:ActionBindingRow x:Name="BindBackward" SlotDisplayName="Backward" BindingChanged="ActionBinding_Changed"/>
+                                <controls:ActionBindingRow x:Name="BindJump" SlotDisplayName="Jump" BindingChanged="ActionBinding_Changed"/>
+                                <controls:ActionBindingRow x:Name="BindModifier" SlotDisplayName="Modifier" BindingChanged="ActionBinding_Changed"/>
+                                <controls:ActionBindingRow x:Name="BindDiagonalLeft" SlotDisplayName="Diagonal left" BindingChanged="ActionBinding_Changed"/>
+                                <controls:ActionBindingRow x:Name="BindDiagonalRight" SlotDisplayName="Diagonal right" BindingChanged="ActionBinding_Changed"/>
+                            </StackPanel>
+                        </Border>
+
+                        <Border x:Name="VJoySection" Style="{StaticResource Card}">
+                            <StackPanel>
+                                <TextBlock Text="CONTROLLER OUTPUT (VJOY)" Style="{DynamicResource Text.Section}"/>
+                                <CheckBox x:Name="EnableVJoyCheck" Content="Use virtual game controller" Checked="SettingChanged" Unchecked="SettingChanged"/>
+                                <CheckBox x:Name="SendCgCheck" Content="Balance → X/Y axes" Checked="SettingChanged" Unchecked="SettingChanged"/>
+                                <CheckBox x:Name="SendSensorsCheck" Content="Load sensors → Z/RX/RY/RZ" Checked="SettingChanged" Unchecked="SettingChanged"/>
+                                <CheckBox x:Name="DisableActionsCheck" Content="Disable keyboard/mouse output" Checked="SettingChanged" Unchecked="SettingChanged"/>
+                                <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
+                                    <TextBlock Text="vJoy device" VerticalAlignment="Center" Style="{DynamicResource Text.Subtitle}" Margin="0,0,8,0"/>
+                                    <ComboBox x:Name="VJoyDeviceCombo" Width="64" SelectionChanged="SettingChanged"/>
+                                </StackPanel>
+                            </StackPanel>
+                        </Border>
+
+                        <Border x:Name="CalibrationSection" Style="{StaticResource Card}">
+                            <StackPanel>
+                                <TextBlock Text="CALIBRATION" Style="{DynamicResource Text.Section}"/>
+                                <TextBlock Style="{DynamicResource Text.Subtitle}" TextWrapping="Wrap"
+                                           Text="Tare zeros the board while you are off it. Set center while standing in your neutral pose."/>
+                                <CheckBox x:Name="AutoTareCheck" Content="Auto-tare when connected" Margin="0,8,0,0" Checked="SettingChanged" Unchecked="SettingChanged"/>
+                            </StackPanel>
+                        </Border>
+
+                        <Border x:Name="FineTuneSection" Style="{StaticResource Card}">
+                            <StackPanel>
+                                <TextBlock Text="FINE TUNING" Style="{DynamicResource Text.Section}"/>
+                                <StackPanel x:Name="AdvancedSensitivityPanel" Visibility="Collapsed">
+                                    <TextBlock x:Name="TriggerLeftRightLabel" Style="{DynamicResource Text.Subtitle}"/>
+                                    <Slider x:Name="TriggerLeftRightSlider" Minimum="1" Maximum="30" Value="8" TickFrequency="1" IsSnapToTickEnabled="True" ValueChanged="SettingChanged"/>
+                                    <TextBlock x:Name="TriggerForwardBackwardLabel" Style="{DynamicResource Text.Subtitle}"/>
+                                    <Slider x:Name="TriggerForwardBackwardSlider" Minimum="1" Maximum="30" Value="9" TickFrequency="1" IsSnapToTickEnabled="True" ValueChanged="SettingChanged"/>
+                                    <TextBlock x:Name="DeadzoneLabel" Style="{DynamicResource Text.Subtitle}" Margin="0,8,0,0"/>
+                                    <Slider x:Name="DeadzoneSlider" Minimum="0" Maximum="20" Value="5" TickFrequency="1" IsSnapToTickEnabled="True" ValueChanged="SettingChanged"/>
+                                    <TextBlock x:Name="SensitivityLabel" Style="{DynamicResource Text.Subtitle}"/>
+                                    <Slider x:Name="SensitivitySlider" Minimum="0.5" Maximum="3" Value="1" TickFrequency="0.1" ValueChanged="SettingChanged"/>
+                                    <TextBlock x:Name="JumpThresholdLabel" Style="{DynamicResource Text.Subtitle}" Margin="0,8,0,0"/>
+                                    <Slider x:Name="JumpThresholdSlider" Minimum="0.2" Maximum="80" Value="1" TickFrequency="0.5" ValueChanged="SettingChanged"/>
+                                    <TextBlock x:Name="JumpHoldLabel" Style="{DynamicResource Text.Subtitle}"/>
+                                    <Slider x:Name="JumpHoldSlider" Minimum="0.5" Maximum="4" Value="2" TickFrequency="0.1" ValueChanged="SettingChanged"/>
+                                </StackPanel>
+                                <StackPanel x:Name="InvertPanel" Margin="0,8,0,0">
+                                    <CheckBox x:Name="InvertXCheck" Content="Invert X" Checked="SettingChanged" Unchecked="SettingChanged"/>
+                                    <CheckBox x:Name="InvertYCheck" Content="Invert Y" Checked="SettingChanged" Unchecked="SettingChanged"/>
+                                </StackPanel>
+                            </StackPanel>
+                        </Border>
+
+                        <Border x:Name="DiagnosticsSection" Style="{StaticResource Card}">
+                            <StackPanel>
+                                <TextBlock Text="DIAGNOSTICS" Style="{DynamicResource Text.Section}"/>
+                                <TextBlock x:Name="HealthSummaryText" Style="{DynamicResource Text.Subtitle}" Margin="0,0,0,8"
+                                           Text="Run a health check to verify vJoy and Bluetooth."/>
+                                <TextBlock x:Name="VJoyStatusText" Style="{DynamicResource Text.Mono}" Margin="0,0,0,8"/>
+                                <WrapPanel Margin="0,4,0,0">
+                                    <Button Content="Health check" Style="{StaticResource Button.Primary}" Click="RunHealthCheckButton_Click"/>
+                                    <Button Content="Copy report" Style="{StaticResource Button.Secondary}" Click="CopyReportButton_Click"/>
+                                    <Button Content="Open logs" Style="{StaticResource Button.Secondary}" Click="OpenLogFolderButton_Click"/>
+                                </WrapPanel>
+                            </StackPanel>
+                        </Border>
+
+                        <Border x:Name="SessionLogSection" Style="{StaticResource Card}" Margin="0">
+                            <StackPanel>
+                                <TextBlock Text="SESSION LOG" Style="{DynamicResource Text.Section}"/>
+                                <Grid Height="140" Margin="0,8,0,0">
+                                    <TextBox x:Name="LogBox" IsReadOnly="True" TextWrapping="Wrap"
+                                             VerticalScrollBarVisibility="Auto" AcceptsReturn="True"
+                                             FontFamily="{StaticResource Font.Mono}" FontSize="12"
+                                             Background="{DynamicResource Brush.Card}"
+                                             Foreground="{DynamicResource Brush.Foreground}"
+                                             BorderBrush="{DynamicResource Brush.CardBorder}" BorderThickness="1"/>
+                                    <Button Content="Clear view" Style="{StaticResource Button.Ghost}" HorizontalAlignment="Right" VerticalAlignment="Top"
+                                            Margin="8" Click="ClearLogViewButton_Click"/>
+                                </Grid>
+                            </StackPanel>
+                        </Border>
+
+                    </StackPanel>
+                </ScrollViewer>
+            </TabItem>
+        </TabControl>
     </Grid>
 </Window>
