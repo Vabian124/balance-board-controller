@@ -1,3 +1,5 @@
+using WiimoteLib;
+
 namespace BalanceBoard.Core.Services;
 
 /// <summary>
@@ -27,6 +29,9 @@ public static class ConnectionFlowLogger
             isBalanceBoard
                 ? $"[CONNECT] HID success id={deviceId ?? "unknown"} (balance board)"
                 : $"[CONNECT] HID connected id={deviceId ?? "unknown"} but device is NOT a balance board");
+
+    public static void LogExtensionType(Action<string>? log, ExtensionType type) =>
+        log?.Invoke($"[CONNECT] {BalanceBoardProtocol.FormatExtensionDiagnostic(type)}");
 
     public static void LogHidFailure(Action<string>? log, int index, string reason) =>
         log?.Invoke($"[CONNECT] HID failed index={index}: {reason}");

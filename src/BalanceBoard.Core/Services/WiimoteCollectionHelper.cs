@@ -41,8 +41,7 @@ internal static class WiimoteCollectionHelper
             {
                 try
                 {
-                    wii.Connect();
-                    wii.SetLEDs(true, false, false, false);
+                    BalanceBoardProtocol.WakeDeviceSession(wii, log);
                     woke++;
                 }
                 catch (Exception ex)

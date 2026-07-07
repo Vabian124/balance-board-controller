@@ -2,7 +2,9 @@
 
 Technical reference for technicians debugging **RVL-WBC-01** connectivity in Balance Board Controller. Covers Bluetooth pairing, HID/L2CAP layers, report formats, and how this repo drives the board via **WiimoteLib** + **32feet.NET**.
 
-**Primary sources:** [WiiBrew — Wii Balance Board](https://www.wiibrew.org/wiki/Wii_Balance_Board), [WiiBrew — Wiimote](https://www.wiibrew.org/wiki/Wiimote), [BrianPeek/lshachar WiimoteLib](https://github.com/lshachar/WiimoteLib), [WiiBalanceWalker reference](../reference/WiiBalanceWalker/FormBluetooth.cs), Nintendo WBC accessory manual (calibration concepts).
+> **Attribution:** Protocol facts below are drawn primarily from [WiiBrew — Wii Balance Board](https://www.wiibrew.org/wiki/Wii_Balance_Board), maintained in memory of Ben **"bushing"** Byer and the homebrew reverse-engineering community. This document maps WiiBrew’s wire-level description to what **WiimoteLib** and this app actually send on Windows HID.
+
+**Primary sources:** [WiiBrew — Wii Balance Board](https://www.wiibrew.org/wiki/Wii_Balance_Board), [WiiBrew — Wiimote](https://www.wiibrew.org/wiki/Wiimote), [drhugh / WiiBrew extension init notes](https://www.wiibrew.org/wiki/Wiimote#Extension_controllers), [BrianPeek/lshachar WiimoteLib](https://github.com/lshachar/WiimoteLib), [WiiBalanceWalker reference](../reference/WiiBalanceWalker/FormBluetooth.cs), **Nintendo Revolution SDK — Wii Balance Board Accessory Programming Manual** (RVL-06-0345-001-E, v1.3, Mar 2009; user-supplied `WBC.pdf`).
 
 ---
 
@@ -12,7 +14,7 @@ Technical reference for technicians debugging **RVL-WBC-01** connectivity in Bal
 |-------|-------|
 | Bluetooth friendly name | `Nintendo RVL-WBC-01` |
 | USB HID VID/PID (Wiimote family) | `0x057E` / `0x0306` (WiimoteLib filter) |
-| Extension ID (register `0xA400FA`, decrypted) | `0x0402` → `0x2A2C` (Balance Board) |
+| Extension ID register | `0xA400FA` (6-byte read; encrypted half-word **`0x0402`**, decrypted **`0x2A2C`**) |
 | Protocol family | Same as Wiimote — extension controller permanently attached |
 
 The board exposes standard Bluetooth HID SDP records like a Wiimote. On **Windows x64**, applications do **not** open L2CAP sockets directly; the stack exposes a **HID device path** (`\\?\HID#...`) consumed via `CreateFile` + `HidD_SetOutputReport` / async read (WiimoteLib approach).
@@ -69,6 +71,22 @@ After **one successful permanent pair**, reconnection **usually** works by:
 
 LabChart / Home Assistant / wiiweigh document the same pattern: pair once with SYNC; later wake with power button.
 
+**Nintendo policy (WBC.pdf §2.2):** the board bonds to **exactly one** host at a time; pairing with a new host overwrites the previous bond. The board always occupies **Player 4** on a Wii; plan for up to three Wii Remotes alongside it.
+
+### 2.3 Status vs pairing (Windows confusion)
+
+| Layer | What Windows shows | What app needs |
+|-------|-------------------|----------------|
+| **ACL / pairing** | Settings → Bluetooth: “Connected” or “Paired” | Bond + HID service enabled |
+| **HID enumeration** | Device Manager → Human Interface Devices | `SetupDiEnumDeviceInterfaces` finds `VID_057E&PID_0306` |
+| **HID session** | (not shown) | `CreateFile` on HID path, async input loop active |
+| **Wiimote handshake** | (not shown) | Status report → extension init (`0x55`) → report mode `0x34` continuous |
+| **Live data** | (not shown) | Input reports `0x34` with extension bytes updating |
+
+**Windows “Connected” does not guarantee weight data.** It often means the Bluetooth link or pairing record exists while the board is **flashing** (discovery / failed reconnect) or HID is open but **extension init / data reporting** never completed.
+
+At the L2CAP level (WiiBrew): control PSM `0x11`, data PSM `0x13`. Windows abstracts this behind the HID driver.
+
 ### 2.4 Host adapter MAC stability
 
 Windows **classic Bluetooth** adapters normally expose a **stable** `BluetoothRadio.LocalAddress` for pairing. Some USB dongles or driver resets can change the reported MAC; **BLE privacy / random addresses apply to peripherals**, not typically the host BR/EDR address used for Wii PIN pairing.
@@ -78,19 +96,6 @@ This app stores `LastBluetoothAdapterMac` in `settings.json` after a successful 
 1. Log `[CONNECT] Bluetooth adapter XX:XX:…`
 2. If the MAC differs from saved → log *Adapter address changed* and escalate QuickReconnect to **full pairing** (SYNC may be required).
 3. After 3 failed HID-only recovery attempts, run a **light re-pair** round automatically.
-
-
-| Layer | What Windows shows | What app needs |
-|-------|-------------------|----------------|
-| **ACL / pairing** | Settings → Bluetooth: “Connected” or “Paired” | Bond + HID service enabled |
-| **HID enumeration** | Device Manager → Human Interface Devices | `SetupDiEnumDeviceInterfaces` finds `VID_057E&PID_0306` |
-| **HID session** | (not shown) | `CreateFile` on HID path, async input loop active |
-| **Wiimote handshake** | (not shown) | Status report → extension init → report mode `0x34` continuous |
-| **Live data** | (not shown) | Input reports `0x34` with extension bytes updating |
-
-**Windows “Connected” does not guarantee weight data.** It often means the Bluetooth link or pairing record exists while the board is **flashing** (discovery / failed reconnect) or HID is open but **extension init / data reporting** never completed.
-
-At the L2CAP level (WiiBrew): control PSM `0x11`, data PSM `0x13`. Windows abstracts this behind the HID driver.
 
 ---
 
@@ -114,6 +119,15 @@ This repo logs: `[DISCONNECT] HID session stale — no balance readings (board m
 
 ## 4. HID report formats
 
+### 4.0 Report modes (input)
+
+| Report ID | Extension bytes | Use |
+|-----------|-----------------|-----|
+| **`0x32`** | 8 (weight only: TR, BR, TL, BL) | Sufficient for load cells; no battery byte in stream |
+| **`0x34`** | 19 (weight + temp + battery + padding) | **This repo** — continuous weight + battery in one report |
+
+WiiBrew: following extension connect/disconnect, **data reporting is disabled** until the host sends a new reporting-mode command (`0x12`).
+
 ### 4.1 Output reports (host → board)
 
 WiimoteLib sends **22-byte HID output reports** via `WriteReport` / `HidD_SetOutputReport`. Report ID is `mBuff[0]`. Bit 0 of byte 1 = rumble; bit 2 (`0x04`) = ON flag for several commands.
@@ -134,7 +148,7 @@ Byte:  0     1     2
             ^^^^ continuous (0x04) + rumble off
 ```
 
-WiimoteLib **forces** `ButtonsExtension` (`0x34`) for balance boards even if the app passes `InputReport.IRAccel` (`BalanceBoardConnection` line 128).
+WiimoteLib **forces** `ButtonsExtension` (`0x34`) for balance boards. This repo calls `BalanceBoardProtocol.ApplyContinuousWeightReports` explicitly after connect and wake.
 
 **Status request:**
 
@@ -142,16 +156,25 @@ WiimoteLib **forces** `ButtonsExtension` (`0x34`) for balance boards even if the
 0x15  0x00
 ```
 
-**Extension init writes** (during `InitializeExtension`):
+**Extension init writes** (during `InitializeExtension` — **PC must use `0x55`, not Wii `0xAA`**):
+
+| Step | Register | Value | Notes |
+|------|----------|-------|-------|
+| 1 | `0xA400F0` | **`0x55`** | Initialize extension (no encryption) |
+| 2 | `0xA400FB` | `0x00` | |
+| 3 | `0xA400FA` | (read 6 bytes) | Type ID; balance board → encrypted **`0x0402`** |
+| 4 | `0xA40020` | (read 32 bytes) | Per-sensor calibration |
 
 ```
-WriteMemory → 0x04A400F0 ← 0x55
+WriteMemory → 0x04A400F0 ← 0x55    ← NOT 0xAA (Wii enables encryption; PC must skip)
 WriteMemory → 0x04A400FB ← 0x00
 ReadMemory  → 0x04A400FA (6 bytes, type ID)
 ReadMemory  → 0x04A40020 (32 bytes, calibration)
 ```
 
-WiiBrew notes: balance board init on real Wii writes additional `0xF1` bytes; PC stacks often work without the full Wii sequence, but incomplete init can yield **disabled load sensors** until power cycle.
+**Critical (WiiBrew / drhugh):** A real Wii writes `0xAA` to `0xA400F0` to enable extension encryption. **Third-party PC interfaces must omit that step** and write **`0x55` only**. Writing `0xAA` on PC can leave load sensors **disabled** until power cycle.
+
+WiiBrew notes: balance board init on real Wii writes additional `0xF1` bytes; PC stacks (WiimoteLib) work without the full Wii sequence when `0x55` init is correct.
 
 ### 4.2 Input report `0x34` — Core Buttons + 19 extension bytes
 
@@ -164,13 +187,15 @@ WiiBrew notes: balance board init on real Wii writes additional `0xF1` bytes; PC
 
 | Ext offset | Content |
 |------------|---------|
-| 0–1 | Top Right raw |
+| 0–1 | Top Right raw (big-endian uint16) |
 | 2–3 | Bottom Right raw |
 | 4–5 | Top Left raw |
 | 6–7 | Bottom Left raw |
 | 8 | Temperature |
-| 9 | `0x00` |
+| 9 | `0x00` (padding) |
 | 10 | Battery raw |
+
+**Core buttons** (first 2 bytes after report ID): Button **A** (front power) = **bit 3 of byte 2** (Wiimote button map). Player **LED 1** is set via output report `0x11`.
 
 **Example** (from ESPHome/WiiBrew trace, trimmed):
 
@@ -195,7 +220,7 @@ Per sensor (TR, BR, TL, BL): three **big-endian uint16** reference raw values at
 
 **Total weight in WiimoteLib:** sum of four sensor kg values **divided by 4** (historical averaging bug vs sum — see [WiimoteLib issue #6](https://github.com/BrianPeek/WiimoteLib/issues/6)). `BalanceBoardConnection` reads `bb.WeightKg` as provided by the DLL.
 
-**Temperature compensation** (official Wii Fit): optional factor using byte 8 vs reference temp at `0xA40060` — not implemented in this app's core path.
+**Temperature compensation** (WBC.pdf §3.7 / §4.2 via `WBCGetTGCWeight`; WiiBrew byte 8 vs `0xA40060` reference) — not implemented in this app's core path. Gaming lean uses relative corner deltas, not certified scale display.
 
 ### 4.4 Tare in this app
 
@@ -210,6 +235,8 @@ This is **WiimoteLib software zero-point** (offsets processed values in the libr
 ---
 
 ## 5. WiimoteLib connect sequence (what actually runs)
+
+**Verified against [lshachar/WiimoteLib `Wiimote.cs`](https://github.com/lshachar/WiimoteLib/blob/master/WiimoteCS/WiimoteLib/Wiimote.cs):** `InitializeExtension()` writes **`0x55`** to `REGISTER_EXTENSION_INIT_1` (`0x04A400F0`) — **not** `0xAA`. This matches WiiBrew’s PC guidance.
 
 When `BalanceBoardConnection.TryConnectDevice` calls `_device.Connect()`:
 
@@ -228,11 +255,12 @@ When `BalanceBoardConnection.TryConnectDevice` calls `_device.Connect()`:
 7. Return to app code
 ```
 
-App then **again** calls:
+App then **again** (via `BalanceBoardProtocol.ApplyContinuousWeightReports`):
 
 ```
-SetReportType(IRAccel, true)  → internally forced to 0x34 continuous
-SetLEDs(true, false, false, false)
+SetReportType(ButtonsExtension, true)  → 0x12 0x04 0x34
+ConnectionFlowLogger.LogExtensionType    → [CONNECT] extension id=0x0402 ...
+SetLEDs(true, false, false, false)     → player 1 LED solid
 ```
 
 **Important race:** `Connect()` returns after step 5–6 **synchronously** for status, but extension init may still be completing via nested `BeginAsyncRead` calls. `IsConnected = true` is set **before any `0x34` weight report** is verified.
@@ -248,7 +276,8 @@ SetLEDs(true, false, false, false)
 | File | Role |
 |------|------|
 | `BluetoothPairingService.cs` | 32feet inquiry, PIN pair, HID service enable |
-| `WiimoteCollectionHelper.cs` | HID discovery, wake probe, safe release |
+| `WiimoteCollectionHelper.cs` | HID discovery, wake probe (`BalanceBoardProtocol.WakeDeviceSession`), safe release |
+| `BalanceBoardProtocol.cs` | WiiBrew constants, `0x12 0x04 0x34` helper, extension ID logging |
 | `BalanceBoardConnection.cs` | WiimoteLib connect, readings, tare |
 | `BalanceBoardSession.cs` | Intents, health watchdog, BT recovery loop |
 | `ConnectionWorker.cs` | STA thread — all Wiimote/BT calls |
@@ -260,13 +289,19 @@ SetLEDs(true, false, false, false)
 | **QuickReconnect** | `WakePairedDevices` → settle 500ms → HID `Connect` |
 | **PairAndConnect** | Light pair (no stale remove) OR up to 4 full pair rounds → HID `Connect` |
 
-**WakePairedDevices** (`WiimoteCollectionHelper.WakeDevices`):
+**WakePairedDevices** (`WiimoteCollectionHelper.WakeDevices` → `BalanceBoardProtocol.WakeDeviceSession`):
 
 ```
-FindAllWiimotes → foreach: Connect() → SetLEDs(1,0,0,0) → Disconnect()
+FindAllWiimotes → foreach:
+  Connect()                    → WiimoteLib status + 0x55 extension init + calib
+  Log extension id=0x0402
+  SetReportType(ButtonsExtension, continuous) → 0x12 0x04 0x34
+  SetLEDs(1,0,0,0)
+  Sleep WakeProbeHoldMs (500 ms)               → keep session alive before disconnect
+→ ReleaseAll (disconnect + drain)
 ```
 
-WiiBalanceWalker does the same after pairing so boards **do not sleep and vanish from HID**. This repo **intentionally** does not leave wake handles open (comment: race crashes WiimoteLib).
+WiiBalanceWalker does a similar wake after pairing. This repo **intentionally** does not leave wake handles open (comment: race crashes WiimoteLib).
 
 ### 6.3 Session health (v1.2+)
 
@@ -279,12 +314,14 @@ WiiBalanceWalker does the same after pairing so boards **do not sleep and vanish
 
 On stale: disconnect HID, `StartBluetoothRecovery()` → background loop with exponential backoff (`ReconnectInitialDelayMs` 1s → max 30s), calling `TryQuickReconnect` (wake + HID only, **no re-pair**).
 
-### 6.4 Log markers to grep
+### 6.5 Log markers to grep
 
 ```
 [CONNECT] Intent=
 [CONNECT] HID discovery:
 [CONNECT] HID attempt / success / failed
+[CONNECT] extension id=0x0402
+[CONNECT] Report mode 12 04 34
 [CONNECT] First balance reading
 [CONNECT] Flow complete:
 [CONNECT] Bluetooth recovery started
@@ -355,13 +392,19 @@ For **BT reconnect worker** (`BalanceBoardSession.BluetoothRecoveryLoop` and rel
 - If `IsConnected` HID but unhealthy > grace: **force** `Disconnect` + drain (`HidCallbackDrainMs`) before retry.
 - Never run concurrent `WiimoteCollection` probes during active session connect.
 
-### Code-level fixes (recommended)
+### Code-level fixes (implemented in Core)
 
-1. **Gate `TryConnectDevice` success** on first valid balance reading OR explicit extension-init-complete flag (WiimoteLib does not expose one — timeout wait for `WiimoteChanged` with BB type).
-2. **Upgrade recovery loop**: after N failed QuickReconnects, call `PairDiscoverableBoard(false)` before next HID attempt.
-3. **WakePairedDevices**: add `SetReportType(..., true)` before disconnect (mirror full session, not LED-only).
-4. **Distinguish** `BalanceBoardConnection.IsConnected` (HID handle) from session healthy in UI labels.
-5. **Detect flashing** indirectly: HID open + no `0x34` within grace → status *“Board paired but not streaming — press power or SYNC.”*
+| Fix | Status |
+|-----|--------|
+| Wake probe sends `0x12 0x04 0x34` + 500 ms hold before disconnect | **Done** (`BalanceBoardProtocol.WakeDeviceSession`) |
+| Connect path re-asserts continuous `0x34` after WiimoteLib init | **Done** (`BalanceBoardConnection`) |
+| Log extension ID `0x0402` on connect | **Done** (`ConnectionFlowLogger.LogExtensionType`) |
+| Recovery escalates to light re-pair after N HID failures | **Done** (`RecoveryPairAfterAttempts` = 3) |
+| Gate success on first balance reading (session health) | **Done** (`IsSessionHealthy`) |
+| Expose extension-init-complete flag from WiimoteLib | Not available — library has no public API |
+| `WPAD_BLCMD_UPDATE_TEMP` before tare (WBC.pdf §3.5) | Open — not exposed in WiimoteLib |
+| `WBCGetTGCWeight` temp/gravity correction (WBC.pdf §3.7) | Open — not needed for lean/gaming output |
+| Battery-depleted all-zero press detection (WBC.pdf §6) | Open — no UI/diagnostic yet |
 
 ---
 
@@ -377,14 +420,14 @@ For **BT reconnect worker** (`BalanceBoardSession.BluetoothRecoveryLoop` and rel
 
 ## 10. Quick reference hex
 
-| Item | Hex |
-|------|-----|
-| Extension type (encrypted read) | `04 02` at `FA` |
-| Extension init | `F0←55`, `FB←00` |
+| Extension type (encrypted, FA read) | `04 02` |
+| Extension type (decrypted) | `2A 2C` |
+| Extension init (PC) | `F0←55`, `FB←00` — **never `F0←AA` on PC** |
 | Report mode | Output `12 04 34` → Input `34 ...` |
 | Load cells in ext bytes | 8 bytes: TR, BR, TL, BL (16-bit BE each) |
-| Calib 0kg TR offset in block | bytes `0x24–0x25` of calib read |
+| Calib 0 kg TR in 32-byte block | bytes `0x04–0x05` (WiimoteLib offsets) |
 | Button A (power) | Core button byte 2, bit 3 |
+| Player 1 LED | Output report `0x11` |
 
 ---
 
@@ -397,4 +440,99 @@ For **BT reconnect worker** (`BalanceBoardSession.BluetoothRecoveryLoop` and rel
 
 ---
 
-*Document generated for technician debugging. Recommend committing to the repo after review.*
+## 12. Nintendo SDK reference (WBC.pdf)
+
+> **Source:** *Revolution SDK — Wii Balance Board Accessory Programming Manual* (RVL-06-0345-001-E, **v1.3**, released 2009-03-27). User-supplied `WBC.pdf`. This is Nintendo’s **licensed-developer** API layer (`WPAD` + `WBC` libraries), not raw HID bytes. WiiBrew documents the wire protocol; this manual documents **official behavior and timing** that homebrew reverse-engineering confirmed independently.
+
+### 12.1 Wireless and sampling
+
+| Property | Value (WBC.pdf §2.1) |
+|----------|----------------------|
+| Link type | Wireless only (no wired fallback) |
+| Radio sample rate | **200 Hz** (same as Wii Remote) |
+| Balance sensor update rate | **60 Hz** (press values change at this rate) |
+| Meaningful quantity | **Delta from zero point**, not absolute `press[]` magnitude |
+
+### 12.2 Pairing policy (§2.2)
+
+- **Normal pairing:** simultaneous **SYNC** on board and host while a balance-board-capable application is running. Wii Menu cannot pair a balance board.
+- **One-to-one bond:** board stores **one** host; host stores **one** board. Re-pairing to another console **overwrites** the bond — original host must SYNC again.
+- **Player slot:** board always connects as **Player 4** (`WPAD_CHAN3`). Up to three Wii Remotes may coexist; a fourth remote is displaced when the board connects.
+
+This repo uses Windows **legacy PIN** (host MAC reversed) via 32feet — same permanent-sync model, different API surface than `WPADInit`.
+
+### 12.3 Official connect / init flow (§3.1, Figure 3-2)
+
+Nintendo’s `simple_wbc.c` sequence maps to HID concepts as follows:
+
+| Nintendo SDK step | HID / WiimoteLib equivalent in this repo |
+|-------------------|------------------------------------------|
+| `WPADInit` + connect callback | `Wiimote.Connect()` + status report `0x15` |
+| `WBCSetupCalibration()` on connect | WiimoteLib reads `0xA40020` (32-byte calib) during `InitializeExtension` |
+| `WPADControlDpd(..., WPAD_DPD_OFF)` | Not sent explicitly — PC gaming path does not use pointer/DPD |
+| `WPADSetDataFormat(..., WPAD_FMT_BALANCE_CHECKER)` | `SetReportType(ButtonsExtension, true)` → `0x12 0x04 0x34` |
+| `WPADControlBLC(..., WPAD_BLCMD_ON)` | Partially covered by `0x55` extension init + report mode; no separate BLC ON output in WiimoteLib |
+| `WPADRead` → `status.press[0..3]` | Input report `0x34` bytes 0–7 (TR, BR, TL, BL raw) |
+
+**Calibration load timing (§3.3):** `WBCSetupCalibration` returns quickly but completes in **~650 ms**. Nintendo retries up to **3 times** if `WBCGetCalibrationStatus` is false after 1 s, then shows a malfunction message. WiimoteLib loads calibration synchronously during extension init; this app logs `[CONNECT] extension id=0x0402` but does not re-run calib load on reconnect failure.
+
+### 12.4 Zero point and temperature (§3.5)
+
+Nintendo’s certified weighing path:
+
+1. User steps **off** the board.
+2. Host sends **`WPAD_BLCMD_UPDATE_TEMP`** (balance-board temperature refresh).
+3. Read temperature; if value is **127** or **-128**, retry UPDATE_TEMP (invalid reading).
+4. Wait **~200 ms** after temperature update (press values stabilize).
+5. Average each `press[i]` over **2 seconds** (**120 samples** at 60 Hz).
+6. Call `WBCSetZEROPoint(press_ave, 4)`.
+
+**This app:** `BalanceBoardConnection.Tare()` sets WiimoteLib `ZeroPoint.Reset` (software offset). `BalanceProcessor.Tare()` adds lean-processing offsets. **No** `UPDATE_TEMP` command is sent — acceptable for **relative lean / gaming**; not equivalent to Wii Fit–certified scale mode.
+
+### 12.5 Load conversion and corrections (§3.6–3.7, §4)
+
+- `WBCRead` converts raw `press[]` to **kg** using per-board calibration stored in firmware.
+- `WBCGetTGCWeight` applies **temperature** and **gravitational acceleration** (latitude) correction — Nintendo requires this for **displayed weight**.
+- **Hysteresis (§4.1):** sensors do not fully return to prior zero after load cycles — zero must be set **before each measurement**.
+- **Zero drift (§4.3):** output drifts over time; pre-shipment spec allows **≤100 g drift in ~20 s** after zero set.
+- **Stability check (§4.4):** over a 2 s window, if min/max deviate from average by more than **±0.3 kg**, treat measurement as unstable.
+
+WiimoteLib applies calib interpolation but **not** `WBCGetTGCWeight`. WiiBalanceWalker comments note the same limitation for absolute kg display.
+
+### 12.6 Battery (§6)
+
+| Condition | Behavior |
+|-----------|----------|
+| Battery below threshold | All four `press[]` values go to **zero** continuously; **wireless module still transmits** |
+| `WBCGetBatteryLevel` returns **0** | Prompt user to replace batteries |
+| UI flicker | Hardware may oscillate 0↔1 near depletion; Nintendo suggests dismissing “replace battery” only when level **≥110** (not ≥1) |
+
+Input report `0x34` byte 10 carries battery raw (WiiBrew). This app does not surface battery level in UI today.
+
+### 12.7 Operations check (§5) — not implemented
+
+Games licensed by Nintendo must offer a separate **Wii Balance Board Operations Check** mode: battery check → user steps off → zero set → user steps on (≥2 kg within 10 s) → verify **each corner** changes by ≥2 kg. Useful for diagnosing dead load cells; out of scope for the gaming-focused controller UI unless added to Diagnostics.
+
+---
+
+## 13. Codebase alignment vs WBC.pdf
+
+| WBC.pdf requirement | `BalanceBoardConnection` | `BluetoothPairingService` | `BalanceBoardSession` |
+|-----------------------|--------------------------|---------------------------|------------------------|
+| SYNC permanent pair | — | `PairDiscoverableBoard` + host MAC PIN | `PairAndConnect` intent |
+| Wake / reconnect without SYNC | `Connect()` on HID path | `WakePairedDevices` | `TryQuickReconnect`, recovery loop |
+| Extension init `0x55` (not `0xAA`) | Via WiimoteLib `Connect()` | — | — |
+| Report mode `0x34` continuous | `BalanceBoardProtocol.ApplyContinuousWeightReports` | Wake probe uses same | Health waits for readings |
+| Load calibration from board | WiimoteLib read `0xA40020` | — | — |
+| `WBCSetupCalibration` retry / 650 ms | Implicit in WiimoteLib; no retry loop | — | — |
+| `WPAD_BLCMD_UPDATE_TEMP` before tare | **Not implemented** | — | Auto-tare on connect only resets software zero |
+| `WBCGetTGCWeight` corrections | **Not implemented** | — | Lean % uses relative deltas |
+| Player 4 / LED 1 | `SetLEDs(true,false,false,false)` | Wake probe same | — |
+| Battery-depleted all-zero press | **Not detected** | — | Could masquerade as “connected, zero weight” |
+| 60 Hz sensor / 200 Hz radio | WiimoteLib async read; session poll 50 ms | — | `SessionPollIntervalMs` = 50 |
+
+**Critical fixes applied (this pass + Wiibrew audit):** `BalanceBoardProtocol` centralizes `0x34` continuous mode and wake probe; extension ID `0x0402` logged; wake hold `WakeProbeHoldMs` prevents sleep-before-reconnect.
+
+---
+
+*WiiBrew attribution: Ben "bushing" Byer and the Wii homebrew community. Nintendo WBC.pdf: RVL-06-0345-001-E v1.3. Last aligned with Core `BalanceBoardProtocol` + WiimoteLib `0x55` init audit.*

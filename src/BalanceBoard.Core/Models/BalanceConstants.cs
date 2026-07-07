@@ -29,6 +29,8 @@ public static class BalanceConstants
     public const int HidCallbackDrainMs = 1200;
     public const int PostPairSettleMs = 1000;
     public const int PostWakeSettleMs = 500;
+    /// <summary>Hold wake HID session (report mode + LED) before disconnect so the board stays paired and awake.</summary>
+    public const int WakeProbeHoldMs = 500;
     public const int BluetoothFinishWaitMs = 2000;
     public const int PairRoundDelayMs = 1500;
     public const int BluetoothInquirySeconds = 6;

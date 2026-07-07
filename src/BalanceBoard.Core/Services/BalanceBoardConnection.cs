@@ -123,12 +123,19 @@ public sealed class BalanceBoardConnection : IBalanceBoardConnection
             _device = device;
             ConnectedDeviceId = deviceId;
             _device.WiimoteChanged += OnWiimoteChanged;
+            // WiimoteLib Connect: status → extension init (0xA400F0←0x55, not 0xAA) → calib read → 0x34 mode.
             _device.Connect();
-            // Continuous reports keep the dashboard and vJoy stream alive between lean changes.
-            _device.SetReportType(InputReport.IRAccel, true);
-            _device.SetLEDs(true, false, false, false);
 
-            var isBalanceBoard = _device.WiimoteState.ExtensionType == ExtensionType.BalanceBoard;
+            var extensionType = _device.WiimoteState.ExtensionType;
+            var isBalanceBoard = extensionType == ExtensionType.BalanceBoard;
+            if (isBalanceBoard)
+            {
+                ConnectionFlowLogger.LogExtensionType(ConnectLog, extensionType);
+                // Re-assert continuous 0x34 after init (WiiBrew: reporting disabled until mode reset).
+                BalanceBoardProtocol.ApplyContinuousWeightReports(_device, ConnectLog);
+            }
+
+            _device.SetLEDs(true, false, false, false);
             ConnectionFlowLogger.LogHidSuccess(ConnectLog, ConnectedDeviceId, isBalanceBoard);
 
             if (!isBalanceBoard)
