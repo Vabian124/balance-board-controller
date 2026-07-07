@@ -55,7 +55,7 @@
             </Grid.ColumnDefinitions>
 
             <!-- Live balance -->
-            <Border Grid.Column="0" Style="{StaticResource Card}" Margin="0,0,12,0">
+            <Border x:Name="BalancePanel" Grid.Column="0" Style="{StaticResource Card}" Margin="0,0,12,0">
                 <Grid>
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto"/>
@@ -95,15 +95,20 @@
             <ScrollViewer Grid.Column="1" VerticalScrollBarVisibility="Auto">
                 <StackPanel>
 
-                    <Border Style="{StaticResource Card}">
+                    <Border x:Name="ProfileCard" Style="{StaticResource Card}">
                         <StackPanel>
                             <TextBlock Text="PROFILE" Style="{StaticResource Text.Section}"/>
-                            <ComboBox x:Name="ProfileCombo" Margin="0,0,0,8" SelectionChanged="ProfileCombo_SelectionChanged"/>
-                            <UniformGrid Columns="2" Margin="0,0,0,8">
+                            <ComboBox x:Name="ProfileCombo" Margin="0,0,0,8" SelectionChanged="ProfileCombo_SelectionChanged"
+                                      ToolTip="Output profile — presets configure vJoy and keyboard bindings."/>
+                            <TextBlock x:Name="ProfileHintText" Style="{StaticResource Text.Subtitle}" Margin="0,0,0,8"
+                                       Visibility="Collapsed" TextWrapping="Wrap"/>
+                            <UniformGrid Columns="3" Margin="0,0,0,8">
                                 <Button x:Name="GamePresetButton" Content="Games" Style="{StaticResource Button.Secondary}" Margin="0,0,4,4" Click="GamePreset_Click"/>
+                                <Button x:Name="MinecraftPresetButton" Content="Minecraft" Style="{StaticResource Button.Secondary}" Margin="0,0,4,4" Click="MinecraftPreset_Click"
+                                        ToolTip="vJoy Device 1 in Controlify: lean = left stick (move), jump = A button."/>
                                 <Button x:Name="DesktopPresetButton" Content="Desktop" Style="{StaticResource Button.Secondary}" Margin="0,0,0,4" Click="KeyboardPreset_Click"/>
                                 <Button x:Name="PedalPresetButton" Content="Pedals" Style="{StaticResource Button.Secondary}" Margin="0,0,4,0" Click="PedalPreset_Click"/>
-                                <Button x:Name="MousePresetButton" Content="Mouse" Style="{StaticResource Button.Secondary}" Click="MousePreset_Click"/>
+                                <Button x:Name="MousePresetButton" Content="Mouse" Style="{StaticResource Button.Secondary}" Margin="0,0,4,0" Click="MousePreset_Click"/>
                             </UniformGrid>
                             <CheckBox x:Name="AutoConnectCheck" Content="Connect automatically on launch"
                                       Checked="SettingChanged" Unchecked="SettingChanged"/>

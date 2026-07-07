@@ -251,6 +251,44 @@ public class BalanceProcessorTests
 
         Assert.True(jumped.Jump);
     }
+
+    [Fact]
+    public void Process_map_jump_to_vjoy_button_when_enabled()
+    {
+        var processor = new BalanceProcessor();
+        var settings = new AppSettings
+        {
+            JumpWeightThresholdKg = 1f,
+            JumpHoldSeconds = 2,
+            MapJumpToVJoyButton = true,
+        };
+        var onBoard = new BalanceReading
+        {
+            WeightKg = 60,
+            TopLeftKg = 15,
+            TopRightKg = 15,
+            BottomLeftKg = 15,
+            BottomRightKg = 15,
+            IsBalanceBoard = true,
+        };
+        var air = new BalanceReading
+        {
+            WeightKg = 0.2f,
+            TopLeftKg = 0.2f,
+            TopRightKg = 0.2f,
+            BottomLeftKg = 0.2f,
+            BottomRightKg = 0.2f,
+            IsBalanceBoard = true,
+        };
+
+        processor.Tare();
+        processor.Process(onBoard, settings);
+        var jumped = processor.Process(air, settings);
+
+        Assert.True(jumped.Jump);
+        Assert.True(jumped.VJoyButton1);
+        Assert.False(jumped.ButtonA);
+    }
 }
 
 public class ActionPresetsTests
@@ -265,6 +303,20 @@ public class ActionPresetsTests
         Assert.True(settings.SendCenterOfGravityToAxes);
         Assert.False(settings.SendLoadSensorsToAxes);
         Assert.True(settings.DisableKeyboardActions);
+        Assert.False(settings.MapJumpToVJoyButton);
+    }
+
+    [Fact]
+    public void ApplyMinecraft_maps_jump_to_vjoy_and_move_axes()
+    {
+        var settings = new AppSettings();
+        ActionPresets.ApplyMinecraft(settings);
+        Assert.Equal(ActionPresets.Minecraft, settings.ActiveProfileName);
+        Assert.True(settings.EnableVJoy);
+        Assert.True(settings.SendCenterOfGravityToAxes);
+        Assert.True(settings.MapJumpToVJoyButton);
+        Assert.True(settings.DisableKeyboardActions);
+        Assert.Equal(SensitivityLevel.Medium, settings.SensitivityLevel);
     }
 
     [Fact]

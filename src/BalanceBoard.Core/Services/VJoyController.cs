@@ -112,7 +112,7 @@ public sealed class VJoyController : IGameControllerOutput
 
         try
         {
-            WriteAxes(data.JoyX, data.JoyY, data.JoyZ, data.JoyRx, data.JoyRy, data.JoyRz, data.ButtonA);
+            WriteAxes(data.JoyX, data.JoyY, data.JoyZ, data.JoyRx, data.JoyRy, data.JoyRz, data.VJoyButton1);
         }
         catch (Exception ex)
         {

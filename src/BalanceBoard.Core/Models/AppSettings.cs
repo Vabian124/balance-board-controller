@@ -10,6 +10,8 @@ public sealed class AppSettings
     public bool SendCenterOfGravityToAxes { get; set; } = true;
     public bool SendLoadSensorsToAxes { get; set; }
     public bool DisableKeyboardActions { get; set; } = true;
+    /// <summary>When true, one-foot jump detection drives vJoy button 1 (gamepad A).</summary>
+    public bool MapJumpToVJoyButton { get; set; }
     public uint VJoyDeviceId { get; set; } = 1;
     public bool AutoConnectOnStartup { get; set; } = true;
     public bool HasConnectedBefore { get; set; }

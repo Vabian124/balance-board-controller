@@ -67,6 +67,10 @@ public sealed class BalanceProcessor
             ref _jumpTime);
 
         var onBoard = weight > BalanceConstants.WeightOnBoardThresholdKg;
+        var vJoyButton1 = settings.MapJumpToVJoyButton
+            ? jump || reading.ButtonA
+            : reading.ButtonA;
+
         if (!onBoard)
         {
             return new ProcessedBalance
@@ -76,6 +80,7 @@ public sealed class BalanceProcessor
                 BalanceY = BalanceConstants.BalanceCenterPercent,
                 Jump = jump,
                 ButtonA = reading.ButtonA,
+                VJoyButton1 = vJoyButton1,
             };
         }
 
@@ -128,6 +133,7 @@ public sealed class BalanceProcessor
             JoyRy = joyRy,
             JoyRz = joyRz,
             ButtonA = reading.ButtonA,
+            VJoyButton1 = vJoyButton1,
         };
     }
 

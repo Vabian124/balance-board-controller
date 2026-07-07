@@ -24,4 +24,6 @@ public sealed class ProcessedBalance
     public short JoyRy { get; init; }
     public short JoyRz { get; init; }
     public bool ButtonA { get; init; }
+    /// <summary>vJoy button 1 — physical board A and/or jump when <see cref="AppSettings.MapJumpToVJoyButton"/>.</summary>
+    public bool VJoyButton1 { get; init; }
 }
