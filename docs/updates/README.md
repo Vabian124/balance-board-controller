@@ -6,7 +6,8 @@ Short index for AI assistants. User-facing history: [CHANGELOG.md](../../CHANGEL
 
 | Commit | Summary |
 |--------|---------|
-| [`83d3fb4`](https://github.com/Vabian124/balance-board-controller/commit/83d3fb4) | **Zero-touch BT wake** — wake probe before every reconnect/pair, radio-aware recovery, child-friendly status text |
+| [`cec9107`](https://github.com/Vabian124/balance-board-controller/commit/cec9107) | **Dashboard UI revamp** — collapsible session log (default collapsed, last-line preview), visual-first Dashboard layout, `SessionLogExpanded` setting |
+| [`b39e435`](https://github.com/Vabian124/balance-board-controller/commit/b39e435) | Agent log entry for zero-touch BT wake |
 | [`a53b292`](https://github.com/Vabian124/balance-board-controller/commit/a53b292) | **WiiBrew protocol** — `BalanceBoardProtocol`, wake/connect `0x34`, extension `0x0402` logs, CONNECTION_PROTOCOL reference |
 | [`a59ea89`](https://github.com/Vabian124/balance-board-controller/commit/a59ea89) | **UI + BT adapter** — pinned live log, Fine tuning sliders on Advanced tab, adapter MAC change detection + auto re-pair |
 | [`f025900`](https://github.com/Vabian124/balance-board-controller/commit/f025900) | **BT recovery** — truthful HID health, auto-reconnect after radio drop without SYNC, UI reconnecting states |

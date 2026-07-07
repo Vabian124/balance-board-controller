@@ -31,6 +31,8 @@ public sealed class AppSettings
     public double JumpHoldSeconds { get; set; } = BalanceConstants.JumpHoldSeconds;
     public JumpLevel JumpLevel { get; set; } = JumpLevel.Normal;
     public UiDetailLevel UiDetailLevel { get; set; } = UiDetailLevel.Standard;
+    /// <summary>When true, the pinned session log expander is open.</summary>
+    public bool SessionLogExpanded { get; set; }
     public bool InvertX { get; set; }
     public bool InvertY { get; set; }
     public ThemePreference ThemePreference { get; set; } = ThemePreference.System;

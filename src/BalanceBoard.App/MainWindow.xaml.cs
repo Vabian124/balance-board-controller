@@ -22,6 +22,7 @@ public partial class MainWindow : Window
     private bool _connectInProgress;
     private CancellationTokenSource? _connectCts;
     private string _lastHealthReport = string.Empty;
+    private string _lastLogLine = string.Empty;
 
     public MainWindow(StartupOptions startupOptions, FileLogService? fileLog = null, int competingProcessesStopped = 0)
     {
@@ -157,6 +158,8 @@ public partial class MainWindow : Window
         {
             LogBox.AppendText(line + Environment.NewLine);
             LogBox.ScrollToEnd();
+            _lastLogLine = line;
+            UpdateLogPreview();
         });
     }
 
@@ -218,6 +221,9 @@ public partial class MainWindow : Window
 
         VJoyDeviceCombo.SelectedItem = _settings.VJoyDeviceId;
         LoadActionBindingsFromSettings();
+        _suppressSettingEvents = true;
+        SessionLogExpander.IsExpanded = _settings.SessionLogExpanded;
+        UpdateSessionLogUi();
         _suppressSettingEvents = false;
     }
 
@@ -443,6 +449,8 @@ public partial class MainWindow : Window
         UpdateSensitivityModeUi();
         DiagnosticsSection.Visibility = advanced ? Visibility.Visible : Visibility.Collapsed;
         LiveLogPanel.Visibility = simple ? Visibility.Collapsed : Visibility.Visible;
+        ShowLogButton.Visibility = simple ? Visibility.Collapsed : Visibility.Visible;
+        UpdateSessionLogUi();
 
         if (simple)
         {
@@ -751,6 +759,8 @@ public partial class MainWindow : Window
         {
             _settings.UiDetailLevel = (UiDetailLevel)DetailLevelCombo.SelectedIndex;
         }
+
+        _settings.SessionLogExpanded = SessionLogExpander.IsExpanded;
 
         _settings.InvertX = InvertXCheck.IsChecked == true;
         _settings.InvertY = InvertYCheck.IsChecked == true;
@@ -1175,7 +1185,38 @@ public partial class MainWindow : Window
         Process.Start(new ProcessStartInfo(_fileLog.LogDirectory) { UseShellExecute = true });
     }
 
-    private void ClearLogViewButton_Click(object sender, RoutedEventArgs e) => LogBox.Clear();
+    private void ClearLogViewButton_Click(object sender, RoutedEventArgs e)
+    {
+        LogBox.Clear();
+        _lastLogLine = string.Empty;
+        UpdateLogPreview();
+    }
+
+    private void ShowLogButton_Click(object sender, RoutedEventArgs e)
+    {
+        SessionLogExpander.IsExpanded = !SessionLogExpander.IsExpanded;
+    }
+
+    private void SessionLogExpander_Changed(object sender, RoutedEventArgs e)
+    {
+        UpdateSessionLogUi();
+        SaveSettingsFromUi();
+    }
+
+    private void UpdateSessionLogUi()
+    {
+        var expanded = SessionLogExpander.IsExpanded;
+        ShowLogButton.Content = expanded ? "Hide log" : "Show log";
+        LogPreviewText.Visibility = expanded || string.IsNullOrEmpty(_lastLogLine)
+            ? Visibility.Collapsed
+            : Visibility.Visible;
+        UpdateLogPreview();
+    }
+
+    private void UpdateLogPreview()
+    {
+        LogPreviewText.Text = string.IsNullOrEmpty(_lastLogLine) ? string.Empty : $"— {_lastLogLine}";
+    }
 
     public void ForceShutdown()
     {

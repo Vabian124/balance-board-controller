@@ -19,7 +19,7 @@
         </Grid.RowDefinitions>
 
         <!-- Title bar -->
-        <TextBlock Grid.Row="0" Text="Balance Board Controller" Style="{DynamicResource Text.Title}" Margin="0,0,0,12"/>
+        <TextBlock Grid.Row="0" Text="Balance Board Controller" Style="{DynamicResource Text.Title}" Margin="0,0,0,8"/>
 
         <!-- Tabbed content -->
         <TabControl x:Name="MainTabControl" Grid.Row="1" Style="{StaticResource TabControl.Main}">
@@ -31,29 +31,33 @@
                         <RowDefinition Height="*"/>
                     </Grid.RowDefinitions>
 
-                    <!-- Connection strip -->
-                    <Grid Grid.Row="0" Margin="0,0,0,12">
+                    <!-- Connection strip (compact) -->
+                    <Grid Grid.Row="0" Margin="0,0,0,8">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="*"/>
                             <ColumnDefinition Width="Auto"/>
                         </Grid.ColumnDefinitions>
 
-                        <StackPanel>
-                            <TextBlock x:Name="StatusText" Style="{DynamicResource Text.Subtitle}" Margin="0,0,0,8"
-                                       Text="Ready — click Connect when you're set."/>
-                            <StackPanel Orientation="Horizontal">
-                                <Border x:Name="ConnectionChip" Style="{StaticResource StatusChip}" Margin="0,0,8,0">
-                                    <TextBlock x:Name="ConnectionChipText" Text="Board: offline" FontSize="12"
+                        <DockPanel LastChildFill="True" VerticalAlignment="Center">
+                            <StackPanel Orientation="Horizontal" DockPanel.Dock="Right" VerticalAlignment="Center">
+                                <Border x:Name="ConnectionChip" Style="{StaticResource StatusChip}" Margin="8,0,8,0">
+                                    <TextBlock x:Name="ConnectionChipText" Text="Board: offline" FontSize="11"
                                                Foreground="{DynamicResource Brush.Foreground}"/>
                                 </Border>
                                 <Border x:Name="VJoyChip" Style="{StaticResource StatusChip}">
-                                    <TextBlock x:Name="VJoyChipText" Text="vJoy: …" FontSize="12"
+                                    <TextBlock x:Name="VJoyChipText" Text="vJoy: …" FontSize="11"
                                                Foreground="{DynamicResource Brush.Foreground}"/>
                                 </Border>
                             </StackPanel>
-                        </StackPanel>
+                            <TextBlock x:Name="StatusText" Style="{DynamicResource Text.Subtitle}" FontSize="13"
+                                       TextTrimming="CharacterEllipsis"
+                                       Text="Ready — click Connect when you're set."/>
+                        </DockPanel>
 
-                        <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Top">
+                        <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                            <Button x:Name="ShowLogButton" Content="Show log" MinHeight="32" Style="{StaticResource Button.Ghost}"
+                                    Click="ShowLogButton_Click" Visibility="Collapsed"
+                                    AutomationProperties.Name="Toggle session log"/>
                             <Button x:Name="ConnectButton" Content="Connect" MinHeight="44" Style="{StaticResource Button.Primary}" Click="ConnectButton_Click"
                                     AutomationProperties.Name="Connect to balance board"
                                     AutomationProperties.HelpText="Pair and connect your Wii Balance Board over Bluetooth."/>
@@ -63,7 +67,7 @@
                         </StackPanel>
                     </Grid>
 
-                    <!-- Live balance -->
+                    <!-- Live balance (visual-first) -->
                     <Border x:Name="BalancePanel" Grid.Row="1" Style="{StaticResource Card}" Margin="0">
                         <Grid>
                             <Grid.RowDefinitions>
@@ -72,33 +76,44 @@
                                 <RowDefinition Height="Auto"/>
                             </Grid.RowDefinitions>
 
-                            <StackPanel Grid.Row="0">
-                                <TextBlock Text="LIVE BALANCE" Style="{DynamicResource Text.Section}"/>
-                                <TextBlock x:Name="DirectionText" FontSize="20" FontWeight="SemiBold"
-                                           Foreground="{DynamicResource Brush.Foreground}" Margin="0,0,0,4"
-                                           Text="Connect your board to begin"
-                                           AutomationProperties.Name="Movement and jump feedback"
-                                           AutomationProperties.LiveSetting="Assertive"/>
-                                <TextBlock x:Name="ActiveActionsText" Style="{DynamicResource Text.Subtitle}"/>
-                                <WrapPanel x:Name="CalibrationButtonsPanel" Margin="0,10,0,0">
+                            <Grid Grid.Row="0" Margin="0,0,0,4">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <StackPanel VerticalAlignment="Center">
+                                    <TextBlock x:Name="DirectionText" FontSize="22" FontWeight="SemiBold"
+                                               Foreground="{DynamicResource Brush.Foreground}"
+                                               Text="Connect your board to begin"
+                                               AutomationProperties.Name="Movement and jump feedback"
+                                               AutomationProperties.LiveSetting="Assertive"/>
+                                    <TextBlock x:Name="ActiveActionsText" Style="{DynamicResource Text.Subtitle}" Margin="0,2,0,0"/>
+                                </StackPanel>
+                                <WrapPanel x:Name="CalibrationButtonsPanel" Grid.Column="1" VerticalAlignment="Center">
                                     <Button x:Name="TareButton" Content="Tare" MinHeight="44" Style="{StaticResource Button.Primary}" Click="Tare_Click"/>
                                     <Button x:Name="SetCenterButton" Content="Set center" MinHeight="44" Style="{StaticResource Button.Secondary}" Click="SetCenter_Click"/>
                                     <Button x:Name="ResetCenterButton" Content="Reset center" MinHeight="44" Style="{StaticResource Button.Ghost}" Click="ResetCenter_Click"/>
                                 </WrapPanel>
-                            </StackPanel>
+                            </Grid>
 
-                            <controls:BalanceBoardVisual x:Name="BoardVisual" Grid.Row="1" Margin="0,8,0,8" MinHeight="280"/>
+                            <controls:BalanceBoardVisual x:Name="BoardVisual" Grid.Row="1" Margin="0,4,0,4" MinHeight="360" VerticalAlignment="Stretch"/>
 
-                            <StackPanel Grid.Row="2">
-                                <TextBlock x:Name="WeightText" Style="{DynamicResource Text.Body}" FontWeight="SemiBold"
-                                           Text="Weight: — kg"/>
-                                <TextBlock x:Name="BalanceText" Style="{DynamicResource Text.Subtitle}" Margin="0,4,0,0"
-                                           Text="Balance: — / —"/>
-                                <TextBlock x:Name="SensorText" Style="{DynamicResource Text.Mono}" Margin="0,8,0,0"
+                            <StackPanel Grid.Row="2" Margin="0,4,0,0">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock x:Name="WeightText" Style="{DynamicResource Text.Body}" FontWeight="SemiBold"
+                                               Text="Weight: — kg"/>
+                                    <TextBlock x:Name="BalanceText" Grid.Column="1" Style="{DynamicResource Text.Subtitle}"
+                                               Text="Balance: — / —"/>
+                                </Grid>
+                                <TextBlock x:Name="SensorText" Style="{DynamicResource Text.Mono}" Margin="0,4,0,0"
                                            Text="Sensors: connect to see corner loads"/>
                                 <TextBlock x:Name="BoardButtonText" Style="{DynamicResource Text.Subtitle}" Margin="0,4,0,0"
                                            Text="Board button: —"/>
-                                <TextBlock x:Name="VJoyAxesText" Style="{DynamicResource Text.Mono}" Margin="0,8,0,0"/>
+                                <TextBlock x:Name="VJoyAxesText" Style="{DynamicResource Text.Mono}" Margin="0,4,0,0"/>
                             </StackPanel>
                         </Grid>
                     </Border>
@@ -285,27 +300,38 @@
             </TabItem>
         </TabControl>
 
-        <!-- Live session log (pinned) -->
-        <Border x:Name="LiveLogPanel" Grid.Row="2" Style="{StaticResource Card}" Margin="0,12,0,0">
-            <Grid>
-                <Grid.RowDefinitions>
-                    <RowDefinition Height="Auto"/>
-                    <RowDefinition Height="140"/>
-                </Grid.RowDefinitions>
-                <DockPanel Grid.Row="0" Margin="0,0,0,8">
-                    <TextBlock Text="SESSION LOG" Style="{DynamicResource Text.Section}" DockPanel.Dock="Left"/>
-                    <Button Content="Clear view" Style="{StaticResource Button.Ghost}" DockPanel.Dock="Right"
-                            Click="ClearLogViewButton_Click"/>
-                    <Button Content="Open logs folder" Style="{StaticResource Button.Ghost}" DockPanel.Dock="Right" Margin="0,0,8,0"
-                            Click="OpenLogFolderButton_Click"/>
-                </DockPanel>
-                <TextBox x:Name="LogBox" Grid.Row="1" IsReadOnly="True" TextWrapping="Wrap"
-                         VerticalScrollBarVisibility="Auto" AcceptsReturn="True"
-                         FontFamily="{StaticResource Font.Mono}" FontSize="12"
-                         Background="{DynamicResource Brush.Card}"
-                         Foreground="{DynamicResource Brush.Foreground}"
-                         BorderBrush="{DynamicResource Brush.CardBorder}" BorderThickness="1"/>
-            </Grid>
+        <!-- Live session log (collapsible, pinned) -->
+        <Border x:Name="LiveLogPanel" Grid.Row="2" Style="{StaticResource Card}" Margin="0,8,0,0" Padding="12,8,12,8">
+            <Expander x:Name="SessionLogExpander" Background="Transparent" BorderThickness="0"
+                      Expanded="SessionLogExpander_Changed" Collapsed="SessionLogExpander_Changed">
+                <Expander.Header>
+                    <DockPanel LastChildFill="True">
+                        <TextBlock Text="SESSION LOG" Style="{DynamicResource Text.Section}" DockPanel.Dock="Left" VerticalAlignment="Center"/>
+                        <TextBlock x:Name="LogPreviewText" DockPanel.Dock="Left" Margin="12,0,0,0"
+                                   Style="{DynamicResource Text.Mono}" FontSize="11" Opacity="0.75"
+                                   VerticalAlignment="Center" TextTrimming="CharacterEllipsis"
+                                   Visibility="Collapsed"/>
+                    </DockPanel>
+                </Expander.Header>
+                <Grid Margin="0,4,0,0">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="140"/>
+                    </Grid.RowDefinitions>
+                    <DockPanel Grid.Row="0" Margin="0,0,0,6">
+                        <Button Content="Clear view" Style="{StaticResource Button.Ghost}" DockPanel.Dock="Right"
+                                Click="ClearLogViewButton_Click"/>
+                        <Button Content="Open logs folder" Style="{StaticResource Button.Ghost}" DockPanel.Dock="Right" Margin="0,0,8,0"
+                                Click="OpenLogFolderButton_Click"/>
+                    </DockPanel>
+                    <TextBox x:Name="LogBox" Grid.Row="1" IsReadOnly="True" TextWrapping="Wrap"
+                             VerticalScrollBarVisibility="Auto" AcceptsReturn="True"
+                             FontFamily="{StaticResource Font.Mono}" FontSize="12"
+                             Background="{DynamicResource Brush.Card}"
+                             Foreground="{DynamicResource Brush.Foreground}"
+                             BorderBrush="{DynamicResource Brush.CardBorder}" BorderThickness="1"/>
+                </Grid>
+            </Expander>
         </Border>
     </Grid>
 </Window>
