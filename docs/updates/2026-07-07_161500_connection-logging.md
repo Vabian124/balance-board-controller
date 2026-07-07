@@ -2,7 +2,7 @@
 
 | Field | Value |
 |-------|-------|
-| Commit | *(set after commit)* |
+| Commit | [`064b4b2`](https://github.com/Vabian124/balance-board-controller/commit/064b4b2) |
 | Date | 2026-07-07 |
 | Branch | `main` |
 
