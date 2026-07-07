@@ -18,6 +18,22 @@ Write-Host "`n=== Unit tests (portable core contract) ==="
 dotnet test tests/BalanceBoard.Core.Tests/BalanceBoard.Core.Tests.csproj -c Release --no-build
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
+Write-Host "`n=== Integration tests (connect flows) ==="
+dotnet test tests/BalanceBoard.Integration.Tests/BalanceBoard.Integration.Tests.csproj -c Release --no-build
+if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+Write-Host "`n=== Fuzz tests ==="
+dotnet test tests/BalanceBoard.Fuzz.Tests/BalanceBoard.Fuzz.Tests.csproj -c Release --no-build
+if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+Write-Host "`n=== Automation (simulate board process) ==="
+dotnet test tests/BalanceBoard.Automation/BalanceBoard.Automation.csproj -c Release --no-build
+if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+Write-Host "`n=== verify-tests harness ==="
+& (Join-Path $PSScriptRoot "ci\verify-tests.ps1")
+if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
 Write-Host "`n=== Validate (vJoy / HID) ==="
 dotnet run --project tools/Validate/BalanceBoard.Validate.csproj -c Release --no-build
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }

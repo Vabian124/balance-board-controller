@@ -28,13 +28,34 @@ public partial class App : Application
         DispatcherUnhandledException += OnDispatcherUnhandledException;
         SessionEnding += (_, _) => ReleaseResources();
 
-        _mainWindow = new MainWindow(_options, _fileLog);
-        MainWindow = _mainWindow;
-        _mainWindow.Show();
+        try
+        {
+            _mainWindow = new MainWindow(_options, _fileLog);
+            MainWindow = _mainWindow;
+            _mainWindow.Show();
+        }
+        catch (Exception ex)
+        {
+            _fileLog.WriteException(ex, "Startup");
+            MessageBox.Show(
+                $"Failed to open the main window:\n{ex.Message}\n\nDetails were written to:\n{_fileLog.CurrentLogPath}",
+                "Balance Board Controller",
+                MessageBoxButton.OK,
+                MessageBoxImage.Error);
+            Shutdown();
+            return;
+        }
 
         if (!_options.SkipSingleInstance)
         {
-            SingleInstanceService.StartActivationListener(_mainWindow);
+            try
+            {
+                SingleInstanceService.StartActivationListener(_mainWindow);
+            }
+            catch (Exception ex)
+            {
+                _fileLog.WriteException(ex, "SingleInstance listener");
+            }
         }
 
         _ = RunDeferredStartupAsync();
@@ -44,36 +65,55 @@ public partial class App : Application
 
     private async Task RunDeferredStartupAsync()
     {
-        var killed = 0;
-        if (!_options.SkipProcessCleanup)
+        try
         {
-            await Task.Run(() =>
+            var killed = 0;
+            if (!_options.SkipProcessCleanup)
             {
-                killed = FeederProcessCleanup.TerminateCompetingFeeders();
-                FeederProcessCleanup.WaitForVJoyDeviceFree(1, timeoutMs: 2000);
+                await Task.Run(() =>
+                {
+                    try
+                    {
+                        killed = FeederProcessCleanup.TerminateCompetingFeeders();
+                        FeederProcessCleanup.WaitForVJoyDeviceFree(1, timeoutMs: 2000);
+                    }
+                    catch (Exception ex)
+                    {
+                        _fileLog.WriteException(ex, "Startup cleanup");
+                    }
+                });
+            }
+
+            if (_mainWindow is null) return;
+
+            await _mainWindow.Dispatcher.InvokeAsync(() =>
+            {
+                try
+                {
+                    _mainWindow.RunDeferredStartup(_options.ConnectOnLaunch, killed);
+                }
+                catch (Exception ex)
+                {
+                    _fileLog.WriteException(ex, "Deferred startup");
+                }
             });
         }
-
-        if (_mainWindow is null) return;
-
-        await _mainWindow.Dispatcher.InvokeAsync(() =>
+        catch (Exception ex)
         {
-            _mainWindow.RunDeferredStartup(_options.ConnectOnLaunch, killed);
-        });
+            _fileLog.WriteException(ex, "Deferred startup outer");
+        }
     }
 
     private void OnDispatcherUnhandledException(object sender, DispatcherUnhandledExceptionEventArgs e)
     {
-        _fileLog.WriteException(e.Exception, "FATAL UI thread");
+        _fileLog.WriteException(e.Exception, "UI thread");
         GlobalExceptionLogging.WriteFatal(e.Exception, "UI thread");
-        ReleaseResources();
         MessageBox.Show(
-            $"Unexpected error:\n{e.Exception.Message}\n\nDetails were written to:\n{_fileLog.CurrentLogPath}",
+            $"Unexpected error:\n{e.Exception.Message}\n\nThe app will keep running.\nDetails: {_fileLog.CurrentLogPath}",
             "Balance Board Controller",
             MessageBoxButton.OK,
-            MessageBoxImage.Error);
+            MessageBoxImage.Warning);
         e.Handled = true;
-        Shutdown(-1);
     }
 
     protected override void OnExit(ExitEventArgs e)

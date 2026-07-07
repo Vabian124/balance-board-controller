@@ -1,4 +1,6 @@
 using System.Reflection;
+using BalanceBoard.Core.Abstractions;
+using BalanceBoard.Core.Models;
 using InTheHand.Net.Bluetooth;
 using InTheHand.Net.Sockets;
 using WiimoteLib;
@@ -15,7 +17,7 @@ public sealed class BluetoothPairingResult
 /// <summary>
 /// Automatic Wii Balance Board Bluetooth pairing using the host MAC reversed PIN (WiiBalanceWalker method).
 /// </summary>
-public sealed class BluetoothPairingService
+public sealed class BluetoothPairingService : IBluetoothPairingService
 {
     public static void Warmup()
     {
@@ -151,14 +153,23 @@ public sealed class BluetoothPairingService
             collection.FindAllWiimotes();
             foreach (var wii in collection)
             {
-                wii.Connect();
-                wii.SetLEDs(true, false, false, false);
-                wii.Disconnect();
+                try
+                {
+                    wii.Connect();
+                    wii.SetLEDs(true, false, false, false);
+                    wii.Disconnect();
+                    Thread.Sleep(BalanceConstants.DisconnectGraceMs);
+                }
+                catch (Exception ex)
+                {
+                    log?.Invoke($"[CONNECT] HID wake device note: {ex.Message}");
+                }
             }
 
             if (collection.Count > 0)
             {
                 log?.Invoke($"Woke {collection.Count} Wii HID device(s).");
+                Thread.Sleep(BalanceConstants.DisconnectGraceMs);
             }
         }
         catch (Exception ex)
