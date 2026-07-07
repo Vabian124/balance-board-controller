@@ -1,0 +1,40 @@
+# Agent update log
+
+> **For AI assistants:** Read this folder to see **what was done, when, and in which commit** — so you do not confuse past work, current repo state, and planned future work.
+
+## How to use this log
+
+1. **Read newest file last** — files are named with date + time + short commit hash (chronological).
+2. **Match commit hash** — each entry links to an exact `git` commit on `main`. Run `git log --oneline` and compare.
+3. **Past vs present vs future**
+   - **Past** = entries with commits **before** `HEAD`; already shipped.
+   - **Present** = latest entry matches `git rev-parse --short HEAD`.
+   - **Future** = items listed under *Not done / left for later* in any entry, or [ROADMAP.md](../ROADMAP.md) — **not implemented** unless a newer update says otherwise.
+4. **Adding a new entry** — when you finish meaningful work and commit:
+   - Create `YYYY-MM-DD_HHMMSS_<short-hash>_<slug>.md` (use commit author date from `git log`).
+   - Append a row to the index table below.
+   - Reference the full hash and list what changed vs what was explicitly deferred.
+
+## Index (chronological)
+
+| # | Date (UTC+2) | Commit | Title | Agent session |
+|---|--------------|--------|-------|---------------|
+| 1 | 2026-07-07 13:02:26 | [`4a0b399`](https://github.com/Vabian124/balance-board-controller/commit/4a0b399) | [Initial modern app release](2026-07-07_130226_4a0b399_initial-app-release.md) | Cursor — WiiBalanceWalker revamp |
+| 2 | 2026-07-07 13:10:44 | [`fb82a5d`](https://github.com/Vabian124/balance-board-controller/commit/fb82a5d) | [Profile presets, input, CI](2026-07-07_131044_fb82a5d_profile-presets-and-ci.md) | Cursor — finish todos, lint, push |
+| 3 | 2026-07-07 13:14:39 | [`238405a`](https://github.com/Vabian124/balance-board-controller/commit/238405a) | [LLM-friendly docs and Cursor rules](2026-07-07_131439_238405a_llm-friendly-docs.md) | Cursor — make repo LLM-friendly |
+| 4 | 2026-07-07 13:18:27 | [`823e477`](https://github.com/Vabian124/balance-board-controller/commit/823e477) | [Agent update log folder](2026-07-07_131827_823e477_agent-update-log.md) | Cursor — update MD audit trail |
+
+## Quick HEAD check
+
+```powershell
+git rev-parse --short HEAD
+git log -1 --format="%ci %s"
+```
+
+If `HEAD` does not match the latest index row, read commits after that row with `git log <latest-known-hash>..HEAD`.
+
+## Related docs
+
+- [AGENTS.md](../../AGENTS.md) — how to work in this repo
+- [ROADMAP.md](../ROADMAP.md) — planned future work (not done until an update entry says done)
+- [ARCHITECTURE.md](../ARCHITECTURE.md) — current system design
