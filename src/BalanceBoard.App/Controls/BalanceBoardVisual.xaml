@@ -1,0 +1,15 @@
+<UserControl x:Class="BalanceBoard.App.Controls.BalanceBoardVisual"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             MinHeight="240" MinWidth="240">
+    <Grid>
+        <Border Background="#111827" CornerRadius="18" BorderBrush="#334155" BorderThickness="1"/>
+        <Canvas x:Name="BoardCanvas" Margin="28">
+            <Ellipse x:Name="TopLeftDot" Width="16" Height="16" Fill="#475569"/>
+            <Ellipse x:Name="TopRightDot" Width="16" Height="16" Fill="#475569"/>
+            <Ellipse x:Name="BottomLeftDot" Width="16" Height="16" Fill="#475569"/>
+            <Ellipse x:Name="BottomRightDot" Width="16" Height="16" Fill="#475569"/>
+            <Ellipse x:Name="CenterDot" Width="22" Height="22" Fill="#7C6CFF" Stroke="#E2E8F0" StrokeThickness="2"/>
+        </Canvas>
+    </Grid>
+</UserControl>
