@@ -352,7 +352,7 @@ reference/*
 reference/WiiBalanceWalker/bin/
 reference/WiiBalanceWalker/obj/
 reference/WiiBalanceWalker/publish/
-reference/WiiBalanceWalker/WBC.pdf
+reference/WiiBalanceWalker/*.pdf
 
 # Obsolete root-level legacy solution (use BalanceBoard.sln)
 WiiBalanceWalker.sln
