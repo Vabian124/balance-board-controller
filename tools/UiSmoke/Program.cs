@@ -52,8 +52,10 @@ if (!thread.Join(TimeSpan.FromSeconds(5)))
 
 return exitCode;
 
-static ResourceDictionary LoadTheme(string relativePath) =>
-    new()
+static ResourceDictionary LoadTheme(string relativePath)
+{
+    return new()
     {
         Source = new Uri($"pack://application:,,,/{AppAssembly};component/{relativePath}", UriKind.Absolute),
     };
+}

@@ -1,0 +1,35 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  quality:
+    name: Quality gate
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+
+      - name: Quality gate (format, analyzers, tests, smoke)
+        shell: pwsh
+        run: ./scripts/ci/lint.ps1
+
+  static-analysis:
+    name: Static analysis summary
+    runs-on: windows-latest
+    needs: quality
+    if: always()
+    steps:
+      - run: echo "Quality gate completed with status ${{ needs.quality.result }}"

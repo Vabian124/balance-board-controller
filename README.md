@@ -1,144 +1,111 @@
 # Balance Board Controller
 
-A modern .NET 8 desktop app for using a **Nintendo Wii Fit Balance Board** on Windows as a **game controller** (via [vJoy](https://github.com/shauleiz/vJoy)) or as a hand-free input device.
+[![CI](https://github.com/Vabian124/balance-board-controller/actions/workflows/ci.yml/badge.svg)](https://github.com/Vabian124/balance-board-controller/actions/workflows/ci.yml)
+[![.NET 8](https://img.shields.io/badge/.NET-8.0-512BD4?logo=dotnet&logoColor=white)](https://dotnet.microsoft.com/download)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![Platform](https://img.shields.io/badge/Platform-Windows%20x64-0078D4?logo=windows)](https://github.com/Vabian124/balance-board-controller)
 
-Built as a clean rewrite of [WiiBalanceWalker v0.5](https://github.com/lshachar/WiiBalanceWalker) with an updated UI, automatic Bluetooth pairing, diagnostics, and safer process handling.
+A production-quality **.NET 8** desktop app that turns a **Nintendo Wii Fit Balance Board** into a **virtual game controller** ([vJoy](https://github.com/shauleiz/vJoy)) or hand-free keyboard/mouse input.
 
-> **AI assistants / coding agents:** read [INSTRUCTIONS.md](INSTRUCTIONS.md) (every-pass checklist), then [AGENTS.md](AGENTS.md) and [llms.txt](llms.txt). Full docs live in [`docs/`](docs/).
+Clean rewrite of [WiiBalanceWalker v0.5](https://github.com/lshachar/WiiBalanceWalker) with automatic Bluetooth pairing, structured connect flows, diagnostics, fuzz/integration tests, and crash-hardened device handling.
+
+> **Contributors & agents:** [CONTRIBUTING.md](CONTRIBUTING.md) · [INSTRUCTIONS.md](INSTRUCTIONS.md) · [AGENTS.md](AGENTS.md) · [docs/](docs/)
 
 ## Features
 
-- **Modern dashboard** — live balance visual, direction text, connection status pills
-- **Game controller mode** — maps lean to vJoy X/Y axes (works with most games that accept joysticks)
-- **Hand-free desktop preset** — WASD + Shift + Space + mouse nudge (legacy WiiBalanceWalker bindings)
-- **Pedal / rudder preset** — maps four load sensors to extra vJoy axes
-- **Quick-start profiles** — dropdown + one-click presets on the Dashboard
-- **Smart connect** — first launch waits for you; returning users auto-reconnect without re-pairing
-- **Debug Suite** — one-click health check, session log, copy report, open log folder
-- **Safe startup** — automatically stops stale feeder apps that block vJoy
-- **File logging** — session logs saved under `%AppData%\BalanceBoardApp\logs\` (never committed to git)
+- **Live dashboard** — balance visual, direction text, connection status
+- **Game controller mode** — lean → vJoy X/Y (works with most joystick games)
+- **Presets** — game controller, pedals/rudder, hand-free WASD desktop
+- **Smart connect** — first launch pairs on demand; returning users auto-reconnect
+- **Crash-safe connect** — dedicated STA `ConnectionWorker` for WiimoteLib (no thread-pool dispose races)
+- **Debug Suite** — health check, session log, copy report
+- **Quality gate** — format, Roslyn analyzers, unit/integration/fuzz/automation tests in CI
 
 ## Requirements
 
 - Windows 10/11 (64-bit)
-- [.NET 8 SDK](https://dotnet.microsoft.com/download) (to build) or published self-contained build
-- [vJoy driver](https://github.com/shauleiz/vJoy) — reboot after install
-- Bluetooth adapter
-- Nintendo Wii Fit Balance Board
+- [.NET 8 SDK](https://dotnet.microsoft.com/download) (pinned in [`global.json`](global.json))
+- [vJoy](https://github.com/shauleiz/vJoy) — reboot after install
+- Bluetooth adapter + Wii Fit Balance Board
 
 ## Quick start
 
-1. Install **vJoy** and **reboot**.
-2. Open **vJoyConf** and enable **Device 1** with at least **X** and **Y** axes.
-3. **Launch the app** — easiest way:
-
-   **Double-click `start.bat`** in the project folder.
-
-   Or from PowerShell:
-
-   ```powershell
-   .\start.bat
-   # or
-   .\scripts\start.ps1
-   ```
-
-4. **First run:** click **Connect** and press the red **SYNC** button on the board when prompted.
-5. **Returning users:** the app reconnects automatically when the board is on (toggle in settings).
-6. Stand on the board → **Tare** if needed. Verify axes in **vJoy Monitor**.
-
-### Build from source (optional)
+1. Install **vJoy**, reboot, enable **Device 1** (X/Y) in vJoyConf.
+2. **Double-click [`start.bat`](start.bat)** or run `.\scripts\dev\start.ps1`
+3. Click **Connect**, press **SYNC** on the board (first time).
+4. Stand on the board → **Tare** → verify in vJoy Monitor.
 
 ```powershell
 git clone https://github.com/Vabian124/balance-board-controller.git
 cd balance-board-controller
-dotnet build BalanceBoard.sln -c Release
-dotnet run --project src/BalanceBoard.App/BalanceBoard.App.csproj -c Release
+.\start.bat
 ```
 
-### Publish (single folder)
+### Simulate (no hardware)
 
 ```powershell
-dotnet publish src/BalanceBoard.App/BalanceBoard.App.csproj -c Release -r win-x64 --self-contained
+dotnet run --project src/BalanceBoard.App/BalanceBoard.App.csproj -c Release -- --simulate-board --dev
 ```
 
-### Dev scripts (start / stop / restart)
+## Quality & CI
 
 ```powershell
-.\start.bat              # double-click or run from repo root
-.\stop.bat               # stop the app
-.\scripts\start.ps1      # same as start.bat (PowerShell)
-.\scripts\stop.ps1       # graceful exit, then force stop
-.\scripts\restart.ps1    # stop + start
-.\scripts\connect.ps1    # start and auto-connect
-.\scripts\test-flow.ps1  # smoke tests (no hardware)
-.\scripts\lint.ps1       # full lint + UI XAML smoke
+.\scripts\lint.ps1          # full gate: format, analyzers, all tests, smoke
+.\scripts\ci\test-all.ps1   # lint + optional -IncludeHardware
 ```
 
-See [docs/WORKFLOW.md](docs/WORKFLOW.md) and [docs/TEST_PLAN.md](docs/TEST_PLAN.md) for boot/connect behavior and edge-case testing.
+CI runs the same gate on every push/PR ([`.github/workflows/ci.yml`](.github/workflows/ci.yml)).
 
-Use `--dev` to skip killing other instances. Use `--connect` to force full pairing on launch.
+| Checks | Tool |
+|--------|------|
+| Format | `dotnet format --verify-no-changes` |
+| Static analysis | .NET analyzers + `-warnaserror` (Release) |
+| Tests | 22 unit · 14 integration · 4 fuzz · 1 automation |
+| Tools | `Validate`, `UiSmoke`, lifecycle `test-flow` |
 
-## Debug Suite
+See [docs/testing/README.md](docs/testing/README.md).
 
-Open the **Debug Suite** tab to:
+## Repository layout
 
-| Action | What it does |
-|--------|----------------|
-| **Run Health Check** | Tests vJoy, driver match, Wii HID discovery |
-| **Copy Report** | Copies diagnostics to clipboard |
-| **Open Log Folder** | Opens `%AppData%\BalanceBoardApp\logs\` |
-| **Clear View** | Clears the on-screen log (file log is kept) |
-
-CLI alternative:
-
-```powershell
-dotnet run --project tools/Validate/BalanceBoard.Validate.csproj -c Release
 ```
-
-## Project structure
-
-| Path | Description |
-|------|-------------|
-| `AGENTS.md` | **AI agent onboarding** — architecture, conventions, where to edit |
-| `docs/` | CODEMAP, ARCHITECTURE, DEVELOPMENT, GLOSSARY, ROADMAP |
-| `src/BalanceBoard.App/` | WPF application (UI, wizard, debug suite) |
-| `src/BalanceBoard.Core/` | Board connection, processing, vJoy, logging |
-| `scripts/` | `start.ps1`, `lint.ps1`, `test-flow.ps1`, etc. |
-| `tests/BalanceBoard.Core.Tests/` | Unit tests (portable core contract) |
-| `tools/UiSmoke/` | XAML load smoke test |
-| `tools/Validate/` | Command-line health check tool |
-| `libs/x64/` | WiimoteLib + vJoy wrapper DLLs (single canonical copy) |
-| `reference/` | Legacy MS-PL source and reference docs (not the active app) |
+src/
+  BalanceBoard.App/     WPF UI
+  BalanceBoard.Core/    Device logic, processing, vJoy (no WPF)
+tests/
+  BalanceBoard.*.Tests/ Unit, integration, fuzz, automation
+  BalanceBoard.Testing/ Shared fakes
+  hardware/             Optional board scripts
+tools/
+  Validate/             CLI health check
+  UiSmoke/              XAML load smoke
+scripts/
+  ci/                   lint.ps1, verify-tests.ps1, test-all.ps1
+  dev/                  start, stop, restart, connect, test-flow
+reference/              Legacy WiiBalanceWalker (MS-PL, not in solution)
+libs/x64/               WiimoteLib + vJoy native DLLs
+docs/                   Architecture, CODEMAP, testing guide
+```
 
 ## Troubleshooting
 
 | Problem | Fix |
 |---------|-----|
-| **vJoy busy / file locked** | App auto-stops old instances. Close vJoy Monitor if it holds the device. |
-| **vJoy not enabled** | Reboot after install; check Device Manager for *vJoy Device*. |
-| **DLL version mismatch** | Copy `vJoyInterface*.dll` from your vJoy install into `libs/x64/`. |
-| **Cannot connect** | Remove old Bluetooth pairings; re-pair with SYNC held. |
-| **Win11 vJoy install fails** | Try vJoy **2.1.9.1** (community workaround). |
+| vJoy busy | App stops stale feeders; close vJoy Monitor |
+| vJoy missing | Reboot after install; check Device Manager |
+| Connect crash | See session log; ensure latest `main` (ConnectionWorker fix) |
+| DLL mismatch | Copy `vJoyInterface*.dll` from your vJoy install into `libs/x64/` |
 
-## Logs
-
-Session logs are written to:
-
-```
-%AppData%\BalanceBoardApp\logs\session-YYYY-MM-DD.log
-```
-
-Log files are excluded from git. They contain timestamps, device status, and connection events only — no personal data.
+Logs: `%AppData%\BalanceBoardApp\logs\session-YYYY-MM-DD.log`
 
 ## License
 
-- **Balance Board Controller** (new code in `src/`, `tools/`, and project docs): **[MIT License](LICENSE)** — free to use, fork, modify, and redistribute with minimal restrictions.
-- **WiiBalanceWalker** (legacy reference under `reference/WiiBalanceWalker/`): Microsoft Public License — see [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)
+- **This project** (`src/`, `tools/`, `tests/`): [MIT](LICENSE)
+- **WiiBalanceWalker** (`reference/WiiBalanceWalker/`): MS-PL — [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)
 
-You may fork this repo and do what you want with the MIT-licensed portions. Keep the LICENSE file and third-party notices when you redistribute.
+## Changelog
+
+See [CHANGELOG.md](CHANGELOG.md).
 
 ## Acknowledgements
 
-- [WiiBalanceWalker](https://github.com/lshachar/WiiBalanceWalker) by Shachar Liberman / Richard Perry
-- [WiimoteLib](https://github.com/lshachar/WiimoteLib)
-- [vJoy](https://github.com/shauleiz/vJoy) by Shaul Eizikovich
+[WiiBalanceWalker](https://github.com/lshachar/WiiBalanceWalker) · [WiimoteLib](https://github.com/lshachar/WiimoteLib) · [vJoy](https://github.com/shauleiz/vJoy)

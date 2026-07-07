@@ -13,7 +13,10 @@ csharp_new_line_before_open_brace = all
 csharp_style_namespace_declarations = file_scoped:warning
 csharp_style_var_for_built_in_types = true:suggestion
 csharp_style_var_when_type_is_apparent = true:suggestion
-dotnet_diagnostic.IDE0005.severity = suggestion
+dotnet_diagnostic.IDE0005.severity = warning
+dotnet_analyzer_diagnostic.category-Style.severity = warning
+dotnet_analyzer_diagnostic.category-Design.severity = suggestion
+dotnet_analyzer_diagnostic.category-Reliability.severity = warning
 
 [*.{json,yml,yaml,md}]
 indent_size = 2

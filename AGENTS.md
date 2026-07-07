@@ -48,7 +48,7 @@ WiimoteLib (BT/HID)
     → InputSimulator          (if !DisableKeyboardActions)
 ```
 
-Orchestrator: `BalanceBoardSession` (50 ms poll timer).  
+Orchestrator: `BalanceBoardSession` (poll on `ConnectionWorker`, 50 ms).  
 UI: `MainWindow` binds to session events; settings via `SettingsStore` → `%AppData%\BalanceBoardApp\settings.json`.
 
 ## Where to change common things
@@ -59,13 +59,12 @@ UI: `MainWindow` binds to session events; settings via `SettingsStore` → `%App
 | Change lean → axis math | `BalanceProcessor.cs` |
 | Change keyboard/mouse output | `InputSimulator.cs`, `AppSettings.Actions` |
 | vJoy acquire / release | `VJoyController.cs`, `FeederProcessCleanup.cs` |
-| Board connect / tare | `BalanceBoardConnection.cs` |
+| Board connect / tare | `BalanceBoardConnection.cs`, `ConnectionWorker.cs`, `BalanceBoardSession.cs` |
 | Dashboard UI | `MainWindow.xaml`, `MainWindow.xaml.cs` |
-| Setup flow | `SetupWizardWindow.xaml(.cs)` |
 | Health check / diagnostics | `DiagnosticsReport.cs`, `tools/Validate/Program.cs` |
 | Persist settings | `SettingsStore.cs`, `AppSettings.cs` |
 | Startup / single instance | `App.xaml.cs` |
-| Theme / styles | `Themes/ModernTheme.xaml` |
+| Theme / styles | `Themes/Colors.xaml`, `Themes/Controls.xaml` |
 
 ## Conventions (follow these)
 

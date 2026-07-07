@@ -127,7 +127,11 @@ public sealed class BalanceBoardConnection : IBalanceBoardConnection
     {
         lock (_sync)
         {
-            if (_device is null) return;
+            if (_device is null)
+            {
+                return;
+            }
+
             _device.WiimoteState.BalanceBoardState.ZeroPoint.Reset = true;
         }
     }

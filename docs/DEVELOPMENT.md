@@ -24,8 +24,13 @@ dotnet run --project tools/Validate/BalanceBoard.Validate.csproj -c Release
 # Format (optional)
 dotnet format BalanceBoard.sln
 
-# Full lint + static analysis (format, build, Validate, UI smoke, lifecycle)
+# Full lint + static analysis (format, build, tests, Validate, UI smoke, lifecycle)
 .\scripts\lint.ps1
+
+# Dev scripts live under scripts/dev/
+.\scripts\dev\start.ps1
+.\scripts\dev\stop.ps1
+.\scripts\dev\test-flow.ps1
 
 # Publish self-contained folder
 dotnet publish src/BalanceBoard.App/BalanceBoard.App.csproj -c Release -r win-x64 --self-contained

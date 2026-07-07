@@ -114,9 +114,24 @@ public sealed class BalanceProcessor
 
     private void UpdateMinCorner(BalanceReading reading)
     {
-        if (reading.TopLeftKg < _minCorner) _minCorner = reading.TopLeftKg;
-        if (reading.TopRightKg < _minCorner) _minCorner = reading.TopRightKg;
-        if (reading.BottomLeftKg < _minCorner) _minCorner = reading.BottomLeftKg;
-        if (reading.BottomRightKg < _minCorner) _minCorner = reading.BottomRightKg;
+        if (reading.TopLeftKg < _minCorner)
+        {
+            _minCorner = reading.TopLeftKg;
+        }
+
+        if (reading.TopRightKg < _minCorner)
+        {
+            _minCorner = reading.TopRightKg;
+        }
+
+        if (reading.BottomLeftKg < _minCorner)
+        {
+            _minCorner = reading.BottomLeftKg;
+        }
+
+        if (reading.BottomRightKg < _minCorner)
+        {
+            _minCorner = reading.BottomRightKg;
+        }
     }
 }

@@ -1,0 +1,26 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Balance Board App (dev)",
+      "type": "coreclr",
+      "request": "launch",
+      "preLaunchTask": "build",
+      "program": "${workspaceFolder}/src/BalanceBoard.App/bin/Release/net8.0-windows/BalanceBoardApp.exe",
+      "args": ["--dev"],
+      "cwd": "${workspaceFolder}/src/BalanceBoard.App/bin/Release/net8.0-windows",
+      "console": "internalConsole",
+      "stopAtEntry": false
+    },
+    {
+      "name": "Simulate board",
+      "type": "coreclr",
+      "request": "launch",
+      "preLaunchTask": "build",
+      "program": "${workspaceFolder}/src/BalanceBoard.App/bin/Release/net8.0-windows/BalanceBoardApp.exe",
+      "args": ["--simulate-board", "--dev"],
+      "cwd": "${workspaceFolder}/src/BalanceBoard.App/bin/Release/net8.0-windows",
+      "console": "internalConsole"
+    }
+  ]
+}

@@ -5,20 +5,18 @@ namespace BalanceBoard.Core.Services;
 public sealed class FileLogService
 {
     private readonly object _sync = new();
-    private readonly string _logDirectory;
-    private readonly string _currentLogPath;
 
     public FileLogService(string? baseDirectory = null)
     {
         var root = baseDirectory ?? AppDataPaths.LogsDirectory;
         Directory.CreateDirectory(root);
-        _logDirectory = root;
-        _currentLogPath = Path.Combine(root, $"session-{DateTime.Now:yyyy-MM-dd}.log");
+        LogDirectory = root;
+        CurrentLogPath = Path.Combine(root, $"session-{DateTime.Now:yyyy-MM-dd}.log");
     }
 
-    public string LogDirectory => _logDirectory;
+    public string LogDirectory { get; }
 
-    public string CurrentLogPath => _currentLogPath;
+    public string CurrentLogPath { get; }
 
     public event Action<string>? LineWritten;
 
@@ -42,7 +40,7 @@ public sealed class FileLogService
             Write("Last board: (none saved yet)", "SESSION");
         }
 
-        Write($"Log file: {_currentLogPath}", "SESSION");
+        Write($"Log file: {CurrentLogPath}", "SESSION");
     }
 
     public void Write(string message, string category = "INFO")
@@ -53,7 +51,7 @@ public sealed class FileLogService
             lock (_sync)
             {
                 using var stream = new FileStream(
-                    _currentLogPath,
+                    CurrentLogPath,
                     FileMode.Append,
                     FileAccess.Write,
                     FileShare.ReadWrite,
@@ -102,14 +100,14 @@ public sealed class FileLogService
 
     public string ReadTail(int maxLines = 200)
     {
-        if (!File.Exists(_currentLogPath))
+        if (!File.Exists(CurrentLogPath))
         {
             return string.Empty;
         }
 
         lock (_sync)
         {
-            var lines = File.ReadAllLines(_currentLogPath);
+            var lines = File.ReadAllLines(CurrentLogPath);
             if (lines.Length <= maxLines)
             {
                 return string.Join(Environment.NewLine, lines);
@@ -123,9 +121,9 @@ public sealed class FileLogService
     {
         lock (_sync)
         {
-            if (File.Exists(_currentLogPath))
+            if (File.Exists(CurrentLogPath))
             {
-                File.WriteAllText(_currentLogPath, string.Empty);
+                File.WriteAllText(CurrentLogPath, string.Empty);
             }
         }
     }
