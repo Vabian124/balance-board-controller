@@ -4,6 +4,10 @@ All notable user-facing changes. For detailed agent work logs see [`docs/updates
 
 ## Unreleased
 
+### Fixed
+- Connect button threw `NotImplementedException` (dotnet format switch stubs) — **5bfb026**
+- `ObjectDisposedException` on fresh board connect — **ConnectionWorker** STA thread — **aebfc01**
+
 ### Added
 - `ConnectionWorker` — single STA thread for WiimoteLib/Bluetooth (fixes connect crash)
 - Test pyramid: unit, integration, fuzz, automation (`--simulate-board`), hardware scripts

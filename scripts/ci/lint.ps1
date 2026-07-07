@@ -8,6 +8,10 @@ Write-Host "=== Balance Board Controller — quality gate ===" -ForegroundColor 
 Write-Host "`n=== Stop running app (unlocks build output) ==="
 & (Join-Path $Root "scripts\dev\stop.ps1")
 
+Write-Host "`n=== Crash-safety grep ==="
+& (Join-Path $PSScriptRoot "check-crash-safety.ps1")
+if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
 Write-Host "`n=== dotnet format ==="
 dotnet format BalanceBoard.sln --verify-no-changes
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
