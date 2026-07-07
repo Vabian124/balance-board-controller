@@ -1,0 +1,26 @@
+# Glossary
+
+Terms used throughout Balance Board Controller code and docs.
+
+| Term | Meaning |
+|------|---------|
+| **Balance board** | Nintendo Wii Fit Balance Board (4 load sensors, Bluetooth) |
+| **COG / center of gravity** | Lean position derived from corner weights; maps to balance X/Y % |
+| **Tare** | Zero calibration — subtracts minimum seen weight per corner |
+| **Set center** | User standing position becomes neutral; stores per-corner offsets |
+| **Trigger** | Balance % threshold before a movement flag activates (e.g. 8% left/right) |
+| **Modifier** | Secondary movement zone (higher threshold) — bound to Shift in desktop preset |
+| **Jump** | Detected from rapid weight change while on board |
+| **ProcessedBalance** | Output of `BalanceProcessor` — lean, flags, vJoy axis values |
+| **Action slot** | One of 8 named outputs: Left, Right, Forward, Backward, Modifier, Jump, DiagonalLeft, DiagonalRight |
+| **Preset / profile** | Named `AppSettings` bundle from `ActionPresets` (Game Controller, Pedal, Hand-Free Desktop) |
+| **vJoy** | Virtual joystick driver; games see a standard game controller |
+| **Feeder** | Process that writes to vJoy (this app, WiiBalanceWalker, vJoy Monitor) |
+| **VJD_STAT_BUSY** | vJoy device held by another process |
+| **WiimoteLib** | Third-party library for Wii HID devices |
+| **SendInput** | Windows API used to synthesize keyboard/mouse |
+| **X1 / X2** | Mouse side buttons (back/forward); `MOUSEEVENTF_XDOWN` with mouseData 1 or 2 |
+| **Debug Suite** | In-app tab: health check, log viewer, copy report |
+| **Validate tool** | CLI in `tools/Validate/` — same diagnostics without GUI |
+| **Single instance** | Only one `BalanceBoardApp` via mutex; new launch replaces old |
+| **FeederProcessCleanup** | Kills stale `BalanceBoardApp`, `WiiBalanceWalker`, `WBBGUI` before vJoy acquire |

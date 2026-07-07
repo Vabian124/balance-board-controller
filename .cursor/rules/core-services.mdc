@@ -1,0 +1,35 @@
+---
+description: Core services — board, vJoy, input, processing
+globs: src/BalanceBoard.Core/**/*
+alwaysApply: false
+---
+
+# BalanceBoard.Core
+
+## Orchestration
+
+`BalanceBoardSession` owns the 50 ms poll loop. Do not add a second poll path.
+
+## Data flow
+
+`BalanceBoardConnection` → `BalanceProcessor` → `VJoyController` + `InputSimulator`
+
+## Key services
+
+| Service | Role |
+|---------|------|
+| `BalanceProcessor` | Tare, center, triggers, axis mapping |
+| `VJoyController` | Acquire/update/relinquish vJoy device |
+| `InputSimulator` | SendInput for 8 action slots (incl. X1/X2) |
+| `FeederProcessCleanup` | Kill competing feeders, wait for vJoy free |
+| `ActionPresets` | Mutate `AppSettings` for named profiles |
+
+## Models
+
+- `ProcessedBalance` — output of processor; consumed by vJoy and input
+- `AppSettings.Actions` — keys: Left, Right, Forward, Backward, Modifier, Jump, DiagonalLeft, DiagonalRight
+
+## Constraints
+
+- No WPF references in Core
+- WiimoteLib exceptions: catch in connection layer, surface via events

@@ -1,0 +1,30 @@
+---
+description: Balance Board Controller — core project rules for all AI sessions
+alwaysApply: true
+---
+
+# Balance Board Controller
+
+Read `AGENTS.md` first, then `docs/CODEMAP.md` for file locations.
+
+## Stack
+
+- .NET 8, WPF, Windows x64 only
+- `BalanceBoard.App` (UI) → `BalanceBoard.Core` (logic)
+- Native: `libs/x64/` WiimoteLib + vJoy DLLs
+
+## Rules
+
+- Device/vJoy/input logic stays in Core; UI only binds to `BalanceBoardSession`
+- Use `ActionPresets` for profiles; do not duplicate binding logic in UI
+- vJoy: always relinquish on shutdown; run `FeederProcessCleanup` before acquire
+- Settings: `%AppData%\BalanceBoardApp\settings.json` via `SettingsStore`
+- `MainWindow`: respect `_uiReady` and `_suppressSettingEvents`
+- Minimal diffs; match file-scoped namespaces and existing patterns
+- Never commit logs, baseline/, reference/, or user AppData files
+
+## Verify
+
+```powershell
+dotnet build BalanceBoard.sln -c Release
+```
