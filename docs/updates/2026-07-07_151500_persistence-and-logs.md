@@ -2,7 +2,7 @@
 
 | Field | Value |
 |-------|-------|
-| Commit | *(set after commit)* |
+| Commit | `a5360f4` |
 | Date | 2026-07-07 |
 | Branch | `main` |
 
