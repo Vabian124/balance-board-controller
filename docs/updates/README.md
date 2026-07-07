@@ -36,5 +36,6 @@ If `HEAD` does not match the latest index row, read commits after that row with 
 ## Related docs
 
 - [AGENTS.md](../../AGENTS.md) — how to work in this repo
+- [INSTRUCTIONS.md](../../INSTRUCTIONS.md) — every-pass commit & maintenance rules
 - [ROADMAP.md](../ROADMAP.md) — planned future work (not done until an update entry says done)
 - [ARCHITECTURE.md](../ARCHITECTURE.md) — current system design

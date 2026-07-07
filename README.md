@@ -4,7 +4,7 @@ A modern .NET 8 desktop app for using a **Nintendo Wii Fit Balance Board** on Wi
 
 Built as a clean rewrite of [WiiBalanceWalker v0.5](https://github.com/lshachar/WiiBalanceWalker) with an updated UI, setup wizard, diagnostics, and safer process handling.
 
-> **AI assistants / coding agents:** read [AGENTS.md](AGENTS.md) and [llms.txt](llms.txt) first. Full docs live in [`docs/`](docs/).
+> **AI assistants / coding agents:** read [INSTRUCTIONS.md](INSTRUCTIONS.md) (every-pass checklist), then [AGENTS.md](AGENTS.md) and [llms.txt](llms.txt). Full docs live in [`docs/`](docs/).
 
 ## Features
 
@@ -100,8 +100,10 @@ Log files are excluded from git. They contain timestamps, device status, and con
 
 ## License
 
-- **Balance Board Controller** (new code): [MIT License](LICENSE)
-- **WiiBalanceWalker** (legacy reference): Microsoft Public License — see [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)
+- **Balance Board Controller** (new code in `src/`, `tools/`, and project docs): **[MIT License](LICENSE)** — free to use, fork, modify, and redistribute with minimal restrictions.
+- **WiiBalanceWalker** (legacy reference under `WiiBalanceWalker/`): Microsoft Public License — see [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)
+
+You may fork this repo and do what you want with the MIT-licensed portions. Keep the LICENSE file and third-party notices when you redistribute.
 
 ## Acknowledgements
 

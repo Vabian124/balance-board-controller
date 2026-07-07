@@ -4,7 +4,8 @@
 
 ## Essential docs
 
-- [AGENTS.md](AGENTS.md): Primary onboarding for AI coding agents — start here
+- [INSTRUCTIONS.md](INSTRUCTIONS.md): **Every-pass LLM playbook** — commit every change, maintenance cadence, fork/license
+- [AGENTS.md](AGENTS.md): Primary onboarding for AI coding agents — start here for architecture
 - [docs/CODEMAP.md](docs/CODEMAP.md): File-by-file map of the repository
 - [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md): Runtime data flow, threading, presets
 - [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md): Build, run, test, CI, troubleshooting

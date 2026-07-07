@@ -2,6 +2,7 @@
 
 | Doc | Audience | Contents |
 |-----|----------|----------|
+| [../INSTRUCTIONS.md](../INSTRUCTIONS.md) | AI agents | **Every-pass playbook** — commit, maintain, license |
 | [../AGENTS.md](../AGENTS.md) | AI agents | Onboarding, conventions, where to edit |
 | [CODEMAP.md](CODEMAP.md) | Agents & devs | Every source file explained |
 | [ARCHITECTURE.md](ARCHITECTURE.md) | Agents & devs | Data flow, presets, vJoy lifecycle |

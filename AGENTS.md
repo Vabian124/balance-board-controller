@@ -2,6 +2,8 @@
 
 > **Start here.** This file orients coding agents (Cursor, Copilot, Claude, etc.) to the Balance Board Controller repo.
 
+> **Every pass:** read [INSTRUCTIONS.md](INSTRUCTIONS.md) for commit rules, maintenance checklist, and fork/license notes.
+
 ## What this project is
 
 Windows desktop app (.NET 8, WPF) that reads a **Nintendo Wii Fit Balance Board** over Bluetooth and outputs:
