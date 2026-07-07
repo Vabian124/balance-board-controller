@@ -91,8 +91,20 @@ public sealed class VJoyController : IGameControllerOutput
 
     public void Update(ProcessedBalance data)
     {
-        if (!IsReady || _joystick is null) return;
-        WriteAxes(data.JoyX, data.JoyY, data.JoyZ, data.JoyRx, data.JoyRy, data.JoyRz, data.ButtonA);
+        if (!IsReady || _joystick is null)
+        {
+            return;
+        }
+
+        try
+        {
+            WriteAxes(data.JoyX, data.JoyY, data.JoyZ, data.JoyRx, data.JoyRy, data.JoyRz, data.ButtonA);
+        }
+        catch (Exception ex)
+        {
+            LastError = ex.Message;
+            Log?.Invoke($"vJoy update failed: {ex.Message}");
+        }
     }
 
     public void Center()

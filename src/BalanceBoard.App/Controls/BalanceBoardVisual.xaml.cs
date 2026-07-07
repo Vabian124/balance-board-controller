@@ -69,10 +69,6 @@ public partial class BalanceBoardVisual : UserControl
 
     private static void UpdateCorner(Ellipse ellipse, float weight)
     {
-        var intensity = Math.Clamp(weight / 40f, 0.15, 1);
-        ellipse.Fill = new SolidColorBrush(Color.FromRgb(
-            (byte)(90 + intensity * 80),
-            (byte)(100 + intensity * 60),
-            (byte)(180 + intensity * 50)));
+        ellipse.Opacity = Math.Clamp(weight / 40f, 0.15, 1);
     }
 }

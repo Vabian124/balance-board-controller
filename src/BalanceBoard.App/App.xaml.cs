@@ -9,14 +9,18 @@ public partial class App : Application
 {
     private MainWindow? _mainWindow;
     private StartupOptions _options = new();
+    private readonly FileLogService _fileLog = new();
 
     protected override void OnStartup(StartupEventArgs e)
     {
         ShutdownMode = ShutdownMode.OnMainWindowClose;
         _options = StartupOptions.Parse(e.Args);
+        GlobalExceptionLogging.Register(_fileLog);
+        _fileLog.Write("Application starting.", "SESSION");
 
         if (!_options.SkipSingleInstance && !SingleInstanceService.TryBecomePrimary())
         {
+            _fileLog.Write("Second instance detected — exiting.", "SESSION");
             Shutdown();
             return;
         }
@@ -24,7 +28,7 @@ public partial class App : Application
         DispatcherUnhandledException += OnDispatcherUnhandledException;
         SessionEnding += (_, _) => ReleaseResources();
 
-        _mainWindow = new MainWindow(_options);
+        _mainWindow = new MainWindow(_options, _fileLog);
         MainWindow = _mainWindow;
         _mainWindow.Show();
 
@@ -60,9 +64,14 @@ public partial class App : Application
 
     private void OnDispatcherUnhandledException(object sender, DispatcherUnhandledExceptionEventArgs e)
     {
+        _fileLog.WriteException(e.Exception, "FATAL UI thread");
+        GlobalExceptionLogging.WriteFatal(e.Exception, "UI thread");
         ReleaseResources();
-        MessageBox.Show($"Unexpected error:\n{e.Exception.Message}", "Balance Board Controller",
-            MessageBoxButton.OK, MessageBoxImage.Error);
+        MessageBox.Show(
+            $"Unexpected error:\n{e.Exception.Message}\n\nDetails were written to:\n{_fileLog.CurrentLogPath}",
+            "Balance Board Controller",
+            MessageBoxButton.OK,
+            MessageBoxImage.Error);
         e.Handled = true;
         Shutdown(-1);
     }

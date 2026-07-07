@@ -13,7 +13,7 @@ public partial class MainWindow : Window
 {
     private readonly SettingsStore _settingsStore = new();
     private readonly BalanceBoardSession _session = new();
-    private readonly FileLogService _fileLog = new();
+    private readonly FileLogService _fileLog;
     private readonly StartupOptions _startupOptions;
     private AppSettings _settings = new();
     private bool _uiReady;
@@ -22,8 +22,9 @@ public partial class MainWindow : Window
     private CancellationTokenSource? _connectCts;
     private string _lastHealthReport = string.Empty;
 
-    public MainWindow(StartupOptions startupOptions, int competingProcessesStopped = 0)
+    public MainWindow(StartupOptions startupOptions, FileLogService? fileLog = null, int competingProcessesStopped = 0)
     {
+        _fileLog = fileLog ?? new FileLogService();
         _startupOptions = startupOptions;
         _settings = _settingsStore.Load();
         _session.LoadSettings(_settings, initializeVJoy: false);
@@ -327,6 +328,7 @@ public partial class MainWindow : Window
         }
         catch (Exception ex)
         {
+            _fileLog.WriteException(ex, "Connect");
             Log($"Error: {ex.Message}");
             StatusText.Text = "Error — see session log.";
         }
