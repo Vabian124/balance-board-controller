@@ -20,6 +20,7 @@ Machine-readable index: [llms.txt](llms.txt)
 - Keep UI in `BalanceBoard.App`, logic in `BalanceBoard.Core`
 - One concern per PR when possible
 - Update `docs/ROADMAP.md` when completing planned items
+- Add an entry under `docs/updates/` when you commit meaningful work (see `docs/updates/README.md`)
 - Do not include personal data, logs, or local reference folders
 
 ## Questions

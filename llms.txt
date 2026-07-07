@@ -10,6 +10,7 @@
 - [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md): Build, run, test, CI, troubleshooting
 - [docs/GLOSSARY.md](docs/GLOSSARY.md): Domain terms (tare, vJoy, triggers, etc.)
 - [docs/ROADMAP.md](docs/ROADMAP.md): Planned features and extension points
+- [docs/updates/](docs/updates/): Chronological agent work log with git commits and timestamps
 - [README.md](README.md): User-facing setup and features
 
 ## Repository layout

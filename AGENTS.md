@@ -27,6 +27,7 @@ Upstream inspiration: [WiiBalanceWalker v0.5](https://github.com/lshachar/WiiBal
 3. [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) — build, run, debug, CI
 4. [docs/GLOSSARY.md](docs/GLOSSARY.md) — domain terms
 5. [docs/ROADMAP.md](docs/ROADMAP.md) — planned work (safe to implement)
+6. [docs/updates/README.md](docs/updates/README.md) — **what past agents did** (timestamped, per commit)
 
 ## Architecture in 30 seconds
 

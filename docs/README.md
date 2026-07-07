@@ -8,5 +8,6 @@
 | [DEVELOPMENT.md](DEVELOPMENT.md) | Devs | Build, debug, CI, DLL notes |
 | [GLOSSARY.md](GLOSSARY.md) | Everyone | Domain terminology |
 | [ROADMAP.md](ROADMAP.md) | Agents & devs | Planned features |
+| [updates/README.md](updates/README.md) | Agents | **Audit log** — what shipped, when, which commit |
 
 Also see [../llms.txt](../llms.txt) for LLM crawler index and [../CONTRIBUTING.md](../CONTRIBUTING.md).
