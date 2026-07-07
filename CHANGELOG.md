@@ -27,8 +27,18 @@ Stability and accessibility release: crash-proof disconnect, Minecraft preset, j
 - Redundant vJoy re-acquire spam when toggling settings or applying presets
 - Dev mode (`--dev`) no longer terminates sibling `BalanceBoardApp` instances during vJoy cleanup
 
-## Unreleased
 
+## [1.2.2] - 2026-07-07
+
+Connect reliability: safer pairing/HID handoff, Bluetooth-off handling, and duplicate-connect guard.
+
+### Fixed
+- **Connect before board is on** — pairing failure returns cleanly without crashing when no Nintendo device is found
+- **Duplicate Connect clicks** — second request returns `AlreadyInProgress` instead of overlapping flows
+- **Bluetooth off** — connect waits for the radio when possible; clear status when BT stays unavailable
+- **Post-pair wake** — skip redundant wake probe immediately after successful pairing
+- **HID discovery** — handle `WiimoteNotFoundException` during discovery without fatal errors
+- **Wake probe teardown** — longer callback drain after wake disconnect to avoid late `OnReadData` crashes
 ## [1.2.1] - 2026-07-07
 
 Sensitivity UX fix and per-profile response curves.

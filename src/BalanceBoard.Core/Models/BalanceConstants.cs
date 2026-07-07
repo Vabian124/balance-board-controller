@@ -27,6 +27,8 @@ public static class BalanceConstants
     public const int SessionPollIntervalMs = 50;
     public const int DisconnectGraceMs = 500;
     public const int HidCallbackDrainMs = 1200;
+    /// <summary>Extra drain after wake-probe disconnect so WiimoteLib OnReadData callbacks finish.</summary>
+    public const int WakeProbePostDisconnectDrainMs = 2000;
     public const int PostPairSettleMs = 1000;
     public const int PostWakeSettleMs = 500;
     /// <summary>Hold wake HID session (report mode + LED) before disconnect so the board stays paired and awake.</summary>

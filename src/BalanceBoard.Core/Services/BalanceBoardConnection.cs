@@ -48,7 +48,18 @@ public sealed class BalanceBoardConnection : IBalanceBoardConnection
         try
         {
             _collection = new WiimoteCollection();
-            _collection.FindAllWiimotes();
+            try
+            {
+                _collection.FindAllWiimotes();
+            }
+            catch (WiimoteNotFoundException)
+            {
+                WiimoteCollectionHelper.ReleaseAll(_collection);
+                _collection = null;
+                StatusChanged?.Invoke("No balance board found yet — automatic pairing will run when you connect.");
+                return false;
+            }
+
             var deviceIds = EnumerateDeviceIds(_collection);
             ConnectionFlowLogger.LogHidDiscovery(ConnectLog, deviceIds);
 

@@ -24,6 +24,7 @@ public sealed class BalanceBoardSession : IDisposable
     private DateTime? _lastReadingUtc;
     private ConnectionPhase _connectionPhase = ConnectionPhase.Offline;
     private volatile bool _staleHidHandled;
+    private int _connectActive;
 
     public void CancelConnect() => _connectCts?.Cancel();
 
@@ -141,6 +142,12 @@ public sealed class BalanceBoardSession : IDisposable
             return ConnectResult.Fail(ConnectStatus.Cancelled);
         }
 
+        if (Interlocked.CompareExchange(ref _connectActive, 1, 0) != 0)
+        {
+            Log?.Invoke("[CONNECT] Connect already in progress — ignoring duplicate request.");
+            return ConnectResult.Fail(ConnectStatus.AlreadyInProgress);
+        }
+
         try
         {
             return await Task.Run(() =>
@@ -149,6 +156,10 @@ public sealed class BalanceBoardSession : IDisposable
         catch (OperationCanceledException)
         {
             return ConnectResult.Fail(ConnectStatus.Cancelled);
+        }
+        finally
+        {
+            Interlocked.Exchange(ref _connectActive, 0);
         }
     }
 
@@ -159,8 +170,23 @@ public sealed class BalanceBoardSession : IDisposable
         ConnectionIntent intent,
         int deviceIndex = 0,
         int discoveryRounds = 4,
-        CancellationToken cancellationToken = default) =>
-        _worker.InvokeStrict(() => ConnectWithIntentCore(intent, deviceIndex, discoveryRounds, cancellationToken));
+        CancellationToken cancellationToken = default)
+    {
+        if (Interlocked.CompareExchange(ref _connectActive, 1, 0) != 0)
+        {
+            Log?.Invoke("[CONNECT] Connect already in progress — ignoring duplicate request.");
+            return ConnectResult.Fail(ConnectStatus.AlreadyInProgress);
+        }
+
+        try
+        {
+            return _worker.InvokeStrict(() => ConnectWithIntentCore(intent, deviceIndex, discoveryRounds, cancellationToken));
+        }
+        finally
+        {
+            Interlocked.Exchange(ref _connectActive, 0);
+        }
+    }
 
     /// <summary>
     /// Legacy entry point — full pairing flow.
@@ -186,6 +212,21 @@ public sealed class BalanceBoardSession : IDisposable
         try
         {
             var ct = _connectCts.Token;
+            if (!WaitForBluetoothAtConnectStart(ct))
+            {
+                if (ct.IsCancellationRequested)
+                {
+                    Log?.Invoke("Connection cancelled.");
+                    StatusChanged?.Invoke("Connection cancelled.");
+                    ConnectionFlowLogger.LogFlowComplete(Log, false);
+                    return ConnectResult.Fail(ConnectStatus.Cancelled);
+                }
+
+                StatusChanged?.Invoke("Bluetooth is off — turn it on, then click Connect.");
+                ConnectionFlowLogger.LogFlowComplete(Log, false);
+                return ConnectResult.Fail(ConnectStatus.BluetoothUnavailable);
+            }
+
             var preferredDeviceId = ResolvePreferredDeviceId();
 
             if (intent == ConnectionIntent.QuickReconnect)
@@ -276,10 +317,22 @@ public sealed class BalanceBoardSession : IDisposable
         return ConnectResult.Fail(ConnectStatus.NoDevices);
     }
 
-    private ConnectResult TryWakeAndConnect(int deviceIndex, string? preferredDeviceId, CancellationToken ct)
+    private ConnectResult TryWakeAndConnect(
+        int deviceIndex,
+        string? preferredDeviceId,
+        CancellationToken ct,
+        bool wakeFirst = true)
     {
-        _pairing.WakePairedDevices(Log);
-        ct.ThrowIfCancellationRequested();
+        if (wakeFirst)
+        {
+            _pairing.WakePairedDevices(Log);
+            ct.ThrowIfCancellationRequested();
+        }
+        else
+        {
+            Log?.Invoke("[CONNECT] Skipping wake probe — board was just paired.");
+        }
+
         return TryConnect(deviceIndex, preferredDeviceId)
             ? ConnectResult.Ok()
             : ConnectResult.Fail(ConnectStatus.HidFailed, "Paired but HID connect failed.");
@@ -298,7 +351,7 @@ public sealed class BalanceBoardSession : IDisposable
             }
 
             ct.ThrowIfCancellationRequested();
-            var connected = TryWakeAndConnect(deviceIndex, ResolvePreferredDeviceId(), ct);
+            var connected = TryWakeAndConnect(deviceIndex, ResolvePreferredDeviceId(), ct, wakeFirst: false);
             if (connected.IsSuccess)
             {
                 return ConnectResult.Ok(wakeResult.Message);
@@ -315,6 +368,16 @@ public sealed class BalanceBoardSession : IDisposable
         for (var round = 1; round <= discoveryRounds; round++)
         {
             ct.ThrowIfCancellationRequested();
+            if (!WaitForBluetoothAtConnectStart(ct))
+            {
+                if (ct.IsCancellationRequested)
+                {
+                    return ConnectResult.Fail(ConnectStatus.Cancelled);
+                }
+
+                return ConnectResult.Fail(ConnectStatus.BluetoothUnavailable);
+            }
+
             ConnectionFlowLogger.LogPairingRound(Log, round, discoveryRounds, removeStale: round == 1);
 
             if (round == 1)
@@ -349,7 +412,7 @@ public sealed class BalanceBoardSession : IDisposable
             }
 
             ct.ThrowIfCancellationRequested();
-            var roundConnect = TryWakeAndConnect(deviceIndex, ResolvePreferredDeviceId(), ct);
+            var roundConnect = TryWakeAndConnect(deviceIndex, ResolvePreferredDeviceId(), ct, wakeFirst: false);
             if (roundConnect.IsSuccess)
             {
                 return ConnectResult.Ok(pairResult.Message);
@@ -894,6 +957,40 @@ public sealed class BalanceBoardSession : IDisposable
         SafeCallbacks.Raise(Log, $"[CONNECT] Recovery attempt {failedAttempts + 1} — HID reconnect without pairing.");
         return _worker.InvokeStrict(() =>
             TryQuickReconnect(0, Settings.LastConnectedDeviceId, ct));
+    }
+
+    private bool WaitForBluetoothAtConnectStart(CancellationToken ct)
+    {
+        var radioWasOffline = false;
+        while (!ct.IsCancellationRequested)
+        {
+            if (_pairing.IsBluetoothAvailable())
+            {
+                if (radioWasOffline)
+                {
+                    Log?.Invoke("[CONNECT] Bluetooth radio available — continuing connect.");
+                    return WaitForBluetoothRadioReady(ct);
+                }
+
+                return true;
+            }
+
+            if (!radioWasOffline)
+            {
+                Log?.Invoke("[CONNECT] Bluetooth radio unavailable — waiting to turn on.");
+                StatusChanged?.Invoke("Waiting for Bluetooth… Turn Bluetooth on in Windows settings.");
+            }
+
+            radioWasOffline = true;
+            SetConnectionPhase(ConnectionPhase.PairedReconnecting);
+
+            if (ct.WaitHandle.WaitOne(BalanceConstants.BtRadioReadyPollMs))
+            {
+                ct.ThrowIfCancellationRequested();
+            }
+        }
+
+        return false;
     }
 
     private bool WaitForBluetoothRadioReady(CancellationToken ct)

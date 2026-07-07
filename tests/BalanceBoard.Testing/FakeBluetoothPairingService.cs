@@ -11,6 +11,7 @@ public sealed class FakeBluetoothPairingService : IBluetoothPairingService
     public int PairCallCount { get; private set; }
     public bool BluetoothAvailable { get; set; } = true;
     public string? AdapterMac { get; set; } = "001A7DDA7113";
+    public int PairDelayMs { get; set; }
 
     public bool IsBluetoothAvailable() => BluetoothAvailable;
 
@@ -31,6 +32,14 @@ public sealed class FakeBluetoothPairingService : IBluetoothPairingService
     {
         PairCallCount++;
         cancellationToken.ThrowIfCancellationRequested();
+
+        if (PairDelayMs > 0)
+        {
+            if (cancellationToken.WaitHandle.WaitOne(PairDelayMs))
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+            }
+        }
 
         if (_pairResults.Count > 0)
         {

@@ -77,6 +77,11 @@ public sealed class BluetoothPairingService : IBluetoothPairingService
         {
             cancellationToken.ThrowIfCancellationRequested();
 
+            if (!IsBluetoothAvailable())
+            {
+                return Fail("Bluetooth is turned off — turn it on in Windows settings, then try Connect again.");
+            }
+
             using var btClient = new BluetoothClient();
             btClient.InquiryLength = TimeSpan.FromSeconds(BalanceConstants.BluetoothInquirySeconds);
             var radio = BluetoothRadio.PrimaryRadio;

@@ -4,6 +4,8 @@ public enum ConnectStatus
 {
     Success,
     Cancelled,
+    AlreadyInProgress,
+    BluetoothUnavailable,
     NoDevices,
     PairingFailed,
     HidFailed,

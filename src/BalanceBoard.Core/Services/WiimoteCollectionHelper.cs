@@ -71,11 +71,11 @@ internal static class WiimoteCollectionHelper
         }
         finally
         {
-            ReleaseAll(collection);
+            ReleaseAll(collection, extendedDrain: true);
         }
     }
 
-    public static void ReleaseAll(WiimoteCollection? collection)
+    public static void ReleaseAll(WiimoteCollection? collection, bool extendedDrain = false)
     {
         if (collection is null)
         {
@@ -87,7 +87,10 @@ internal static class WiimoteCollectionHelper
             SafeDisconnect(wii);
         }
 
-        Thread.Sleep(BalanceConstants.HidCallbackDrainMs);
+        Thread.Sleep(
+            extendedDrain
+                ? BalanceConstants.HidCallbackDrainMs + BalanceConstants.WakeProbePostDisconnectDrainMs
+                : BalanceConstants.HidCallbackDrainMs);
     }
 
     public static void SafeDisconnect(Wiimote? wii)
