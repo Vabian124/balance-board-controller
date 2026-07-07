@@ -48,8 +48,8 @@ WiimoteLib (BT/HID)
     → InputSimulator          (if !DisableKeyboardActions)
 ```
 
-Orchestrator: `BalanceBoardSession` (poll on `ConnectionWorker`, 50 ms).  
-UI: `MainWindow` binds to session events; settings via `SettingsStore` → `%AppData%\BalanceBoardApp\settings.json`.
+Orchestrator: `BalanceBoardSession` (50 ms poll scheduled on `ConnectionWorker` STA thread — all WiimoteLib/BT calls stay there).  
+UI: tabbed `MainWindow` (Dashboard / Profiles / Advanced); `UiDetailLevel` controls progressive disclosure; settings via `SettingsStore` → `%AppData%\BalanceBoardApp\settings.json`.
 
 ## Where to change common things
 
@@ -60,11 +60,12 @@ UI: `MainWindow` binds to session events; settings via `SettingsStore` → `%App
 | Change keyboard/mouse output | `InputSimulator.cs`, `AppSettings.Actions` |
 | vJoy acquire / release | `VJoyController.cs`, `FeederProcessCleanup.cs` |
 | Board connect / tare | `BalanceBoardConnection.cs`, `ConnectionWorker.cs`, `BalanceBoardSession.cs` |
-| Dashboard UI | `MainWindow.xaml`, `MainWindow.xaml.cs` |
+| Tabbed UI / detail levels | `MainWindow.xaml`, `MainWindow.xaml.cs`, `JumpPresets.cs` |
+| Theme (light/dark/system) | `ThemeManager.cs`, `Themes/Colors.Light.xaml`, `Colors.Dark.xaml` |
 | Health check / diagnostics | `DiagnosticsReport.cs`, `tools/Validate/Program.cs` |
 | Persist settings | `SettingsStore.cs`, `AppSettings.cs` |
 | Startup / single instance | `App.xaml.cs` |
-| Theme / styles | `Themes/Colors.xaml`, `Themes/Controls.xaml` |
+| Theme / styles | `ThemeManager.cs`, `Themes/Colors*.xaml`, `Themes/Controls.xaml` |
 
 ## Conventions (follow these)
 
@@ -74,7 +75,7 @@ UI: `MainWindow` binds to session events; settings via `SettingsStore` → `%App
 - **Presets**: use `ActionPresets.Apply*` — do not duplicate binding logic in UI.
 - **vJoy safety**: always `RelinquishVJD` on shutdown; use `FeederProcessCleanup` before acquire.
 - **UI guards**: `_uiReady` and `_suppressSettingEvents` in `MainWindow` prevent save loops during init.
-- **Logs**: use `FileLogService` / session `Log` event — never commit `%AppData%` logs.
+- **Logs**: use `FileLogService` / session `Log` event with structured tags (`[CONNECT]`, `[DISCONNECT]`, …) — never commit `%AppData%` logs.
 - **Native DLLs**: `libs/x64/` (`WiimoteLib.dll`, `vJoyInterface.dll`, `vJoyInterfaceWrap.dll`). Copied to output via csproj.
 - **Scope**: minimal diffs; match existing naming and patterns.
 
@@ -121,5 +122,7 @@ Action slot keys: `Left`, `Right`, `Forward`, `Backward`, `Modifier`, `Jump`, `D
 | No devices | Windows Bluetooth pairing, SYNC button, `DiscoverDevices()` |
 | DLL mismatch warning | Replace `libs/x64/vJoyInterface*.dll` from vJoy install |
 | UI crash on startup | Settings loaded before `InitializeComponent()` in `MainWindow` ctor |
+| Disconnect crash / OnReadData after dispose | v1.1.1+ disconnect hardening; check `[DISCONNECT]` in session log |
+| Minecraft preset brush error | Use `TryFindResource` pattern in profile styling (see `ActionPresets.ApplyMinecraft`) |
 
 Run **Debug Suite → Health Check** or the Validate CLI for a full report.

@@ -1,33 +1,43 @@
 # Balance Board Controller
 
-> Windows .NET 8 app: Wii Fit Balance Board → vJoy game controller and/or keyboard-mouse (SendInput).
+> Windows .NET 8 app (v1.1.1): Wii Fit Balance Board → vJoy game controller and/or keyboard-mouse (SendInput).
 
 ## Essential docs
 
 - [INSTRUCTIONS.md](INSTRUCTIONS.md): **Every-pass LLM playbook** — commit every change, maintenance cadence, fork/license
 - [AGENTS.md](AGENTS.md): Primary onboarding for AI coding agents — start here for architecture
 - [docs/CODEMAP.md](docs/CODEMAP.md): File-by-file map of the repository
-- [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md): Runtime data flow, threading, presets
+- [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md): Runtime data flow, threading, presets, logging
 - [docs/WORKFLOW.md](docs/WORKFLOW.md): Boot, connect, reconnect, shutdown
 - [docs/STORAGE.md](docs/STORAGE.md): settings.json, logs, profiles
+- [docs/INSTALL.md](docs/INSTALL.md): End-user install and releases
 - [docs/PYTHON_PORTING.md](docs/PYTHON_PORTING.md): Guide for rewriting in Python
 - [docs/REFACTORING_FOR_PYTHON.md](docs/REFACTORING_FOR_PYTHON.md): Portable core layout and DRY module map
 - [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md): Build, run, test, CI, troubleshooting
 - [docs/testing/README.md](docs/testing/README.md): Test pyramid, CI gate, hardware scripts
 - [docs/TEST_PLAN.md](docs/TEST_PLAN.md): Edge-case test matrix
-- [docs/GLOSSARY.md](docs/GLOSSARY.md): Domain terms (tare, vJoy, triggers, etc.)
-- [docs/ROADMAP.md](docs/ROADMAP.md): Planned features and extension points
-- [docs/updates/](docs/updates/): Chronological agent work log with git commits and timestamps
-- [docs/suggestions/](docs/suggestions/): Improvement backlog (conventions, refactors) — promote to AGENTS.md when done
-- [README.md](README.md): User-facing setup and features
+- [docs/GLOSSARY.md](docs/GLOSSARY.md): Domain terms (tare, vJoy, UiDetailLevel, jump presets, etc.)
+- [docs/ROADMAP.md](docs/ROADMAP.md): Planned features and completed v1.1.x items
+- [docs/updates/README.md](docs/updates/README.md): Agent work log index (git is source of truth)
+- [README.md](README.md): User-facing setup, tabbed UI, profiles, quick start
+
+## v1.1.1 highlights
+
+- Tabbed UI: Dashboard / Profiles / Advanced
+- `UiDetailLevel`: Simple / Standard / Advanced
+- `JumpPresets`: Easy / Normal / Hard
+- Minecraft (Controlify) profile, Balance Mouse, sensitivity presets
+- Theme System/Light/Dark with accessible ComboBox contrast
+- Crash-proof disconnect, structured log tags
+- CI: `.github/workflows/ci.yml` + `scripts/ci/lint.ps1`
 
 ## Repository layout
 
-- `src/BalanceBoard.App/` — WPF UI (MainWindow, Debug Suite)
+- `src/BalanceBoard.App/` — WPF UI (tabbed MainWindow, ThemeManager, Debug Suite)
 - `src/BalanceBoard.Core/` — Board connection, processing, vJoy, input simulation, settings
 - `tests/` — Unit, integration, fuzz, automation; `tests/hardware/` for optional board scripts
 - `scripts/ci/` — `lint.ps1` quality gate (same as GitHub CI)
-- `scripts/dev/` — start, stop, restart, connect, test-flow
+- `scripts/dev/` — start, stop, restart, connect, test-flow, sync-vjoy-dlls
 - `tools/Validate/` — CLI health-check tool
 - `libs/x64/` — WiimoteLib + vJoy native DLLs
 - `start.bat` / `stop.bat` — double-click launch and stop

@@ -9,7 +9,7 @@ sequenceDiagram
     participant User
     participant App
     participant UI as MainWindow
-    participant BG as Background
+    participant CW as ConnectionWorker
     participant BT as Bluetooth/HID
 
     User->>App: Launch exe
@@ -19,24 +19,24 @@ sequenceDiagram
         App-->>User: Exit (window brought to front)
     else Primary instance
         App->>UI: Show immediately
-        App->>BG: Feeder cleanup + vJoy wait
-        BG->>UI: RunDeferredStartup
-        UI->>BT: Warmup (best-effort)
+        App->>CW: Deferred: feeder cleanup + vJoy wait
+        CW->>UI: RunDeferredStartup
+        CW->>BT: Warmup (best-effort)
         UI->>UI: Init vJoy from settings
     end
 ```
 
 ### Instant UI
 
-The window appears **before** Bluetooth warmup, vJoy acquisition, or feeder cleanup finish. Nothing in the constructor blocks on hardware.
+The window appears **before** Bluetooth warmup, vJoy acquisition, or feeder cleanup finish. Settings load before `InitializeComponent()` in the constructor. Nothing blocks on hardware.
 
 ### Deferred startup (`RunDeferredStartup`)
 
 | Step | What happens |
 |------|----------------|
 | 1 | `FeederProcessCleanup` (unless `--no-cleanup` / `--dev`) |
-| 2 | `BluetoothPairingService.Warmup()` |
-| 3 | vJoy init + game-controller preset if needed |
+| 2 | `BluetoothPairingService.Warmup()` on `ConnectionWorker` |
+| 3 | vJoy init + default profile on first launch only |
 | 4 | Connection policy (see below) |
 
 ## Connection policy
@@ -61,7 +61,7 @@ Three intents (`ConnectionIntent`):
 - If board is on and paired: connects in ~1–2 seconds.
 - If board is off: status *"Board offline — turn it on or press SYNC, then click Connect."* — app stays responsive.
 
-### `--connect` flag (`scripts/connect.ps1`)
+### `--connect` flag (`scripts/dev/connect.ps1`)
 
 - Always runs full `PairAndConnect` (for automation / first-time scripting).
 
@@ -72,9 +72,17 @@ Three intents (`ConnectionIntent`):
 3. Up to **4** full pairing rounds (first round removes stale Nintendo pairings).
 4. Wii permanent PIN (reversed host MAC) — no Windows pairing UI.
 
-All steps honour **Cancel** (`CancellationToken`).
+All steps honour **Cancel** (`CancellationToken`) and run on `ConnectionWorker`.
 
 Session logs use `[CONNECT]` markers (intent, HID discovery, pairing rounds, attempts, first reading, flow complete). See [STORAGE.md](STORAGE.md).
+
+## Disconnect (v1.1.1+)
+
+Disconnect is hardened against WiimoteLib `OnReadData` callbacks after HID dispose:
+
+- `[DISCONNECT]` log markers through teardown
+- Benign `ObjectDisposedException` / `IOException` swallowed during callback drain
+- Simulated board IDs (`SIM-BOARD-*`) are not persisted to `LastConnectedDeviceId`
 
 ## Shutdown and edge cases
 
@@ -85,7 +93,7 @@ Session logs use `[CONNECT]` markers (intent, HID discovery, pairing rounds, att
 | **Second launch** | Named pipe signals primary; window restored + optional quick reconnect |
 | **`--dev` / `--allow-multiple`** | Skips single-instance; allows parallel instances |
 | **vJoy missing/busy** | Status chip shows warning; app does not crash |
-| **`stop.ps1` while connecting** | Graceful close then force kill; vJoy released on dispose |
+| **`scripts/dev/stop.ps1` while connecting** | Graceful close then force kill; vJoy released on dispose |
 
 ## Settings that affect workflow
 
@@ -93,29 +101,31 @@ Session logs use `[CONNECT]` markers (intent, HID discovery, pairing rounds, att
 |---------|---------|--------|
 | `AutoConnectOnStartup` | `true` | Quick reconnect on launch (only if `HasConnectedBefore`) |
 | `HasConnectedBefore` | `false` | Set after first successful connect; gates auto-connect |
+| `UiDetailLevel` | `Standard` | Simple hides Advanced tab; Advanced shows full controls |
 | `SetupWizardCompleted` | legacy | Migrated to `HasConnectedBefore` on load |
 
 Settings file: `%AppData%\BalanceBoardApp\settings.json`
 
-See [docs/STORAGE.md](docs/STORAGE.md) for settings fields, logs, profiles, and reset commands.
+See [STORAGE.md](STORAGE.md) for settings fields, logs, profiles, and reset commands.
 
 ## CLI flags
 
 | Flag | Effect |
 |------|--------|
-| `--dev` | `BALANCEBOARD_DEV=1` equivalent: skip cleanup, allow multiple instances |
+| `--dev` | Skip cleanup, allow multiple instances |
 | `--connect` | Full pairing on launch |
+| `--simulate-board` | Fake readings for CI/dev (no persist of simulated device id) |
 | `--no-cleanup` | Skip feeder / vJoy cleanup |
 | `--allow-multiple` | Skip single-instance guard |
 
 ## Dev scripts
 
 ```powershell
-.\scripts\start.ps1      # dev mode, instant UI
-.\scripts\stop.ps1       # graceful + force stop
-.\scripts\restart.ps1    # stop then start
-.\scripts\connect.ps1    # start with --connect
-.\scripts\test-flow.ps1  # automated smoke tests (no hardware)
+.\scripts\dev\start.ps1      # dev mode, instant UI
+.\scripts\dev\stop.ps1       # graceful + force stop
+.\scripts\dev\restart.ps1    # stop then start
+.\scripts\dev\connect.ps1    # start with --connect
+.\scripts\dev\test-flow.ps1  # automated smoke tests (no hardware)
 ```
 
 See [TEST_PLAN.md](TEST_PLAN.md) for the full edge-case matrix.

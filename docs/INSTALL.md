@@ -35,11 +35,11 @@ dotnet build BalanceBoard.sln -c Release
 
 When a [GitHub Release](https://github.com/Vabian124/balance-board-controller/releases) is published:
 
-1. Download `BalanceBoardController-*-win-x64.zip` and the matching `.sha256` file.
+1. Download the latest `BalanceBoardController-*-win-x64.zip` and matching `.sha256` from [Releases](https://github.com/Vabian124/balance-board-controller/releases) (v1.1.1+).
 2. Verify the checksum (optional but recommended):
 
    ```powershell
-   Get-FileHash .\BalanceBoardController-1.0.0-win-x64.zip -Algorithm SHA256
+   Get-FileHash .\BalanceBoardController-1.1.1-win-x64.zip -Algorithm SHA256
    # Compare to contents of the .sha256 file
    ```
 

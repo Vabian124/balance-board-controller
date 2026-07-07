@@ -8,20 +8,24 @@ alwaysApply: false
 
 ## Files
 
-- `MainWindow.xaml(.cs)` — dashboard, debug suite, settings sync
-- `SetupWizardWindow.xaml(.cs)` — onboarding flow
-- `Themes/Colors.xaml` — system light/dark brushes (`SystemColors`)
-- `Themes/Controls.xaml` — buttons, cards, typography
-- `Controls/BalanceBoardVisual` — live balance dot
+- `MainWindow.xaml(.cs)` — tabbed UI: Dashboard, Profiles, Advanced; debug suite; settings sync
+- `Services/ThemeManager.cs` — System / Light / Dark theme
+- `Themes/Colors.xaml` + `Colors.Light.xaml` / `Colors.Dark.xaml` — theme palettes
+- `Themes/Controls.xaml` — buttons, cards, tabs, ComboBox contrast
+- `Controls/BalanceBoardVisual` — live balance dot + jump banner
+- `Controls/ActionBindingRow` — per-slot binding editor (Advanced tab)
 
 ## Patterns
 
 - Load settings **before** `InitializeComponent()` in `MainWindow` ctor
+- Use `_uiReady` gate in `Loaded` before auto-connect / deferred UI sync
 - Use `_suppressSettingEvents = true` when populating controls programmatically
+- `UiDetailLevel` controls tab/panel visibility via `ApplyDetailLevelVisibility()`
 - Preset buttons: `session.Apply*Preset()` → `SyncUiFromSettings()` → `SaveSettingsFromUi()`
+- Profile brushes: use `TryFindResource` with hex fallback (Minecraft green) — never assume brush exists at parse time
 - Log via `_fileLog.Write` or `session.Log`; UI appends in `HookFileLog`
-- Dispatcher: session events may fire off UI thread — use `Dispatcher.Invoke`
+- Dispatcher: session events may fire off UI thread — use `Dispatcher.BeginInvoke` (not blocking `Invoke`)
 
 ## Styling
 
-Reuse `{StaticResource Card}`, `SectionTitle`, `SecondaryButton`, `GhostButton`, `AccentBrush`.
+Reuse `{StaticResource Card}`, `SectionTitle`, `SecondaryButton`, `GhostButton`, `AccentBrush`, `TabControl.Main`.

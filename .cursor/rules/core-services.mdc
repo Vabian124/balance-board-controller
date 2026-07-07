@@ -8,7 +8,7 @@ alwaysApply: false
 
 ## Orchestration
 
-`BalanceBoardSession` owns the 50 ms poll loop. Do not add a second poll path.
+`BalanceBoardSession` owns the 50 ms poll loop scheduled on `ConnectionWorker` (STA). All WiimoteLib / Bluetooth calls go through `_worker.Invoke*`. Do not add a second poll path.
 
 ## Data flow
 
@@ -18,18 +18,23 @@ alwaysApply: false
 
 | Service | Role |
 |---------|------|
+| `ConnectionWorker` | STA thread for WiimoteLib, BT pairing, poll timer |
 | `BalanceProcessor` | Tare, center, triggers, axis mapping |
-| `VJoyController` | Acquire/update/relinquish vJoy device |
+| `VJoyController` | Acquire/update/relinquish vJoy device; coalesced axis writes |
 | `InputSimulator` | SendInput for 8 action slots (incl. X1/X2) |
 | `FeederProcessCleanup` | Kill competing feeders, wait for vJoy free |
 | `ActionPresets` | Mutate `AppSettings` for named profiles |
+| `JumpPresets` | Easy/Normal/Hard jump thresholds |
+| `DeviceIdRules` | HID path extraction; block persisting simulated IDs |
 
 ## Models
 
 - `ProcessedBalance` — output of processor; consumed by vJoy and input
 - `AppSettings.Actions` — keys: Left, Right, Forward, Backward, Modifier, Jump, DiagonalLeft, DiagonalRight
+- `UiDetailLevel`, `JumpLevel` — UI/accessibility settings
 
 ## Constraints
 
 - No WPF references in Core
-- WiimoteLib exceptions: catch in connection layer, surface via events
+- WiimoteLib exceptions: catch in connection layer; benign dispose races during `[DISCONNECT]`
+- `WiimoteCollectionHelper.ReleaseAll` after HID probes
