@@ -28,7 +28,6 @@ public partial class MainWindow : Window
         PopulateUi();
         RefreshVJoyStatus();
         UpdateSliderLabels();
-        _uiReady = true;
 
         if (competingProcessesStopped > 0)
         {
@@ -259,6 +258,28 @@ public partial class MainWindow : Window
 
     private void Window_Loaded(object sender, RoutedEventArgs e)
     {
+        _uiReady = true;
+
+        var diag = VJoyDiagnostics.Inspect(_settings.VJoyDeviceId);
+        Log($"Startup vJoy check: driver={(diag.DriverEnabled ? "OK" : "MISSING")}, status={diag.DeviceStatus}, axes X/Y={diag.HasAxisX}/{diag.HasAxisY}");
+        if (!string.IsNullOrWhiteSpace(diag.Error))
+        {
+            Log(diag.Error);
+        }
+
+        if (!_settings.SetupWizardCompleted)
+        {
+            Log("Setup Wizard not completed — applying Game Controller preset and opening wizard.");
+            _session.ApplyControllerPreset();
+            SyncUiFromSettings();
+            SaveSettingsFromUi();
+            Dispatcher.BeginInvoke(() => ShowSetupWizard());
+        }
+        else if (_session.DiscoverDevices().Count == 0)
+        {
+            Log("No Wii balance board detected yet. Pair in Windows Bluetooth (PIN 0000, hold SYNC).");
+        }
+
         if (!_settings.AutoConnectOnStartup || _session.IsConnected)
         {
             return;
@@ -317,14 +338,22 @@ public partial class MainWindow : Window
 
     private void DisconnectButton_Click(object sender, RoutedEventArgs e) => _session.Disconnect();
 
-    private void SetupButton_Click(object sender, RoutedEventArgs e)
+    private void SetupButton_Click(object sender, RoutedEventArgs e) => ShowSetupWizard();
+
+    private void ShowSetupWizard()
     {
         var wizard = new SetupWizardWindow(_session) { Owner = this };
         if (wizard.ShowDialog() == true)
         {
             _session.ApplyControllerPreset();
+            _settings.SetupWizardCompleted = true;
             SyncUiFromSettings();
             SaveSettingsFromUi();
+            Log("Setup Wizard completed — Game Controller preset active.");
+        }
+        else
+        {
+            Log("Setup Wizard closed without finishing all steps.");
         }
     }
 

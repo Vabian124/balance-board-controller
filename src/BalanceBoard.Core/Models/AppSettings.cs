@@ -19,6 +19,7 @@ public sealed class AppSettings
     public bool InvertX { get; set; }
     public bool InvertY { get; set; }
     public string ActiveProfileName { get; set; } = "Default";
+    public bool SetupWizardCompleted { get; set; }
     public Dictionary<string, ActionBinding> Actions { get; set; } = CreateDefaultActions();
 
     public static Dictionary<string, ActionBinding> CreateDefaultActions()
