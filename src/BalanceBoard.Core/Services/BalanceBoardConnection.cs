@@ -21,13 +21,7 @@ public sealed class BalanceBoardConnection : IBalanceBoardConnection
     {
         try
         {
-            var collection = new WiimoteCollection();
-            collection.FindAllWiimotes();
-            return EnumerateDeviceIds(collection);
-        }
-        catch (WiimoteNotFoundException)
-        {
-            return Array.Empty<string>();
+            return WiimoteCollectionHelper.DiscoverDeviceIds();
         }
         catch (Exception ex)
         {
@@ -165,37 +159,17 @@ public sealed class BalanceBoardConnection : IBalanceBoardConnection
 
     public void Disconnect()
     {
-        Wiimote? device;
+        WiimoteCollection? collection;
         lock (_sync)
         {
-            device = _device;
+            collection = _collection;
+            _device = null;
+            _collection = null;
             IsConnected = false;
             ConnectedDeviceId = null;
         }
 
-        if (device is not null)
-        {
-            try
-            {
-                device.Disconnect();
-            }
-            catch (Exception ex)
-            {
-                ConnectLog?.Invoke($"[CONNECT] HID disconnect note: {ex.Message}");
-            }
-
-            Thread.Sleep(BalanceConstants.DisconnectGraceMs);
-        }
-
-        lock (_sync)
-        {
-            if (ReferenceEquals(_device, device))
-            {
-                _device = null;
-            }
-        }
-
-        _collection = null;
+        WiimoteCollectionHelper.ReleaseAll(collection);
     }
 
     private void ReportError(Exception ex)

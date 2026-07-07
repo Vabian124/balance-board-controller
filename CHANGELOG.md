@@ -4,6 +4,9 @@ All notable user-facing changes. For detailed agent work logs see [`docs/updates
 
 ## Unreleased
 
+### Fixed
+- Connect crash after Bluetooth pairing — `ObjectDisposedException` in WiimoteLib `OnReadData` (unsafe HID wake probe + collection not released)
+
 ## [1.0.0] - 2026-07-07
 
 First production-ready release for public use.

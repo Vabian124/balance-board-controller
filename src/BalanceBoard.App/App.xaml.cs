@@ -7,6 +7,11 @@ namespace BalanceBoard.App;
 
 public partial class App : Application
 {
+    static App()
+    {
+        // WiimoteLib can throw on the thread pool after HID dispose; do not tear down the process.
+        AppContext.SetSwitch("Switch.System.Threading.ThrowOnUncaughtThreadPoolExceptions", false);
+    }
     private MainWindow? _mainWindow;
     private StartupOptions _options = new();
     private readonly FileLogService _fileLog = new();

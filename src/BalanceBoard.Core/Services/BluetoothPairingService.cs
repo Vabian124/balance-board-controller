@@ -3,7 +3,6 @@ using BalanceBoard.Core.Abstractions;
 using BalanceBoard.Core.Models;
 using InTheHand.Net.Bluetooth;
 using InTheHand.Net.Sockets;
-using WiimoteLib;
 
 namespace BalanceBoard.Core.Services;
 
@@ -103,8 +102,7 @@ public sealed class BluetoothPairingService : IBluetoothPairingService
             }
 
             cancellationToken.ThrowIfCancellationRequested();
-            WakePairedWiimotes(log);
-
+            // HID appears after pairing without a connect/disconnect wake probe (that race crashes WiimoteLib).
             return new BluetoothPairingResult
             {
                 Success = true,
@@ -143,42 +141,13 @@ public sealed class BluetoothPairingService : IBluetoothPairingService
         }
     }
 
-    public void WakePairedDevices(Action<string>? log = null) => WakePairedWiimotes(log);
-
-    private static void WakePairedWiimotes(Action<string>? log)
+    public void WakePairedDevices(Action<string>? log = null)
     {
-        try
+        var woke = WiimoteCollectionHelper.WakeDevices(log);
+        if (woke > 0)
         {
-            var collection = new WiimoteCollection();
-            collection.FindAllWiimotes();
-            foreach (var wii in collection)
-            {
-                try
-                {
-                    wii.Connect();
-                    wii.SetLEDs(true, false, false, false);
-                    wii.Disconnect();
-                    Thread.Sleep(BalanceConstants.DisconnectGraceMs);
-                }
-                catch (Exception ex)
-                {
-                    log?.Invoke($"[CONNECT] HID wake device note: {ex.Message}");
-                }
-            }
-
-            if (collection.Count > 0)
-            {
-                log?.Invoke($"Woke {collection.Count} Wii HID device(s).");
-                Thread.Sleep(BalanceConstants.DisconnectGraceMs);
-            }
-        }
-        catch (Exception ex)
-        {
-            log?.Invoke($"[CONNECT] HID wake-up error: {ex.Message}");
-            if (!string.IsNullOrWhiteSpace(ex.StackTrace))
-            {
-                log?.Invoke(ex.StackTrace);
-            }
+            log?.Invoke($"Woke {woke} Wii HID device(s).");
+            Thread.Sleep(BalanceConstants.PostWakeSettleMs);
         }
     }
 
