@@ -106,24 +106,46 @@ public sealed class BalanceBoardSession : IDisposable
 
     public void ApplyControllerPreset()
     {
-        _settings.EnableVJoy = true;
-        _settings.DisableKeyboardActions = true;
-        _settings.SendCenterOfGravityToAxes = true;
-        _settings.SendLoadSensorsToAxes = false;
-        _settings.TriggerLeftRight = 10;
-        _settings.TriggerForwardBackward = 10;
-        _vjoy.Initialize(_settings.VJoyDeviceId);
+        ActionPresets.ApplyGameController(_settings);
+        if (_settings.EnableVJoy)
+        {
+            _vjoy.Initialize(_settings.VJoyDeviceId);
+        }
+        else
+        {
+            _vjoy.Shutdown();
+        }
+
         Log?.Invoke("Applied game controller preset (vJoy X/Y from balance).");
     }
 
     public void ApplyPedalPreset()
     {
-        _settings.EnableVJoy = true;
-        _settings.DisableKeyboardActions = true;
-        _settings.SendCenterOfGravityToAxes = false;
-        _settings.SendLoadSensorsToAxes = true;
-        _vjoy.Initialize(_settings.VJoyDeviceId);
+        ActionPresets.ApplyPedal(_settings);
+        if (_settings.EnableVJoy)
+        {
+            _vjoy.Initialize(_settings.VJoyDeviceId);
+        }
+        else
+        {
+            _vjoy.Shutdown();
+        }
+
         Log?.Invoke("Applied pedal preset (vJoy Z/RX/RY/RZ from load sensors).");
+    }
+
+    public void ApplyKeyboardPreset()
+    {
+        ActionPresets.ApplyKeyboardMovement(_settings);
+        _vjoy.Shutdown();
+        Log?.Invoke("Applied hand-free desktop preset (WASD + Shift + Space).");
+    }
+
+    public void ApplyProfile(string profileName)
+    {
+        ActionPresets.Apply(_settings, profileName);
+        LoadSettings(_settings);
+        Log?.Invoke($"Applied profile: {profileName}");
     }
 
     private void Poll()

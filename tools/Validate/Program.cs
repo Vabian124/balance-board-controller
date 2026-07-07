@@ -1,4 +1,4 @@
-﻿using BalanceBoard.Core.Services;
+using BalanceBoard.Core.Services;
 
 var killed = FeederProcessCleanup.TerminateCompetingFeeders();
 if (killed > 0)

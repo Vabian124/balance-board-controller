@@ -54,6 +54,8 @@ public sealed class InputSimulator
     private const uint MOUSEEVENTF_RIGHTUP = 0x0010;
     private const uint MOUSEEVENTF_MIDDLEDOWN = 0x0020;
     private const uint MOUSEEVENTF_MIDDLEUP = 0x0040;
+    private const uint MOUSEEVENTF_XDOWN = 0x0080;
+    private const uint MOUSEEVENTF_XUP = 0x0100;
     private const uint MOUSEEVENTF_MOVE = 0x0001;
 
     private readonly Dictionary<string, RuntimeAction> _actions = new();
@@ -72,9 +74,9 @@ public sealed class InputSimulator
 
     public void ReleaseAll()
     {
-        foreach (var action in _actions.Values)
+        foreach (var pair in _actions.ToList())
         {
-            action.Stop();
+            pair.Value.Stop();
         }
     }
 
@@ -90,8 +92,14 @@ public sealed class InputSimulator
             runtime.UpdateBinding(binding);
         }
 
-        if (active) runtime.Start();
-        else runtime.Stop();
+        if (active)
+        {
+            runtime.Start();
+        }
+        else
+        {
+            runtime.Stop();
+        }
     }
 
     private sealed class RuntimeAction
@@ -172,30 +180,57 @@ public sealed class InputSimulator
 
     private static void MouseDown(string button)
     {
-        var flag = button switch
+        if (!TryGetMouseButton(button, down: true, out var flag, out var data))
         {
-            "Left" => MOUSEEVENTF_LEFTDOWN,
-            "Right" => MOUSEEVENTF_RIGHTDOWN,
-            "Middle" => MOUSEEVENTF_MIDDLEDOWN,
-            _ => 0u,
+            return;
+        }
+
+        var input = new INPUT
+        {
+            dwType = INPUT_MOUSE,
+            U = new InputUnion { mi = new MOUSEINPUT { dwFlags = flag, mouseData = data } }
         };
-        if (flag == 0) return;
-        var input = new INPUT { dwType = INPUT_MOUSE, U = new InputUnion { mi = new MOUSEINPUT { dwFlags = flag } } };
         SendInput(1, ref input, Marshal.SizeOf<INPUT>());
     }
 
     private static void MouseUp(string button)
     {
-        var flag = button switch
+        if (!TryGetMouseButton(button, down: false, out var flag, out var data))
         {
-            "Left" => MOUSEEVENTF_LEFTUP,
-            "Right" => MOUSEEVENTF_RIGHTUP,
-            "Middle" => MOUSEEVENTF_MIDDLEUP,
-            _ => 0u,
+            return;
+        }
+
+        var input = new INPUT
+        {
+            dwType = INPUT_MOUSE,
+            U = new InputUnion { mi = new MOUSEINPUT { dwFlags = flag, mouseData = data } }
         };
-        if (flag == 0) return;
-        var input = new INPUT { dwType = INPUT_MOUSE, U = new InputUnion { mi = new MOUSEINPUT { dwFlags = flag } } };
         SendInput(1, ref input, Marshal.SizeOf<INPUT>());
+    }
+
+    private static bool TryGetMouseButton(string button, bool down, out uint flag, out int data)
+    {
+        data = 0;
+        flag = button switch
+        {
+            "Left" => down ? MOUSEEVENTF_LEFTDOWN : MOUSEEVENTF_LEFTUP,
+            "Right" => down ? MOUSEEVENTF_RIGHTDOWN : MOUSEEVENTF_RIGHTUP,
+            "Middle" => down ? MOUSEEVENTF_MIDDLEDOWN : MOUSEEVENTF_MIDDLEUP,
+            "X1" or "Back" => down ? MOUSEEVENTF_XDOWN : MOUSEEVENTF_XUP,
+            "X2" => down ? MOUSEEVENTF_XDOWN : MOUSEEVENTF_XUP,
+            _ => 0,
+        };
+
+        if (button is "X1" or "Back")
+        {
+            data = 1;
+        }
+        else if (button is "X2")
+        {
+            data = 2;
+        }
+
+        return flag != 0;
     }
 
     private static void MoveRelative(int x, int y)

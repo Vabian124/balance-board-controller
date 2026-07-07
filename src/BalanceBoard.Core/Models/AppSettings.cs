@@ -2,10 +2,10 @@ namespace BalanceBoard.Core.Models;
 
 public sealed class AppSettings
 {
-    public int TriggerLeftRight { get; set; } = 10;
-    public int TriggerForwardBackward { get; set; } = 10;
-    public int TriggerModifierLeftRight { get; set; } = 25;
-    public int TriggerModifierForwardBackward { get; set; } = 25;
+    public int TriggerLeftRight { get; set; } = 8;
+    public int TriggerForwardBackward { get; set; } = 9;
+    public int TriggerModifierLeftRight { get; set; } = 15;
+    public int TriggerModifierForwardBackward { get; set; } = 16;
     public bool EnableVJoy { get; set; } = true;
     public bool SendCenterOfGravityToAxes { get; set; } = true;
     public bool SendLoadSensorsToAxes { get; set; }

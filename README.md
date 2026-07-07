@@ -8,7 +8,9 @@ Built as a clean rewrite of [WiiBalanceWalker v0.5](https://github.com/lshachar/
 
 - **Modern dashboard** — live balance visual, direction text, connection status pills
 - **Game controller mode** — maps lean to vJoy X/Y axes (works with most games that accept joysticks)
+- **Hand-free desktop preset** — WASD + Shift + Space + mouse nudge (legacy WiiBalanceWalker bindings)
 - **Pedal / rudder preset** — maps four load sensors to extra vJoy axes
+- **Quick-start profiles** — dropdown + one-click presets on the Dashboard
 - **Setup wizard** — prerequisites, pairing help, calibration
 - **Debug Suite** — one-click health check, session log, copy report, open log folder
 - **Safe startup** — automatically stops stale feeder apps that block vJoy
@@ -36,7 +38,7 @@ dotnet build BalanceBoard.sln -c Release
 dotnet run --project src/BalanceBoard.App/BalanceBoard.App.csproj -c Release
 ```
 
-5. Click **Setup Wizard** → connect → **Tare** → **Game Controller** preset.
+5. Pick **Play Games** (or **Hand-Free Desktop** for keyboard/mouse) → connect → **Tare**.
 6. Verify axes in **vJoy Monitor** (installed with vJoy).
 
 ### Publish (single folder)
