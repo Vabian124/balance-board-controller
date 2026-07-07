@@ -48,20 +48,34 @@ public sealed class FileLogService
     public void Write(string message, string category = "INFO")
     {
         var line = $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}] [{category}] {message}";
-        lock (_sync)
+        try
         {
-            using var stream = new FileStream(
-                _currentLogPath,
-                FileMode.Append,
-                FileAccess.Write,
-                FileShare.ReadWrite,
-                bufferSize: 4096,
-                options: FileOptions.WriteThrough);
-            using var writer = new StreamWriter(stream);
-            writer.WriteLine(line);
+            lock (_sync)
+            {
+                using var stream = new FileStream(
+                    _currentLogPath,
+                    FileMode.Append,
+                    FileAccess.Write,
+                    FileShare.ReadWrite,
+                    bufferSize: 4096,
+                    options: FileOptions.WriteThrough);
+                using var writer = new StreamWriter(stream);
+                writer.WriteLine(line);
+            }
+        }
+        catch
+        {
+            // Logging must never crash the app.
         }
 
-        LineWritten?.Invoke(line);
+        try
+        {
+            LineWritten?.Invoke(line);
+        }
+        catch
+        {
+            // UI log sink faults are non-fatal.
+        }
     }
 
     public void WriteShutdown(string reason = "normal")

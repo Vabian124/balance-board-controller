@@ -5,16 +5,16 @@ namespace BalanceBoard.Core.Services;
 
 public sealed class BalanceBoardSession : IDisposable
 {
-    private readonly BalanceBoardConnection _connection = new();
-    private readonly BluetoothPairingService _pairing = new();
+    private readonly ConnectionWorker _worker;
+    private readonly bool _ownsWorker;
+    private readonly IBalanceBoardConnection _connection;
+    private readonly IBluetoothPairingService _pairing;
     private readonly BalanceProcessor _processor = new();
     private readonly IGameControllerOutput _vjoy;
     private readonly IActionSimulator _input;
-    private readonly System.Timers.Timer _pollTimer = new(BalanceConstants.SessionPollIntervalMs);
     private AppSettings _settings = new();
     private bool _disposed;
     private CancellationTokenSource? _connectCts;
-    private int _pollInProgress;
     private bool _loggedFirstPoll;
 
     public void CancelConnect() => _connectCts?.Cancel();
@@ -23,24 +23,42 @@ public sealed class BalanceBoardSession : IDisposable
     public event Action<string>? Log;
     public event Action<string>? StatusChanged;
 
-    public bool IsConnected => _connection.IsConnected;
-    public string? ConnectedDeviceId => _connection.ConnectedDeviceId;
+    public bool IsConnected =>
+        _worker.TryInvoke(() => _connection.IsConnected, out var connected, false) && connected;
+
+    public string? ConnectedDeviceId
+    {
+        get
+        {
+            _worker.TryInvoke(() => _connection.ConnectedDeviceId, out var deviceId);
+            return deviceId;
+        }
+    }
     public AppSettings Settings => _settings;
 
-    public BalanceBoardSession(IGameControllerOutput? gameController = null, IActionSimulator? actionSimulator = null)
+    public BalanceBoardSession(
+        IGameControllerOutput? gameController = null,
+        IActionSimulator? actionSimulator = null,
+        IBalanceBoardConnection? connection = null,
+        IBluetoothPairingService? pairing = null,
+        ConnectionWorker? worker = null)
     {
+        _ownsWorker = worker is null;
+        _worker = worker ?? new ConnectionWorker();
+        _connection = connection ?? new BalanceBoardConnection();
+        _pairing = pairing ?? new BluetoothPairingService();
         _vjoy = gameController ?? new VJoyController();
         _input = actionSimulator ?? new InputSimulator();
-        _connection.StatusChanged += msg => StatusChanged?.Invoke(msg);
-        _connection.ConnectLog += msg => Log?.Invoke(msg);
-        _connection.Error += msg => Log?.Invoke($"Error: {msg}");
+
+        _connection.StatusChanged += msg => SafeCallbacks.Raise(StatusChanged, msg);
+        _connection.ConnectLog += msg => SafeCallbacks.Raise(Log, msg);
+        _connection.Error += msg => SafeCallbacks.Raise(Log, $"Error: {msg}");
         if (_vjoy is VJoyController vjoyController)
         {
-            vjoyController.Log += msg => Log?.Invoke(msg);
+            vjoyController.Log += msg => SafeCallbacks.Raise(Log, msg);
         }
 
-        _pollTimer.Elapsed += (_, _) => Poll();
-        _pollTimer.AutoReset = true;
+        _worker.SetPollTick(Poll);
     }
 
     public void LoadSettings(AppSettings settings, bool initializeVJoy = true)
@@ -66,49 +84,89 @@ public sealed class BalanceBoardSession : IDisposable
         }
     }
 
-    public IReadOnlyList<string> DiscoverDevices() => _connection.DiscoverDeviceIds();
-
-    public bool Connect(int deviceIndex = 0)
+    public IReadOnlyList<string> DiscoverDevices()
     {
-        var ok = _connection.Connect(deviceIndex);
-        if (ok)
-        {
-            OnConnected();
-        }
-
-        return ok;
+        _worker.TryInvoke(() => _connection.DiscoverDeviceIds(), out var ids, Array.Empty<string>());
+        return ids ?? Array.Empty<string>();
     }
+
+    public bool Connect(int deviceIndex = 0) =>
+        _worker.TryInvoke(() =>
+        {
+            if (!_connection.Connect(deviceIndex))
+            {
+                return false;
+            }
+
+            OnConnected();
+            return true;
+        }, out var ok, false) && ok;
 
     public bool IsBoardVisible() => DiscoverDevices().Count > 0;
 
-    /// <summary>
-    /// QuickReconnect: HID only (boot / second-instance). PairAndConnect: pairing when user asks or --connect.
-    /// </summary>
-    public bool ConnectWithIntent(
+    public async Task<ConnectResult> ConnectWithIntentAsync(
         ConnectionIntent intent,
         int deviceIndex = 0,
         int discoveryRounds = 4,
         CancellationToken cancellationToken = default)
     {
+        if (cancellationToken.IsCancellationRequested)
+        {
+            return ConnectResult.Fail(ConnectStatus.Cancelled);
+        }
+
+        try
+        {
+            return await Task.Run(() =>
+                _worker.InvokeStrict(() => ConnectWithIntentCore(intent, deviceIndex, discoveryRounds, cancellationToken)));
+        }
+        catch (OperationCanceledException)
+        {
+            return ConnectResult.Fail(ConnectStatus.Cancelled);
+        }
+    }
+
+    /// <summary>
+    /// QuickReconnect: HID only (boot / second-instance). PairAndConnect: pairing when user asks or --connect.
+    /// </summary>
+    public ConnectResult ConnectWithIntent(
+        ConnectionIntent intent,
+        int deviceIndex = 0,
+        int discoveryRounds = 4,
+        CancellationToken cancellationToken = default) =>
+        _worker.InvokeStrict(() => ConnectWithIntentCore(intent, deviceIndex, discoveryRounds, cancellationToken));
+
+    /// <summary>
+    /// Legacy entry point — full pairing flow.
+    /// </summary>
+    public bool ConnectOrPair(int deviceIndex = 0, int discoveryRounds = 4, CancellationToken cancellationToken = default) =>
+        ConnectWithIntent(ConnectionIntent.PairAndConnect, deviceIndex, discoveryRounds, cancellationToken).IsSuccess;
+
+    private ConnectResult ConnectWithIntentCore(
+        ConnectionIntent intent,
+        int deviceIndex,
+        int discoveryRounds,
+        CancellationToken cancellationToken)
+    {
         ConnectionFlowLogger.LogIntent(Log, intent);
-        ConnectionFlowLogger.LogHidDiscovery(Log, DiscoverDevices());
+        ConnectionFlowLogger.LogHidDiscovery(Log, _connection.DiscoverDeviceIds());
 
         _connectCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
 
         try
         {
             var ct = _connectCts.Token;
-            if (Connect(deviceIndex))
+            if (TryConnect(deviceIndex))
             {
                 ConnectionFlowLogger.LogFlowComplete(Log, true);
-                return true;
+                return ConnectResult.Ok();
             }
 
             var result = intent == ConnectionIntent.QuickReconnect
                 ? TryQuickReconnect(deviceIndex, ct)
                 : TryPairAndConnect(deviceIndex, discoveryRounds, ct);
 
-            ConnectionFlowLogger.LogFlowComplete(Log, result);
+            ConnectionFlowLogger.LogFlowComplete(Log, result.IsSuccess);
             return result;
         }
         catch (OperationCanceledException)
@@ -116,7 +174,7 @@ public sealed class BalanceBoardSession : IDisposable
             Log?.Invoke("Connection cancelled.");
             StatusChanged?.Invoke("Connection cancelled.");
             ConnectionFlowLogger.LogFlowComplete(Log, false);
-            return false;
+            return ConnectResult.Fail(ConnectStatus.Cancelled);
         }
         catch (Exception ex)
         {
@@ -124,7 +182,7 @@ public sealed class BalanceBoardSession : IDisposable
             Log?.Invoke(ex.StackTrace ?? string.Empty);
             StatusChanged?.Invoke("Connection error — see log.");
             ConnectionFlowLogger.LogFlowComplete(Log, false);
-            return false;
+            return ConnectResult.Fail(ConnectStatus.Error, ex.Message);
         }
         finally
         {
@@ -133,51 +191,59 @@ public sealed class BalanceBoardSession : IDisposable
         }
     }
 
-    /// <summary>
-    /// Legacy entry point — full pairing flow.
-    /// </summary>
-    public bool ConnectOrPair(int deviceIndex = 0, int discoveryRounds = 4, CancellationToken cancellationToken = default) =>
-        ConnectWithIntent(ConnectionIntent.PairAndConnect, deviceIndex, discoveryRounds, cancellationToken);
+    private bool TryConnect(int deviceIndex)
+    {
+        if (!_connection.Connect(deviceIndex))
+        {
+            return false;
+        }
 
-    private bool TryQuickReconnect(int deviceIndex, CancellationToken ct)
+        OnConnected();
+        return true;
+    }
+
+    private ConnectResult TryQuickReconnect(int deviceIndex, CancellationToken ct)
     {
         Log?.Invoke("Looking for a paired balance board…");
         _pairing.WakePairedDevices(Log);
         ct.ThrowIfCancellationRequested();
 
-        if (!ct.WaitHandle.WaitOne(TimeSpan.FromMilliseconds(800)))
+        if (!ct.WaitHandle.WaitOne(TimeSpan.FromMilliseconds(BalanceConstants.PostWakeSettleMs)))
         {
             // settle
         }
 
         ct.ThrowIfCancellationRequested();
-        if (Connect(deviceIndex))
+        if (TryConnect(deviceIndex))
         {
-            return true;
+            return ConnectResult.Ok();
         }
 
         StatusChanged?.Invoke("Board offline — turn it on or press SYNC, then click Connect.");
-        return false;
+        return ConnectResult.Fail(ConnectStatus.NoDevices);
     }
 
-    private bool TryPairAndConnect(int deviceIndex, int discoveryRounds, CancellationToken ct)
+    private ConnectResult TryPairAndConnect(int deviceIndex, int discoveryRounds, CancellationToken ct)
     {
         Log?.Invoke("Press SYNC on the board if it is asleep.");
         var wakeResult = _pairing.PairDiscoverableBoard(Log, ct, removeStalePairings: false);
         if (wakeResult.Success)
         {
-            if (!ct.WaitHandle.WaitOne(TimeSpan.FromMilliseconds(1500)))
+            if (!ct.WaitHandle.WaitOne(TimeSpan.FromMilliseconds(BalanceConstants.PostPairSettleMs)))
             {
-                // settle
+                // settle after pairing
             }
 
             ct.ThrowIfCancellationRequested();
-            if (Connect(deviceIndex))
+            if (TryConnect(deviceIndex))
             {
-                return true;
+                return ConnectResult.Ok(wakeResult.Message);
             }
+
+            return ConnectResult.Fail(ConnectStatus.HidFailed, "Paired but HID connect failed.");
         }
-        else if (!string.IsNullOrWhiteSpace(wakeResult.Message))
+
+        if (!string.IsNullOrWhiteSpace(wakeResult.Message))
         {
             Log?.Invoke(wakeResult.Message);
         }
@@ -213,39 +279,42 @@ public sealed class BalanceBoardSession : IDisposable
                 continue;
             }
 
-            if (!ct.WaitHandle.WaitOne(TimeSpan.FromMilliseconds(1500)))
+            if (!ct.WaitHandle.WaitOne(TimeSpan.FromMilliseconds(BalanceConstants.PostPairSettleMs)))
             {
                 // settle
             }
 
             ct.ThrowIfCancellationRequested();
-            if (Connect(deviceIndex))
+            if (TryConnect(deviceIndex))
             {
-                return true;
+                return ConnectResult.Ok(pairResult.Message);
             }
         }
 
         StatusChanged?.Invoke("Press SYNC on the board, then click Connect.");
-        return false;
+        return ConnectResult.Fail(ConnectStatus.PairingFailed);
     }
 
     private void OnConnected()
     {
         Log?.Invoke("Starting balance poll loop.");
-        _pollTimer.Start();
+        _loggedFirstPoll = false;
+        _worker.StartPolling();
         if (_settings.AutoTareOnConnect)
         {
-            Tare();
+            TareCore();
         }
 
         SyncVJoyFromSettings();
     }
 
-    public void Disconnect()
+    public void Disconnect() => _worker.Invoke(DisconnectCore);
+
+    private void DisconnectCore()
     {
         Log?.Invoke("[CONNECT] Disconnecting.");
         _loggedFirstPoll = false;
-        _pollTimer.Stop();
+        _worker.StopPolling();
         _input.ReleaseAll();
         _vjoy.Center();
         _vjoy.Shutdown();
@@ -253,20 +322,22 @@ public sealed class BalanceBoardSession : IDisposable
         StatusChanged?.Invoke("Disconnected.");
     }
 
-    public void Tare()
+    public void Tare() => _worker.Invoke(TareCore);
+
+    private void TareCore()
     {
         _connection.Tare();
         _processor.Tare();
         Log?.Invoke("Balance board tared.");
     }
 
-    public void SetCenter()
+    public void SetCenter() => _worker.Invoke(() =>
     {
         var reading = _connection.GetCurrentReading();
         if (reading is null) return;
         _processor.SetCenterFromCurrentReading(reading);
         Log?.Invoke("Current balance set as center.");
-    }
+    });
 
     public void ResetCenter()
     {
@@ -274,17 +345,19 @@ public sealed class BalanceBoardSession : IDisposable
         Log?.Invoke("Center offset reset.");
     }
 
-    public bool CanSetCenter()
-    {
-        var reading = _connection.GetCurrentReading();
-        return reading is not null && _processor.CanSetCenter(reading.WeightKg);
-    }
+    public bool CanSetCenter() =>
+        _worker.TryInvoke(() =>
+        {
+            var reading = _connection.GetCurrentReading();
+            return reading is not null && _processor.CanSetCenter(reading.WeightKg);
+        }, out var ok, false) && ok;
 
-    public bool CanResetCenter()
-    {
-        var reading = _connection.GetCurrentReading();
-        return reading is not null && _processor.CanResetCenter(reading.WeightKg);
-    }
+    public bool CanResetCenter() =>
+        _worker.TryInvoke(() =>
+        {
+            var reading = _connection.GetCurrentReading();
+            return reading is not null && _processor.CanResetCenter(reading.WeightKg);
+        }, out var ok, false) && ok;
 
     public void ApplyControllerPreset() =>
         ApplyPreset(ActionPresets.ApplyGameController, "Applied game controller preset (vJoy X/Y from balance).");
@@ -311,7 +384,7 @@ public sealed class BalanceBoardSession : IDisposable
 
     private void Poll()
     {
-        if (_disposed || Interlocked.Exchange(ref _pollInProgress, 1) == 1)
+        if (_disposed)
         {
             return;
         }
@@ -328,10 +401,6 @@ public sealed class BalanceBoardSession : IDisposable
         {
             Log?.Invoke($"Poll error: {ex.Message}");
             Log?.Invoke(ex.StackTrace ?? string.Empty);
-        }
-        finally
-        {
-            Interlocked.Exchange(ref _pollInProgress, 0);
         }
     }
 
@@ -360,15 +429,7 @@ public sealed class BalanceBoardSession : IDisposable
             return;
         }
 
-        try
-        {
-            Processed?.Invoke(processed);
-        }
-        catch (Exception ex)
-        {
-            Log?.Invoke($"UI process callback error: {ex.Message}");
-            Log?.Invoke(ex.StackTrace ?? string.Empty);
-        }
+        SafeCallbacks.Raise(Processed, processed);
 
         if (_settings.EnableVJoy && _vjoy.IsReady)
         {
@@ -406,11 +467,25 @@ public sealed class BalanceBoardSession : IDisposable
 
         _disposed = true;
         CancelConnect();
-        _pollTimer.Stop();
-        _pollTimer.Dispose();
-        _input.ReleaseAll();
-        _vjoy.Center();
-        _vjoy.Dispose();
-        _connection.Dispose();
+        try
+        {
+            _worker.Invoke(() =>
+            {
+                _worker.StopPolling();
+                try { _input.ReleaseAll(); } catch { }
+                try { _vjoy.Center(); } catch { }
+                try { _vjoy.Dispose(); } catch { }
+                try { _connection.Dispose(); } catch { }
+            });
+        }
+        catch
+        {
+            // Dispose must not throw.
+        }
+
+        if (_ownsWorker)
+        {
+            try { _worker.Dispose(); } catch { }
+        }
     }
 }

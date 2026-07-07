@@ -12,7 +12,7 @@ namespace BalanceBoard.App;
 public partial class MainWindow : Window
 {
     private readonly SettingsStore _settingsStore = new();
-    private readonly BalanceBoardSession _session = new();
+    private readonly BalanceBoardSession _session;
     private readonly FileLogService _fileLog;
     private readonly StartupOptions _startupOptions;
     private AppSettings _settings = new();
@@ -26,6 +26,9 @@ public partial class MainWindow : Window
     {
         _fileLog = fileLog ?? new FileLogService();
         _startupOptions = startupOptions;
+        _session = startupOptions.SimulateBoard
+            ? new BalanceBoardSession(connection: new SimulatedBalanceBoardConnection())
+            : new BalanceBoardSession();
         _settings = _settingsStore.Load();
         _session.LoadSettings(_settings, initializeVJoy: false);
         InitializeComponent();
@@ -69,8 +72,12 @@ public partial class MainWindow : Window
 
         if (connectOnLaunch)
         {
-            Log("Launch flag --connect: starting full pairing flow.");
-            BeginConnect(ConnectionIntent.PairAndConnect);
+            Log(_startupOptions.SimulateBoard
+                ? "Simulated board: auto-connecting."
+                : "Launch flag --connect: starting full pairing flow.");
+            BeginConnect(_startupOptions.SimulateBoard
+                ? ConnectionIntent.QuickReconnect
+                : ConnectionIntent.PairAndConnect);
             return;
         }
 
@@ -105,18 +112,27 @@ public partial class MainWindow : Window
     private void HookSession()
     {
         _session.Processed += OnProcessed;
-        _session.Log += Log;
-        _session.StatusChanged += status => Dispatcher.Invoke(() =>
+        _session.Log += SafeLog;
+        _session.StatusChanged += status => Dispatcher.BeginInvoke(() =>
         {
-            Log(status);
-            StatusText.Text = status;
-            UpdateConnectionChip(_session.IsConnected);
+            try
+            {
+                SafeLog(status);
+                StatusText.Text = status;
+                var connected = false;
+                try { connected = _session.IsConnected; } catch { }
+                UpdateConnectionChip(connected);
+            }
+            catch (Exception ex)
+            {
+                _fileLog.WriteException(ex, "StatusChanged UI");
+            }
         });
     }
 
     private void HookFileLog()
     {
-        _fileLog.LineWritten += line => Dispatcher.Invoke(() =>
+        _fileLog.LineWritten += line => Dispatcher.BeginInvoke(() =>
         {
             LogBox.AppendText(line + Environment.NewLine);
             LogBox.ScrollToEnd();
@@ -170,16 +186,23 @@ public partial class MainWindow : Window
 
     private void OnProcessed(ProcessedBalance data)
     {
-        Dispatcher.Invoke(() =>
+        Dispatcher.BeginInvoke(() =>
         {
-            BoardVisual.Data = data;
-            WeightText.Text = $"Weight: {data.WeightKg:0.0} kg";
-            BalanceText.Text = $"Balance: {data.BalanceX:0.0}% / {data.BalanceY:0.0}%";
-            DirectionText.Text = DescribeDirection(data);
-            ActiveActionsText.Text = DescribeActiveInputs(data);
-            SensorText.Text =
-                $"TL {data.TopLeftKg:0.0}  TR {data.TopRightKg:0.0}  BL {data.BottomLeftKg:0.0}  BR {data.BottomRightKg:0.0}\n" +
-                $"vJoy  X={data.JoyX,6}  Y={data.JoyY,6}  Z={data.JoyZ,6}";
+            try
+            {
+                BoardVisual.Data = data;
+                WeightText.Text = $"Weight: {data.WeightKg:0.0} kg";
+                BalanceText.Text = $"Balance: {data.BalanceX:0.0}% / {data.BalanceY:0.0}%";
+                DirectionText.Text = DescribeDirection(data);
+                ActiveActionsText.Text = DescribeActiveInputs(data);
+                SensorText.Text =
+                    $"TL {data.TopLeftKg:0.0}  TR {data.TopRightKg:0.0}  BL {data.BottomLeftKg:0.0}  BR {data.BottomRightKg:0.0}\n" +
+                    $"vJoy  X={data.JoyX,6}  Y={data.JoyY,6}  Z={data.JoyZ,6}";
+            }
+            catch (Exception ex)
+            {
+                _fileLog.WriteException(ex, "OnProcessed UI");
+            }
         });
     }
 
@@ -236,7 +259,19 @@ public partial class MainWindow : Window
         DisconnectButton.IsEnabled = !isBusy && _session.IsConnected;
     }
 
-    private void Log(string message) => _fileLog.Write(message);
+    private void Log(string message) => SafeLog(message);
+
+    private void SafeLog(string message)
+    {
+        try
+        {
+            _fileLog.Write(message);
+        }
+        catch
+        {
+            // Never crash from logging.
+        }
+    }
 
     private bool _suppressSettingEvents;
 
@@ -270,8 +305,16 @@ public partial class MainWindow : Window
 
     private void ConnectButton_Click(object sender, RoutedEventArgs e)
     {
-        SaveSettingsFromUi();
-        BeginConnect(ConnectionIntent.PairAndConnect);
+        try
+        {
+            SaveSettingsFromUi();
+            BeginConnect(ConnectionIntent.PairAndConnect);
+        }
+        catch (Exception ex)
+        {
+            _fileLog.WriteException(ex, "Connect button");
+            SafeLog($"Error: {ex.Message}");
+        }
     }
 
     private void CancelButton_Click(object sender, RoutedEventArgs e) => CancelConnect();
@@ -303,21 +346,25 @@ public partial class MainWindow : Window
         try
         {
             var token = _connectCts.Token;
-            var connected = await Task.Run(
-                () => StaThread.Run(() => _session.ConnectWithIntent(intent, cancellationToken: token)),
-                token);
+            var result = await _session.ConnectWithIntentAsync(intent, cancellationToken: token);
 
-            if (connected)
+            if (result.IsSuccess)
             {
                 MarkConnectedSuccessfully();
                 StatusText.Text = "Connected — step on the board to play.";
-                Log("Connected.");
+                Log(result.Message ?? "Connected.");
+                ScheduleAutoExitIfRequested();
             }
             else if (!token.IsCancellationRequested)
             {
-                StatusText.Text = intent == ConnectionIntent.QuickReconnect
-                    ? "Board offline — turn it on or press SYNC, then click Connect."
-                    : "Not found — press SYNC, then Connect again.";
+                StatusText.Text = result.Status switch
+                {
+                    ConnectStatus.Cancelled => "Cancelled.",
+                    ConnectStatus.NoDevices => intent == ConnectionIntent.QuickReconnect
+                        ? "Board offline — turn it on or press SYNC, then click Connect."
+                        : "Not found — press SYNC, then Connect again.",
+                    _ => result.Message ?? "Connection failed — see session log.",
+                };
                 if (!quiet)
                 {
                     Log(StatusText.Text);
@@ -354,11 +401,31 @@ public partial class MainWindow : Window
             : "Saved connection state.");
     }
 
+    private void ScheduleAutoExitIfRequested()
+    {
+        if (_startupOptions.AutoExitAfterSeconds <= 0)
+        {
+            return;
+        }
+
+        Log($"Auto-exit in {_startupOptions.AutoExitAfterSeconds}s (--auto-exit-after).");
+        _ = Task.Delay(TimeSpan.FromSeconds(_startupOptions.AutoExitAfterSeconds))
+            .ContinueWith(_ => Dispatcher.BeginInvoke(Close));
+    }
+
     private void DisconnectButton_Click(object sender, RoutedEventArgs e)
     {
-        _session.Disconnect();
-        StatusText.Text = "Disconnected.";
-        UpdateConnectionChip(false);
+        try
+        {
+            _session.Disconnect();
+            StatusText.Text = "Disconnected.";
+            UpdateConnectionChip(false);
+        }
+        catch (Exception ex)
+        {
+            _fileLog.WriteException(ex, "Disconnect button");
+            SafeLog($"Disconnect error: {ex.Message}");
+        }
     }
 
     private void ExitButton_Click(object sender, RoutedEventArgs e) => Close();
@@ -386,9 +453,22 @@ public partial class MainWindow : Window
         UpdateSliderLabels();
     }
 
-    private void Tare_Click(object sender, RoutedEventArgs e) => _session.Tare();
-    private void SetCenter_Click(object sender, RoutedEventArgs e) => _session.SetCenter();
-    private void ResetCenter_Click(object sender, RoutedEventArgs e) => _session.ResetCenter();
+    private void Tare_Click(object sender, RoutedEventArgs e) => RunSessionAction(() => _session.Tare(), "Tare");
+    private void SetCenter_Click(object sender, RoutedEventArgs e) => RunSessionAction(() => _session.SetCenter(), "Set center");
+    private void ResetCenter_Click(object sender, RoutedEventArgs e) => RunSessionAction(() => _session.ResetCenter(), "Reset center");
+
+    private void RunSessionAction(Action action, string label)
+    {
+        try
+        {
+            action();
+        }
+        catch (Exception ex)
+        {
+            _fileLog.WriteException(ex, label);
+            SafeLog($"{label} error: {ex.Message}");
+        }
+    }
 
     private void GamePreset_Click(object sender, RoutedEventArgs e)
     {

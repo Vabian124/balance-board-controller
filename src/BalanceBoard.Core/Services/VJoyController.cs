@@ -110,7 +110,15 @@ public sealed class VJoyController : IGameControllerOutput
     public void Center()
     {
         if (!IsReady || _joystick is null) return;
-        WriteAxes(0, 0, 0, 0, 0, 0, false);
+        try
+        {
+            WriteAxes(0, 0, 0, 0, 0, 0, false);
+        }
+        catch (Exception ex)
+        {
+            LastError = ex.Message;
+            Log?.Invoke($"vJoy center failed: {ex.Message}");
+        }
     }
 
     private void WriteAxes(short x, short y, short z, short rx, short ry, short rz, bool buttonA)

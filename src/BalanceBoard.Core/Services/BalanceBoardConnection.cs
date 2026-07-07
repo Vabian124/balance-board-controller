@@ -1,14 +1,15 @@
+using BalanceBoard.Core.Abstractions;
 using BalanceBoard.Core.Models;
 using WiimoteLib;
 
 namespace BalanceBoard.Core.Services;
 
-public sealed class BalanceBoardConnection : IDisposable
+public sealed class BalanceBoardConnection : IBalanceBoardConnection
 {
     private Wiimote? _device;
+    private WiimoteCollection? _collection;
     private readonly object _sync = new();
 
-    public event Action<BalanceReading>? ReadingReceived;
     public event Action<string>? StatusChanged;
     public event Action<string>? Error;
     public event Action<string>? ConnectLog;
@@ -41,20 +42,20 @@ public sealed class BalanceBoardConnection : IDisposable
 
         try
         {
-            var collection = new WiimoteCollection();
-            collection.FindAllWiimotes();
-            var deviceIds = EnumerateDeviceIds(collection);
+            _collection = new WiimoteCollection();
+            _collection.FindAllWiimotes();
+            var deviceIds = EnumerateDeviceIds(_collection);
             ConnectionFlowLogger.LogHidDiscovery(ConnectLog, deviceIds);
 
-            if (collection.Count == 0)
+            if (_collection.Count == 0)
             {
                 StatusChanged?.Invoke("No balance board found yet — automatic pairing will run when you connect.");
                 return false;
             }
 
-            if (deviceIndex >= 0 && deviceIndex < collection.Count)
+            if (deviceIndex >= 0 && deviceIndex < _collection.Count)
             {
-                if (TryConnectDevice(collection[deviceIndex], deviceIndex))
+                if (TryConnectDevice(_collection[deviceIndex], deviceIndex))
                 {
                     return true;
                 }
@@ -62,14 +63,14 @@ public sealed class BalanceBoardConnection : IDisposable
                 Disconnect();
             }
 
-            for (var i = 0; i < collection.Count; i++)
+            for (var i = 0; i < _collection.Count; i++)
             {
                 if (i == deviceIndex)
                 {
                     continue;
                 }
 
-                if (TryConnectDevice(collection[i], i))
+                if (TryConnectDevice(_collection[i], i))
                 {
                     return true;
                 }
@@ -97,7 +98,6 @@ public sealed class BalanceBoardConnection : IDisposable
         {
             _device = device;
             ConnectedDeviceId = deviceId;
-            _device.WiimoteChanged += OnWiimoteChanged;
             _device.Connect();
             _device.SetReportType(InputReport.IRAccel, false);
             _device.SetLEDs(true, false, false, false);
@@ -136,45 +136,62 @@ public sealed class BalanceBoardConnection : IDisposable
     {
         lock (_sync)
         {
-            if (_device is null || !IsConnected) return null;
-            return ToReading(_device.WiimoteState);
+            if (_device is null || !IsConnected)
+            {
+                return null;
+            }
+
+            try
+            {
+                return ToReading(_device.WiimoteState);
+            }
+            catch (ObjectDisposedException)
+            {
+                IsConnected = false;
+                _device = null;
+                return null;
+            }
+            catch (Exception ex)
+            {
+                ReportError(ex);
+                return null;
+            }
         }
     }
 
     public void Disconnect()
     {
+        Wiimote? device;
         lock (_sync)
         {
-            if (_device is not null)
-            {
-                try
-                {
-                    _device.WiimoteChanged -= OnWiimoteChanged;
-                    _device.Disconnect();
-                }
-                catch (Exception ex)
-                {
-                    ConnectLog?.Invoke($"[CONNECT] HID disconnect note: {ex.Message}");
-                }
-            }
-
-            _device = null;
+            device = _device;
             IsConnected = false;
             ConnectedDeviceId = null;
         }
-    }
 
-    private void OnWiimoteChanged(object? sender, WiimoteChangedEventArgs e)
-    {
-        try
+        if (device is not null)
         {
-            var reading = ToReading(e.WiimoteState);
-            ReadingReceived?.Invoke(reading);
+            try
+            {
+                device.Disconnect();
+            }
+            catch (Exception ex)
+            {
+                ConnectLog?.Invoke($"[CONNECT] HID disconnect note: {ex.Message}");
+            }
+
+            Thread.Sleep(BalanceConstants.DisconnectGraceMs);
         }
-        catch (Exception ex)
+
+        lock (_sync)
         {
-            ReportError(ex);
+            if (ReferenceEquals(_device, device))
+            {
+                _device = null;
+            }
         }
+
+        _collection = null;
     }
 
     private void ReportError(Exception ex)

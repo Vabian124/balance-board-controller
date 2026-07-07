@@ -24,7 +24,7 @@ public static class GlobalExceptionLogging
         {
             if (args.ExceptionObject is Exception ex)
             {
-                WriteFatal(ex, "AppDomain");
+                WriteFatal(ex, args.IsTerminating ? "AppDomain terminating" : "AppDomain");
             }
         };
 

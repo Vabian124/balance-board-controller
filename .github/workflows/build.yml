@@ -21,10 +21,19 @@ jobs:
         run: dotnet restore BalanceBoard.sln
 
       - name: Build
-        run: dotnet build BalanceBoard.sln -c Release --no-restore
+        run: dotnet build BalanceBoard.sln -c Release --no-restore -warnaserror
 
       - name: Unit tests (portable core)
         run: dotnet test tests/BalanceBoard.Core.Tests/BalanceBoard.Core.Tests.csproj -c Release --no-build
+
+      - name: Integration tests (connect flows)
+        run: dotnet test tests/BalanceBoard.Integration.Tests/BalanceBoard.Integration.Tests.csproj -c Release --no-build
+
+      - name: Fuzz tests
+        run: dotnet test tests/BalanceBoard.Fuzz.Tests/BalanceBoard.Fuzz.Tests.csproj -c Release --no-build
+
+      - name: Automation (simulate board)
+        run: dotnet test tests/BalanceBoard.Automation/BalanceBoard.Automation.csproj -c Release --no-build
 
       - name: Format check
         run: dotnet format BalanceBoard.sln --verify-no-changes
