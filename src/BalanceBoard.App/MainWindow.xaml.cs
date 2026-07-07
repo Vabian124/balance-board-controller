@@ -282,12 +282,14 @@ public partial class MainWindow : Window
     {
         var useSimplePresets = SimpleSensitivityCheck.IsChecked == true;
         var detail = _settings.UiDetailLevel;
-        var showStandard = !useSimplePresets;
-        var showAdvanced = !useSimplePresets && detail == UiDetailLevel.Advanced;
+        var showTuning = !useSimplePresets && detail >= UiDetailLevel.Standard;
+        var showAdvancedTuning = !useSimplePresets && detail == UiDetailLevel.Advanced;
 
         SimpleSensitivityPanel.Visibility = useSimplePresets ? Visibility.Visible : Visibility.Collapsed;
-        StandardSensitivityPanel.Visibility = showStandard ? Visibility.Visible : Visibility.Collapsed;
-        AdvancedSensitivityPanel.Visibility = showAdvanced ? Visibility.Visible : Visibility.Collapsed;
+        StandardSensitivityPanel.Visibility = showTuning ? Visibility.Visible : Visibility.Collapsed;
+        AdvancedSensitivityPanel.Visibility = showAdvancedTuning ? Visibility.Visible : Visibility.Collapsed;
+        FineTuneHintText.Visibility = useSimplePresets ? Visibility.Visible : Visibility.Collapsed;
+        ProfilesTuningHintText.Visibility = showTuning ? Visibility.Visible : Visibility.Collapsed;
         UpdateSensitivityPresetButtons();
     }
 
@@ -437,11 +439,10 @@ public partial class MainWindow : Window
 
         ThemeCard.Visibility = simple ? Visibility.Collapsed : Visibility.Visible;
         CalibrationSection.Visibility = simple ? Visibility.Collapsed : Visibility.Visible;
-        InvertPanel.Visibility = simple ? Visibility.Collapsed : Visibility.Visible;
         FineTuneSection.Visibility = simple ? Visibility.Collapsed : Visibility.Visible;
         UpdateSensitivityModeUi();
         DiagnosticsSection.Visibility = advanced ? Visibility.Visible : Visibility.Collapsed;
-        SessionLogSection.Visibility = advanced ? Visibility.Visible : Visibility.Collapsed;
+        LiveLogPanel.Visibility = simple ? Visibility.Collapsed : Visibility.Visible;
 
         if (simple)
         {
@@ -877,7 +878,8 @@ public partial class MainWindow : Window
     private void MarkConnectedSuccessfully()
     {
         var deviceId = _session.ConnectedDeviceId;
-        _settingsStore.UpdateConnectionState(_settings, deviceId);
+        var adapterMac = _session.Settings.LastBluetoothAdapterMac;
+        _settingsStore.UpdateConnectionState(_settings, deviceId, adapterMac);
         Log(deviceId is not null
             ? $"Saved connection state for board {deviceId}."
             : "Saved connection state.");

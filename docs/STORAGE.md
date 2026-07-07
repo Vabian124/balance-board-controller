@@ -31,6 +31,7 @@ Written by `SettingsStore.Save()` using **atomic replace** (write `.tmp`, then m
 | `AutoConnectOnStartup` | Quick reconnect on launch (returning users) |
 | `HasConnectedBefore` | `false` = first-launch welcome; `true` = returning user |
 | `LastConnectedDeviceId` | HID device id from last successful connect (e.g. `002331987181`) |
+| `LastBluetoothAdapterMac` | Host Bluetooth adapter MAC (12 hex, no colons) used for Wii PIN pairing |
 | `LastConnectedAtUtc` | When that connect succeeded |
 | `SetupWizardCompleted` | Legacy; migrated to `HasConnectedBefore` |
 

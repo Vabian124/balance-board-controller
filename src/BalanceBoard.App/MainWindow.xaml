@@ -15,6 +15,7 @@
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
 
         <!-- Title bar -->
@@ -165,20 +166,9 @@
                                         <Button x:Name="JumpHardButton" Content="Hard to jump" MinHeight="44" Style="{StaticResource Button.Secondary}" Click="JumpHard_Click"/>
                                     </WrapPanel>
                                 </StackPanel>
-                                <StackPanel x:Name="StandardSensitivityPanel" Visibility="Collapsed" Margin="0,12,0,0">
-                                    <CheckBox x:Name="OneFootModeCheck" Content="One-foot mode (high sensitivity + easy jump)"
-                                              Margin="0,0,0,8" Checked="OneFootMode_Changed" Unchecked="OneFootMode_Changed"/>
-                                    <TextBlock x:Name="DeadzoneLabel" Style="{DynamicResource Text.Subtitle}"/>
-                                    <Slider x:Name="DeadzoneSlider" Minimum="0" Maximum="20" Value="5" TickFrequency="1" IsSnapToTickEnabled="True" ValueChanged="SettingChanged"/>
-                                    <TextBlock x:Name="SensitivityLabel" Style="{DynamicResource Text.Subtitle}" Margin="0,8,0,0"/>
-                                    <Slider x:Name="SensitivitySlider" Minimum="0.5" Maximum="3" Value="1" TickFrequency="0.1" ValueChanged="SettingChanged"/>
-                                    <TextBlock x:Name="JumpThresholdLabel" Style="{DynamicResource Text.Subtitle}" Margin="0,8,0,0"/>
-                                    <Slider x:Name="JumpThresholdSlider" Minimum="0.2" Maximum="80" Value="1" TickFrequency="0.5" ValueChanged="SettingChanged"/>
-                                    <StackPanel x:Name="InvertPanel" Margin="0,8,0,0">
-                                        <CheckBox x:Name="InvertXCheck" Content="Invert X" Checked="SettingChanged" Unchecked="SettingChanged"/>
-                                        <CheckBox x:Name="InvertYCheck" Content="Invert Y" Checked="SettingChanged" Unchecked="SettingChanged"/>
-                                    </StackPanel>
-                                </StackPanel>
+                                <TextBlock x:Name="ProfilesTuningHintText" Style="{DynamicResource Text.Subtitle}" Margin="0,12,0,0"
+                                           TextWrapping="Wrap" Visibility="Collapsed"
+                                           Text="Fine-tuning sliders (deadzone, sensitivity, triggers, response curve) are on the Advanced tab."/>
                             </StackPanel>
                         </Border>
 
@@ -200,7 +190,7 @@
 
             <!-- Advanced -->
             <TabItem x:Name="AdvancedTab" Header="Advanced" Style="{StaticResource TabItem.Main}">
-                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
                     <StackPanel>
 
                         <Border x:Name="KeyboardSection" Style="{StaticResource Card}">
@@ -245,7 +235,23 @@
                         <Border x:Name="FineTuneSection" Style="{StaticResource Card}">
                             <StackPanel>
                                 <TextBlock Text="FINE TUNING" Style="{DynamicResource Text.Section}"/>
-                                <StackPanel x:Name="AdvancedSensitivityPanel" Visibility="Collapsed">
+                                <TextBlock x:Name="FineTuneHintText" Style="{DynamicResource Text.Subtitle}" TextWrapping="Wrap" Margin="0,0,0,8"
+                                           Text="Uncheck “Simple presets” on the Profiles tab to show deadzone, sensitivity, triggers, and response curve sliders."/>
+                                <StackPanel x:Name="StandardSensitivityPanel" Visibility="Collapsed" Margin="0,0,0,0">
+                                    <CheckBox x:Name="OneFootModeCheck" Content="One-foot mode (high sensitivity + easy jump)"
+                                              Margin="0,0,0,8" Checked="OneFootMode_Changed" Unchecked="OneFootMode_Changed"/>
+                                    <TextBlock x:Name="DeadzoneLabel" Style="{DynamicResource Text.Subtitle}"/>
+                                    <Slider x:Name="DeadzoneSlider" Minimum="0" Maximum="20" Value="5" TickFrequency="1" IsSnapToTickEnabled="True" ValueChanged="SettingChanged"/>
+                                    <TextBlock x:Name="SensitivityLabel" Style="{DynamicResource Text.Subtitle}" Margin="0,8,0,0"/>
+                                    <Slider x:Name="SensitivitySlider" Minimum="0.5" Maximum="3" Value="1" TickFrequency="0.1" ValueChanged="SettingChanged"/>
+                                    <TextBlock x:Name="JumpThresholdLabel" Style="{DynamicResource Text.Subtitle}" Margin="0,8,0,0"/>
+                                    <Slider x:Name="JumpThresholdSlider" Minimum="0.2" Maximum="80" Value="1" TickFrequency="0.5" ValueChanged="SettingChanged"/>
+                                    <StackPanel x:Name="InvertPanel" Margin="0,8,0,0">
+                                        <CheckBox x:Name="InvertXCheck" Content="Invert X" Checked="SettingChanged" Unchecked="SettingChanged"/>
+                                        <CheckBox x:Name="InvertYCheck" Content="Invert Y" Checked="SettingChanged" Unchecked="SettingChanged"/>
+                                    </StackPanel>
+                                </StackPanel>
+                                <StackPanel x:Name="AdvancedSensitivityPanel" Visibility="Collapsed" Margin="0,12,0,0">
                                     <TextBlock x:Name="TriggerLeftRightLabel" Style="{DynamicResource Text.Subtitle}"/>
                                     <Slider x:Name="TriggerLeftRightSlider" Minimum="1" Maximum="30" Value="8" TickFrequency="1" IsSnapToTickEnabled="True" ValueChanged="SettingChanged"/>
                                     <TextBlock x:Name="TriggerForwardBackwardLabel" Style="{DynamicResource Text.Subtitle}"/>
@@ -274,25 +280,32 @@
                             </StackPanel>
                         </Border>
 
-                        <Border x:Name="SessionLogSection" Style="{StaticResource Card}" Margin="0">
-                            <StackPanel>
-                                <TextBlock Text="SESSION LOG" Style="{DynamicResource Text.Section}"/>
-                                <Grid Height="140" Margin="0,8,0,0">
-                                    <TextBox x:Name="LogBox" IsReadOnly="True" TextWrapping="Wrap"
-                                             VerticalScrollBarVisibility="Auto" AcceptsReturn="True"
-                                             FontFamily="{StaticResource Font.Mono}" FontSize="12"
-                                             Background="{DynamicResource Brush.Card}"
-                                             Foreground="{DynamicResource Brush.Foreground}"
-                                             BorderBrush="{DynamicResource Brush.CardBorder}" BorderThickness="1"/>
-                                    <Button Content="Clear view" Style="{StaticResource Button.Ghost}" HorizontalAlignment="Right" VerticalAlignment="Top"
-                                            Margin="8" Click="ClearLogViewButton_Click"/>
-                                </Grid>
-                            </StackPanel>
-                        </Border>
-
                     </StackPanel>
                 </ScrollViewer>
             </TabItem>
         </TabControl>
+
+        <!-- Live session log (pinned) -->
+        <Border x:Name="LiveLogPanel" Grid.Row="2" Style="{StaticResource Card}" Margin="0,12,0,0">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="140"/>
+                </Grid.RowDefinitions>
+                <DockPanel Grid.Row="0" Margin="0,0,0,8">
+                    <TextBlock Text="SESSION LOG" Style="{DynamicResource Text.Section}" DockPanel.Dock="Left"/>
+                    <Button Content="Clear view" Style="{StaticResource Button.Ghost}" DockPanel.Dock="Right"
+                            Click="ClearLogViewButton_Click"/>
+                    <Button Content="Open logs folder" Style="{StaticResource Button.Ghost}" DockPanel.Dock="Right" Margin="0,0,8,0"
+                            Click="OpenLogFolderButton_Click"/>
+                </DockPanel>
+                <TextBox x:Name="LogBox" Grid.Row="1" IsReadOnly="True" TextWrapping="Wrap"
+                         VerticalScrollBarVisibility="Auto" AcceptsReturn="True"
+                         FontFamily="{StaticResource Font.Mono}" FontSize="12"
+                         Background="{DynamicResource Brush.Card}"
+                         Foreground="{DynamicResource Brush.Foreground}"
+                         BorderBrush="{DynamicResource Brush.CardBorder}" BorderThickness="1"/>
+            </Grid>
+        </Border>
     </Grid>
 </Window>

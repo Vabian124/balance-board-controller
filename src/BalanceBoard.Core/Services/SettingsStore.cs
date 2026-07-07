@@ -60,7 +60,7 @@ public sealed class SettingsStore
         File.Move(tempPath, SettingsPath, overwrite: true);
     }
 
-    public void UpdateConnectionState(AppSettings settings, string? deviceId)
+    public void UpdateConnectionState(AppSettings settings, string? deviceId, string? bluetoothAdapterMac = null)
     {
         if (!DeviceIdRules.ShouldPersistConnectionState(deviceId))
         {
@@ -71,6 +71,11 @@ public sealed class SettingsStore
         settings.SetupWizardCompleted = true;
         settings.LastConnectedDeviceId = deviceId;
         settings.LastConnectedAtUtc = DateTime.UtcNow;
+        if (!string.IsNullOrWhiteSpace(bluetoothAdapterMac))
+        {
+            settings.LastBluetoothAdapterMac = bluetoothAdapterMac;
+        }
+
         Save(settings);
     }
 

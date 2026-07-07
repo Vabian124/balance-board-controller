@@ -6,6 +6,7 @@ Short index for AI assistants. User-facing history: [CHANGELOG.md](../../CHANGEL
 
 | Commit | Summary |
 |--------|---------|
+| *(pending)* | **UI + BT adapter** — pinned live log, Fine tuning sliders on Advanced tab, adapter MAC change detection + auto re-pair |
 | [`f025900`](https://github.com/Vabian124/balance-board-controller/commit/f025900) | **BT recovery** — truthful HID health, auto-reconnect after radio drop without SYNC, UI reconnecting states |
 | [`e971a74`](https://github.com/Vabian124/balance-board-controller/commit/e971a74) | **v1.2.1** — sensitivity slider visibility fix, response curves, one-foot mode |
 | [`e3764f1`](https://github.com/Vabian124/balance-board-controller/commit/e3764f1) | **v1.2.0** — version metadata fix, release zip naming aligned with tags |

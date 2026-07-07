@@ -31,6 +31,24 @@ public sealed class BluetoothPairingService : IBluetoothPairingService
         }
     }
 
+    public string? TryGetLocalAdapterMac()
+    {
+        try
+        {
+            var radio = BluetoothRadio.PrimaryRadio;
+            if (radio is null)
+            {
+                return null;
+            }
+
+            return radio.LocalAddress.ToString().Replace(":", "");
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
     public static void Warmup()
     {
         try
@@ -67,7 +85,12 @@ public sealed class BluetoothPairingService : IBluetoothPairingService
                 return Fail("No Bluetooth radio found on this PC.");
             }
 
-            var hostMac = radio.LocalAddress.ToString().Replace(":", "");
+            var hostMac = TryGetLocalAdapterMac();
+            if (hostMac is null)
+            {
+                return Fail("No Bluetooth radio found on this PC.");
+            }
+
             if (!WiiBluetoothPin.TryCreateFromHostMac(hostMac, out var pin, out var pinError))
             {
                 return Fail(pinError ?? "Could not build Wii pairing PIN from this adapter.");

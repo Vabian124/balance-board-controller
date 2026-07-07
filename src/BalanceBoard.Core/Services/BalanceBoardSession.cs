@@ -19,6 +19,7 @@ public sealed class BalanceBoardSession : IDisposable
     private bool _wasJumping;
     private string? _lastSettingsLogKey;
     private bool _manualDisconnect;
+    private bool _adapterMacChanged;
     private DateTime? _connectedAtUtc;
     private DateTime? _lastReadingUtc;
     private ConnectionPhase _connectionPhase = ConnectionPhase.Offline;
@@ -175,6 +176,8 @@ public sealed class BalanceBoardSession : IDisposable
     {
         StopRecovery();
         _manualDisconnect = false;
+        _adapterMacChanged = false;
+        LogBluetoothAdapterState();
         ConnectionFlowLogger.LogIntent(Log, intent);
         ConnectionFlowLogger.LogHidDiscovery(Log, _connection.DiscoverDeviceIds());
 
@@ -190,9 +193,21 @@ public sealed class BalanceBoardSession : IDisposable
                 return ConnectResult.Ok();
             }
 
-            var result = intent == ConnectionIntent.QuickReconnect
+            var effectiveIntent = intent;
+            if (intent == ConnectionIntent.QuickReconnect && _adapterMacChanged)
+            {
+                Log?.Invoke("[CONNECT] Adapter address changed — escalating to full pairing (press SYNC if needed).");
+                effectiveIntent = ConnectionIntent.PairAndConnect;
+            }
+
+            var result = effectiveIntent == ConnectionIntent.QuickReconnect
                 ? TryQuickReconnect(deviceIndex, preferredDeviceId, ct)
                 : TryPairAndConnect(deviceIndex, discoveryRounds, ct);
+
+            if (result.IsSuccess)
+            {
+                PersistAdapterMacIfKnown();
+            }
 
             ConnectionFlowLogger.LogFlowComplete(Log, result.IsSuccess);
             return result;
@@ -227,6 +242,7 @@ public sealed class BalanceBoardSession : IDisposable
         }
 
         OnConnected();
+        PersistAdapterMacIfKnown();
         return true;
     }
 
@@ -381,6 +397,47 @@ public sealed class BalanceBoardSession : IDisposable
         DeviceIdRules.ShouldPersistConnectionState(Settings.LastConnectedDeviceId)
             ? Settings.LastConnectedDeviceId
             : null;
+
+    private void LogBluetoothAdapterState()
+    {
+        var currentMac = _pairing.TryGetLocalAdapterMac();
+        if (currentMac is null)
+        {
+            Log?.Invoke("[CONNECT] Bluetooth adapter MAC unavailable (no radio or driver error).");
+            return;
+        }
+
+        var display = WiiBluetoothPin.FormatMacForDisplay(currentMac);
+        Log?.Invoke($"[CONNECT] Bluetooth adapter {display}.");
+
+        var storedMac = Settings.LastBluetoothAdapterMac;
+        if (string.IsNullOrWhiteSpace(storedMac))
+        {
+            Log?.Invoke("[CONNECT] No saved adapter MAC yet — will store after a successful pair.");
+            return;
+        }
+
+        if (string.Equals(storedMac, currentMac, StringComparison.OrdinalIgnoreCase))
+        {
+            return;
+        }
+
+        _adapterMacChanged = true;
+        var storedDisplay = WiiBluetoothPin.FormatMacForDisplay(storedMac);
+        Log?.Invoke(
+            $"[CONNECT] Adapter address changed ({storedDisplay} → {display}) — Wii permanent PIN pairing may fail until you re-pair with SYNC.");
+    }
+
+    private void PersistAdapterMacIfKnown()
+    {
+        var currentMac = _pairing.TryGetLocalAdapterMac();
+        if (string.IsNullOrWhiteSpace(currentMac))
+        {
+            return;
+        }
+
+        Settings.LastBluetoothAdapterMac = currentMac;
+    }
 
     private void SetConnectionPhase(ConnectionPhase phase)
     {
@@ -681,6 +738,7 @@ public sealed class BalanceBoardSession : IDisposable
     private void BluetoothRecoveryLoop(CancellationToken ct)
     {
         var delay = BalanceConstants.ReconnectInitialDelayMs;
+        var failedAttempts = 0;
         while (!ct.IsCancellationRequested && !_disposed && !_manualDisconnect)
         {
             try
@@ -705,19 +763,36 @@ public sealed class BalanceBoardSession : IDisposable
                     continue;
                 }
 
+                LogBluetoothAdapterState();
                 SetConnectionPhase(ConnectionPhase.Reconnecting);
                 SafeCallbacks.Raise(StatusChanged, "Reconnecting…");
-                SafeCallbacks.Raise(Log, "[CONNECT] Recovery attempt — HID reconnect without pairing.");
 
-                var result = _worker.InvokeStrict(() =>
-                    TryQuickReconnect(0, Settings.LastConnectedDeviceId, ct));
+                ConnectResult result;
+                if (_adapterMacChanged || failedAttempts >= BalanceConstants.RecoveryPairAfterAttempts)
+                {
+                    SafeCallbacks.Raise(Log,
+                        _adapterMacChanged
+                            ? "[CONNECT] Recovery: adapter MAC changed — light re-pair without removing bonds."
+                            : "[CONNECT] Recovery: HID reconnect failed repeatedly — light re-pair (press SYNC if board is flashing).");
+                    result = _worker.InvokeStrict(() =>
+                        TryPairAndConnect(0, 1, ct));
+                }
+                else
+                {
+                    SafeCallbacks.Raise(Log, "[CONNECT] Recovery attempt — HID reconnect without pairing.");
+                    result = _worker.InvokeStrict(() =>
+                        TryQuickReconnect(0, Settings.LastConnectedDeviceId, ct));
+                }
 
                 if (result.IsSuccess)
                 {
+                    PersistAdapterMacIfKnown();
                     SafeCallbacks.Raise(Log, "[CONNECT] Bluetooth recovery succeeded.");
                     EndRecovery();
                     return;
                 }
+
+                failedAttempts++;
 
                 if (ct.WaitHandle.WaitOne(delay))
                 {

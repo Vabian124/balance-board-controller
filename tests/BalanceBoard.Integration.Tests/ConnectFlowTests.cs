@@ -367,4 +367,38 @@ public class ConnectFlowTests
         Assert.True(result.IsSuccess);
         Assert.Equal(boardId, session.ConnectedDeviceId);
     }
+
+    [Fact]
+    public async Task QuickReconnect_escalates_to_pairing_when_adapter_mac_changed()
+    {
+        const string boardId = "FAKE-BOARD-001";
+        var connection = new FakeBalanceBoardConnection { DiscoveredDevices = [boardId] };
+        var connectCalls = 0;
+        connection.ConnectHandler = _ => ++connectCalls > 1;
+        var pairing = new FakeBluetoothPairingService
+        {
+            AdapterMac = "AABBCCDDEEFF",
+        };
+        pairing.EnqueuePairResult(new BluetoothPairingResult
+        {
+            Success = true,
+            Message = "Paired 1 Nintendo device(s).",
+            DevicesPaired = 1,
+        });
+
+        var settings = new AppSettings
+        {
+            LastConnectedDeviceId = boardId,
+            LastBluetoothAdapterMac = "001122334455",
+        };
+        using var session = CreateSession(connection, pairing, settings);
+        var lines = new List<string>();
+        session.Log += lines.Add;
+
+        var result = await session.ConnectWithIntentAsync(ConnectionIntent.QuickReconnect);
+        Assert.True(result.IsSuccess);
+        Assert.Equal("AABBCCDDEEFF", session.Settings.LastBluetoothAdapterMac);
+        Assert.Contains(lines, line => line.Contains("Adapter address changed", StringComparison.Ordinal));
+        Assert.True(pairing.PairCallCount >= 1);
+    }
 }

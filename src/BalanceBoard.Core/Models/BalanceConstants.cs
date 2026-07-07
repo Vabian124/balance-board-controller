@@ -38,6 +38,8 @@ public static class BalanceConstants
     public const int ReadingHealthTimeoutMs = 2500;
     public const int ReconnectInitialDelayMs = 1000;
     public const int ReconnectMaxDelayMs = 30000;
+    /// <summary>HID-only recovery attempts before escalating to light Bluetooth re-pair.</summary>
+    public const int RecoveryPairAfterAttempts = 3;
 }
 
 /// <summary>

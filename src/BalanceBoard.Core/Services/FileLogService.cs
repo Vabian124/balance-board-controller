@@ -50,6 +50,13 @@ public sealed class FileLogService
             Write("Last board: (none saved yet)", "SESSION");
         }
 
+        if (!string.IsNullOrWhiteSpace(settings.LastBluetoothAdapterMac))
+        {
+            Write(
+                $"Last adapter: {WiiBluetoothPin.FormatMacForDisplay(settings.LastBluetoothAdapterMac)}",
+                "SESSION");
+        }
+
         Write($"Log file: {CurrentLogPath}", "SESSION");
     }
 

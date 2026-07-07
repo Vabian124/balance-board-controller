@@ -17,6 +17,8 @@ public sealed class AppSettings
     public bool HasConnectedBefore { get; set; }
     public string? LastConnectedDeviceId { get; set; }
     public DateTime? LastConnectedAtUtc { get; set; }
+    /// <summary>Host Bluetooth adapter MAC (12 hex, no separators) used for Wii PIN pairing.</summary>
+    public string? LastBluetoothAdapterMac { get; set; }
     public bool AutoTareOnConnect { get; set; } = true;
     public bool StartMinimized { get; set; }
     public double DeadzonePercent { get; set; } = 5;
