@@ -69,8 +69,18 @@ public static class BalanceMath
         float owrTopLeft,
         float owrTopRight,
         float owrBottomLeft,
-        float owrBottomRight) =>
-        (owrBottomRight + owrTopRight, owrBottomRight + owrBottomLeft);
+        float owrBottomRight)
+    {
+        var balanceX = owrBottomRight + owrTopRight;
+        var balanceY = owrBottomRight + owrBottomLeft;
+        if (balanceX < BalanceConstants.MinTotalWeightEpsilon
+            && balanceY < BalanceConstants.MinTotalWeightEpsilon)
+        {
+            return (BalanceConstants.BalanceCenterPercent, BalanceConstants.BalanceCenterPercent);
+        }
+
+        return (balanceX, balanceY);
+    }
 
     public static (bool MoveLeft, bool MoveRight, bool MoveForward, bool MoveBackward) EvaluateCardinalMovement(
         float balanceX,
@@ -99,14 +109,21 @@ public static class BalanceMath
         float jumpThresholdKg,
         double jumpHoldSeconds,
         DateTime utcNow,
-        ref DateTime jumpTime)
+        ref DateTime jumpTime,
+        ref bool aboveJumpThreshold)
     {
         if (weightKg < jumpThresholdKg)
         {
-            return utcNow.Subtract(jumpTime).TotalSeconds < jumpHoldSeconds;
+            if (aboveJumpThreshold)
+            {
+                jumpTime = utcNow;
+                aboveJumpThreshold = false;
+            }
+
+            return !aboveJumpThreshold && utcNow.Subtract(jumpTime).TotalSeconds < jumpHoldSeconds;
         }
 
-        jumpTime = utcNow;
+        aboveJumpThreshold = true;
         return false;
     }
 

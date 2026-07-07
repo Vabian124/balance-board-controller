@@ -24,6 +24,10 @@
   </ItemGroup>
 
   <ItemGroup>
+    <InternalsVisibleTo Include="BalanceBoard.UiSmoke" />
+  </ItemGroup>
+
+  <ItemGroup>
     <PackageReference Include="WpfAnalyzers" Version="4.1.1">
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
       <PrivateAssets>all</PrivateAssets>

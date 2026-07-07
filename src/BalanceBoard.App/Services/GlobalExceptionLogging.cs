@@ -1,3 +1,4 @@
+using System.IO;
 using BalanceBoard.Core.Services;
 
 namespace BalanceBoard.App.Services;
@@ -24,16 +25,37 @@ public static class GlobalExceptionLogging
         {
             if (args.ExceptionObject is Exception ex)
             {
+                if (IsBenignDeviceIo(ex))
+                {
+                    _log?.Write($"[DISCONNECT] Ignored benign device I/O: {ex.Message}", "WARN");
+                    return;
+                }
+
                 WriteFatal(ex, args.IsTerminating ? "AppDomain terminating" : "AppDomain");
             }
         };
 
         TaskScheduler.UnobservedTaskException += (_, args) =>
         {
-            WriteFatal(args.Exception, "UnobservedTask");
+            foreach (var ex in args.Exception.Flatten().InnerExceptions)
+            {
+                if (IsBenignDeviceIo(ex))
+                {
+                    _log?.Write($"[DISCONNECT] Ignored benign device I/O: {ex.Message}", "WARN");
+                    continue;
+                }
+
+                WriteFatal(ex, "UnobservedTask");
+            }
+
             args.SetObserved();
         };
     }
+
+    private static bool IsBenignDeviceIo(Exception ex) =>
+        ex is IOException or ObjectDisposedException
+        || ex.InnerException is IOException or ObjectDisposedException
+        || ex.Message.Contains("device is not connected", StringComparison.OrdinalIgnoreCase);
 
     public static void WriteFatal(Exception exception, string context)
     {

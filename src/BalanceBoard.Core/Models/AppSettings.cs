@@ -25,6 +25,8 @@ public sealed class AppSettings
     public bool UseSimpleSensitivity { get; set; } = true;
     public float JumpWeightThresholdKg { get; set; } = BalanceConstants.JumpWeightThresholdKg;
     public double JumpHoldSeconds { get; set; } = BalanceConstants.JumpHoldSeconds;
+    public JumpLevel JumpLevel { get; set; } = JumpLevel.Normal;
+    public UiDetailLevel UiDetailLevel { get; set; } = UiDetailLevel.Standard;
     public bool InvertX { get; set; }
     public bool InvertY { get; set; }
     public ThemePreference ThemePreference { get; set; } = ThemePreference.System;

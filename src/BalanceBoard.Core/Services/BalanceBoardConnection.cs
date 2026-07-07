@@ -1,3 +1,4 @@
+using System.IO;
 using BalanceBoard.Core.Abstractions;
 using BalanceBoard.Core.Models;
 using WiimoteLib;
@@ -9,6 +10,7 @@ public sealed class BalanceBoardConnection : IBalanceBoardConnection
     private Wiimote? _device;
     private WiimoteCollection? _collection;
     private readonly object _sync = new();
+    private volatile bool _disconnecting;
 
     public event Action<string>? StatusChanged;
     public event Action<string>? Error;
@@ -130,12 +132,27 @@ public sealed class BalanceBoardConnection : IBalanceBoardConnection
 
     private void OnWiimoteChanged(object? sender, WiimoteChangedEventArgs e)
     {
-        if (!IsConnected || e.WiimoteState.ExtensionType != ExtensionType.BalanceBoard)
+        try
         {
-            return;
-        }
+            if (_disconnecting || !IsConnected || e.WiimoteState.ExtensionType != ExtensionType.BalanceBoard)
+            {
+                return;
+            }
 
-        SafeCallbacks.Raise(ReadingAvailable);
+            SafeCallbacks.Raise(ReadingAvailable);
+        }
+        catch (ObjectDisposedException)
+        {
+            // Late HID callback after disconnect — ignore.
+        }
+        catch (IOException)
+        {
+            // Device unplugged during callback — ignore.
+        }
+        catch (Exception ex)
+        {
+            ReportError(ex);
+        }
     }
 
     public void Tare()
@@ -147,12 +164,20 @@ public sealed class BalanceBoardConnection : IBalanceBoardConnection
                 return;
             }
 
-            _device.WiimoteState.BalanceBoardState.ZeroPoint.Reset = true;
+            try
+            {
+                _device.WiimoteState.BalanceBoardState.ZeroPoint.Reset = true;
+            }
+            catch (Exception ex)
+            {
+                ReportError(ex);
+            }
         }
     }
 
     public BalanceReading? GetCurrentReading()
     {
+        WiimoteCollection? release = null;
         lock (_sync)
         {
             if (_device is null || !IsConnected)
@@ -164,11 +189,14 @@ public sealed class BalanceBoardConnection : IBalanceBoardConnection
             {
                 return ToReading(_device.WiimoteState);
             }
+            catch (IOException ex)
+            {
+                release = DetachLocked();
+                ReportError(ex);
+            }
             catch (ObjectDisposedException)
             {
-                IsConnected = false;
-                _device = null;
-                return null;
+                release = DetachLocked();
             }
             catch (Exception ex)
             {
@@ -176,35 +204,84 @@ public sealed class BalanceBoardConnection : IBalanceBoardConnection
                 return null;
             }
         }
+
+        if (release is not null)
+        {
+            ReleaseCollection(release, notify: true);
+        }
+
+        return null;
     }
 
     public void Disconnect()
     {
-        Wiimote? device;
-        WiimoteCollection? collection;
+        WiimoteCollection? release;
         lock (_sync)
         {
-            device = _device;
-            collection = _collection;
-            _device = null;
-            _collection = null;
-            IsConnected = false;
-            ConnectedDeviceId = null;
+            _disconnecting = true;
+            release = DetachLocked();
         }
 
-        if (device is not null)
+        try
+        {
+            ConnectLog?.Invoke("[DISCONNECT] Releasing HID collection.");
+            ReleaseCollection(release, notify: false);
+        }
+        finally
+        {
+            _disconnecting = false;
+        }
+    }
+
+    private WiimoteCollection? DetachLocked()
+    {
+        if (_device is not null)
         {
             try
             {
-                device.WiimoteChanged -= OnWiimoteChanged;
+                _device.WiimoteChanged -= OnWiimoteChanged;
             }
             catch
             {
-                // Best-effort unsubscribe.
+                // Best-effort unsubscribe before HID teardown.
             }
         }
 
-        WiimoteCollectionHelper.ReleaseAll(collection);
+        var collection = _collection;
+        _device = null;
+        _collection = null;
+        IsConnected = false;
+        ConnectedDeviceId = null;
+        return collection;
+    }
+
+    private void ReleaseCollection(WiimoteCollection? collection, bool notify)
+    {
+        if (collection is null)
+        {
+            return;
+        }
+
+        try
+        {
+            WiimoteCollectionHelper.ReleaseAll(collection);
+        }
+        catch (Exception ex)
+        {
+            ReportError(ex);
+        }
+
+        if (notify)
+        {
+            try
+            {
+                StatusChanged?.Invoke("Balance board disconnected.");
+            }
+            catch
+            {
+                // Status subscribers must not block teardown.
+            }
+        }
     }
 
     private void ReportError(Exception ex)

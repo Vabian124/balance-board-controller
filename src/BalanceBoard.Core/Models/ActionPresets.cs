@@ -66,6 +66,7 @@ public static class ActionPresets
         settings.SendCenterOfGravityToAxes = true;
         settings.SendLoadSensorsToAxes = false;
         settings.MapJumpToVJoyButton = true;
+        JumpPresets.Apply(settings, JumpLevel.Normal);
         SensitivityPresets.Apply(settings, SensitivityLevel.Medium);
         TriggerDefaults.ApplyTo(settings);
     }

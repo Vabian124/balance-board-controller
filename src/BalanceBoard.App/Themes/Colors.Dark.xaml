@@ -20,6 +20,10 @@
     <SolidColorBrush x:Key="Brush.Danger" Color="{StaticResource Color.Danger}"/>
     <SolidColorBrush x:Key="Brush.Info" Color="{StaticResource Color.Info}"/>
 
+    <Color x:Key="Color.Minecraft">#22C55E</Color>
+    <SolidColorBrush x:Key="Brush.Minecraft" Color="{StaticResource Color.Minecraft}"/>
+    <SolidColorBrush x:Key="Brush.JumpActive" Color="{StaticResource Color.Success}"/>
+
     <SolidColorBrush x:Key="Brush.BoardSurface" Color="#1E293B"/>
     <SolidColorBrush x:Key="Brush.BoardBorder" Color="#64748B"/>
     <SolidColorBrush x:Key="Brush.BoardPadTL" Color="#60A5FA"/>
