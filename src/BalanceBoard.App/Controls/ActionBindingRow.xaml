@@ -9,7 +9,7 @@
             <ColumnDefinition Width="*"/>
         </Grid.ColumnDefinitions>
 
-        <TextBlock x:Name="SlotLabel" Grid.Column="0" Style="{StaticResource Text.Body}"
+        <TextBlock x:Name="SlotLabel" Grid.Column="0" Style="{DynamicResource Text.Body}"
                    VerticalAlignment="Center" FontSize="13"/>
 
         <ComboBox x:Name="KindCombo" Grid.Column="1" Margin="0,0,8,0"
@@ -26,10 +26,10 @@
                 <Slider x:Name="MoveAmountSlider" Minimum="-40" Maximum="40" Width="120"
                         TickFrequency="1" IsSnapToTickEnabled="True"
                         ValueChanged="MoveAmount_Changed"/>
-                <TextBlock x:Name="MoveAmountLabel" Style="{StaticResource Text.Subtitle}"
+                <TextBlock x:Name="MoveAmountLabel" Style="{DynamicResource Text.Subtitle}"
                            VerticalAlignment="Center" Margin="8,0,0,0" MinWidth="48"/>
             </StackPanel>
-            <TextBlock x:Name="NoneLabel" Text="—" Style="{StaticResource Text.Subtitle}"
+            <TextBlock x:Name="NoneLabel" Text="—" Style="{DynamicResource Text.Subtitle}"
                        VerticalAlignment="Center" Visibility="Collapsed"/>
         </Grid>
     </Grid>
