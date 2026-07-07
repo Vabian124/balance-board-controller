@@ -84,6 +84,26 @@ Disconnect is hardened against WiimoteLib `OnReadData` callbacks after HID dispo
 - Benign `ObjectDisposedException` / `IOException` swallowed during callback drain
 - Simulated board IDs (`SIM-BOARD-*`) are not persisted to `LastConnectedDeviceId`
 
+## Bluetooth drop recovery (v1.2.2+)
+
+Windows Bluetooth “paired/connected” is **not** the same as an active Wii HID session. A flashing board means it is not linked to the host.
+
+| State | Meaning |
+|-------|---------|
+| **Connected** | HID open **and** live balance readings within health window |
+| **Connecting** | HID open, waiting for first reading |
+| **Reconnecting** | Auto-retry HID to `LastConnectedDeviceId` (no SYNC) |
+| **Paired, reconnecting…** | Bluetooth radio off or HID not visible yet; waiting for adapter |
+
+When Bluetooth drops (radio off, stale HID, unexpected disconnect):
+
+1. Session releases inputs and closes stale HID handles
+2. If **Auto-connect on startup** is on and `LastConnectedDeviceId` is known: background recovery with exponential backoff
+3. Recovery uses `WakePairedDevices` + HID `Connect` only — **no** re-pairing / SYNC unless user clicks **Connect**
+4. Manual **Disconnect** cancels recovery
+
+Logs: `[CONNECT] Bluetooth recovery started`, `[DISCONNECT] HID session stale`, `[CONNECT] Bluetooth recovery succeeded`.
+
 ## Shutdown and edge cases
 
 | Scenario | Behavior |

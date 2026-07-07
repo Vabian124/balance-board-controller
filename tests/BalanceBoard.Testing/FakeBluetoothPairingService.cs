@@ -9,6 +9,9 @@ public sealed class FakeBluetoothPairingService : IBluetoothPairingService
 
     public int WakeCallCount { get; private set; }
     public int PairCallCount { get; private set; }
+    public bool BluetoothAvailable { get; set; } = true;
+
+    public bool IsBluetoothAvailable() => BluetoothAvailable;
 
     public void EnqueuePairResult(BluetoothPairingResult result) => _pairResults.Enqueue(result);
 

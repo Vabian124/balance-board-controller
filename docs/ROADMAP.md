@@ -30,7 +30,7 @@ Planned improvements. Safe for agents to implement incrementally.
 ## Phase 3 — robustness
 
 - [ ] Configurable poll rate in settings
-- [ ] Graceful reconnect when Bluetooth drops (auto-retry with backoff)
+- [x] Graceful reconnect when Bluetooth drops (auto-retry with backoff)
 
 ## Phase 4 — distribution
 

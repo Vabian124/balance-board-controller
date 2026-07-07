@@ -55,7 +55,7 @@ public partial class MainWindow : Window
 
         Log("Ready.");
         _fileLog.WriteSessionHeader(_settingsStore.SettingsPath, _settings);
-        UpdateConnectionChip(false);
+        UpdateConnectionChip(ConnectionPhase.Offline);
     }
 
     public void RunDeferredStartup(bool connectOnLaunch, int competingProcessesStopped = 0)
@@ -125,15 +125,24 @@ public partial class MainWindow : Window
     {
         _session.Processed += OnProcessed;
         _session.Log += SafeLog;
+        _session.ConnectionPhaseChanged += phase => Dispatcher.BeginInvoke(() =>
+        {
+            try
+            {
+                UpdateConnectionChip(phase);
+            }
+            catch (Exception ex)
+            {
+                _fileLog.WriteException(ex, "ConnectionPhaseChanged UI");
+            }
+        });
         _session.StatusChanged += status => Dispatcher.BeginInvoke(() =>
         {
             try
             {
                 SafeLog(status);
                 StatusText.Text = status;
-                var connected = false;
-                try { connected = _session.IsConnected; } catch { }
-                UpdateConnectionChip(connected);
+                UpdateConnectionChip(_session.ConnectionPhase);
             }
             catch (Exception ex)
             {
@@ -391,7 +400,7 @@ public partial class MainWindow : Window
     {
         ThemeManager.RefreshThemedElements(this);
         RefreshVJoyStatus();
-        UpdateConnectionChip(_session.IsConnected);
+        UpdateConnectionChip(_session.ConnectionPhase);
         UpdateProfileButtonStyles();
         UpdateSensitivityPresetButtons();
         UpdateJumpPresetButtons();
@@ -637,21 +646,31 @@ public partial class MainWindow : Window
         }
     }
 
-    private void UpdateConnectionChip(bool connected)
+    private void UpdateConnectionChip(ConnectionPhase phase)
     {
         try
         {
-            ConnectionChipText.Text = connected ? "Board: connected" : "Board: offline";
-            ConnectionChip.BorderBrush = connected
+            ConnectionChipText.Text = phase switch
+            {
+                ConnectionPhase.Connected => "Board: connected",
+                ConnectionPhase.Connecting => "Board: connecting…",
+                ConnectionPhase.Reconnecting => "Board: reconnecting…",
+                ConnectionPhase.PairedReconnecting => "Board: paired, reconnecting…",
+                _ => "Board: offline",
+            };
+
+            ConnectionChip.BorderBrush = phase == ConnectionPhase.Connected
                 ? FindThemeBrush("Brush.Success", "#22C55E")
-                : FindThemeBrush("Brush.CardBorder");
+                : phase is ConnectionPhase.Connecting or ConnectionPhase.Reconnecting or ConnectionPhase.PairedReconnecting
+                    ? FindThemeBrush("Brush.Warning", "#F59E0B")
+                    : FindThemeBrush("Brush.CardBorder");
         }
         catch (Exception ex)
         {
             _fileLog.WriteException(ex, "UpdateConnectionChip");
         }
 
-        if (!connected)
+        if (phase == ConnectionPhase.Offline)
         {
             ResetLiveReadoutPlaceholders();
         }
@@ -807,7 +826,9 @@ public partial class MainWindow : Window
             if (result.IsSuccess)
             {
                 MarkConnectedSuccessfully();
-                StatusText.Text = "Connected — step on the board (use Tare if weight looks wrong).";
+                StatusText.Text = _session.ConnectionPhase == ConnectionPhase.Connected
+                    ? "Connected — step on the board (use Tare if weight looks wrong)."
+                    : "Connecting to balance board…";
                 Log(result.Message ?? "Connected.");
                 if (!_startupOptions.SimulateBoard)
                 {
@@ -848,7 +869,7 @@ public partial class MainWindow : Window
             _connectCts = null;
             _connectInProgress = false;
             UpdateConnectUi(isBusy: false);
-            UpdateConnectionChip(_session.IsConnected);
+            UpdateConnectionChip(_session.ConnectionPhase);
             Log($"[CONNECT] UI end connected={_session.IsConnected}");
         }
     }
@@ -880,7 +901,7 @@ public partial class MainWindow : Window
         {
             _session.Disconnect();
             StatusText.Text = "Disconnected.";
-            UpdateConnectionChip(false);
+            UpdateConnectionChip(ConnectionPhase.Offline);
             UpdateConnectUi(isBusy: false);
         }
         catch (Exception ex)

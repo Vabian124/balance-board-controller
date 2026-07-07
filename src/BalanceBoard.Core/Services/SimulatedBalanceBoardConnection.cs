@@ -25,7 +25,7 @@ public sealed class SimulatedBalanceBoardConnection : IBalanceBoardConnection
 
     public IReadOnlyList<string> DiscoverDeviceIds() => [DeviceIdRules.SimulatedDeviceId];
 
-    public bool Connect(int deviceIndex = 0)
+    public bool Connect(int deviceIndex = 0, string? preferredDeviceId = null)
     {
         Disconnect();
         ConnectedDeviceId = DiscoverDeviceIds()[0];

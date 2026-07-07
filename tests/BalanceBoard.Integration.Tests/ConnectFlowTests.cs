@@ -32,13 +32,20 @@ public class ConnectFlowTests
 {
     private static BalanceBoardSession CreateSession(
         FakeBalanceBoardConnection connection,
-        FakeBluetoothPairingService pairing)
+        FakeBluetoothPairingService pairing,
+        AppSettings? settings = null)
     {
-        return new BalanceBoardSession(
+        var session = new BalanceBoardSession(
             gameController: new NullGameControllerOutput(),
             actionSimulator: new NullActionSimulator(),
             connection: connection,
             pairing: pairing);
+        if (settings is not null)
+        {
+            session.LoadSettings(settings, initializeVJoy: false);
+        }
+
+        return session;
     }
 
     [Fact]
@@ -258,5 +265,106 @@ public class ConnectFlowTests
         var result = await session.ConnectWithIntentAsync(ConnectionIntent.PairAndConnect, discoveryRounds: 2);
         Assert.True(result.IsSuccess);
         Assert.Equal(2, pairing.PairCallCount);
+    }
+
+    [Fact]
+    public async Task IsConnected_requires_live_readings_not_hid_open_only()
+    {
+        var connection = new FakeBalanceBoardConnection { BlockReadings = true };
+        using var session = CreateSession(connection, new FakeBluetoothPairingService());
+        var result = await session.ConnectWithIntentAsync(ConnectionIntent.QuickReconnect);
+        Assert.True(result.IsSuccess);
+        Assert.Equal(ConnectionPhase.Connecting, session.ConnectionPhase);
+        Assert.False(session.IsConnected);
+
+        connection.BlockReadings = false;
+        await Task.Delay(200);
+        Assert.Equal(ConnectionPhase.Connected, session.ConnectionPhase);
+        Assert.True(session.IsConnected);
+    }
+
+    [Fact]
+    public async Task Stale_hid_triggers_bluetooth_recovery()
+    {
+        const string boardId = "FAKE-BOARD-001";
+        var connection = new FakeBalanceBoardConnection { DiscoveredDevices = [boardId] };
+        var settings = new AppSettings
+        {
+            AutoConnectOnStartup = true,
+            LastConnectedDeviceId = boardId,
+        };
+        using var session = CreateSession(connection, new FakeBluetoothPairingService(), settings);
+        await session.ConnectWithIntentAsync(ConnectionIntent.QuickReconnect);
+        Assert.True(session.IsConnected);
+
+        connection.BlockReadings = true;
+        await Task.Delay(BalanceConstants.ReadingHealthTimeoutMs + 500);
+        Assert.False(session.IsConnected);
+
+        connection.BlockReadings = false;
+        await Task.Delay(BalanceConstants.ReconnectInitialDelayMs + BalanceConstants.PostWakeSettleMs + 800);
+        Assert.True(session.IsConnected);
+    }
+
+    [Fact]
+    public async Task Bluetooth_recovery_reconnects_after_unexpected_drop()
+    {
+        const string boardId = "FAKE-BOARD-001";
+        var connection = new FakeBalanceBoardConnection { DiscoveredDevices = [boardId] };
+        var pairing = new FakeBluetoothPairingService();
+        var settings = new AppSettings
+        {
+            AutoConnectOnStartup = true,
+            HasConnectedBefore = true,
+            LastConnectedDeviceId = boardId,
+        };
+        using var session = CreateSession(connection, pairing, settings);
+        var lines = new List<string>();
+        session.Log += lines.Add;
+
+        var result = await session.ConnectWithIntentAsync(ConnectionIntent.QuickReconnect);
+        Assert.True(result.IsSuccess);
+        Assert.True(session.IsConnected);
+
+        connection.SimulateDrop();
+        await Task.Delay(BalanceConstants.ReconnectInitialDelayMs + BalanceConstants.PostWakeSettleMs + 800);
+
+        Assert.True(session.IsConnected);
+        Assert.Equal(ConnectionPhase.Connected, session.ConnectionPhase);
+        Assert.Contains(lines, line => line.Contains("[CONNECT] Bluetooth recovery", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public async Task Manual_disconnect_does_not_start_bluetooth_recovery()
+    {
+        const string boardId = "FAKE-BOARD-001";
+        var connection = new FakeBalanceBoardConnection { DiscoveredDevices = [boardId] };
+        var settings = new AppSettings
+        {
+            AutoConnectOnStartup = true,
+            LastConnectedDeviceId = boardId,
+        };
+        using var session = CreateSession(connection, new FakeBluetoothPairingService(), settings);
+        await session.ConnectWithIntentAsync(ConnectionIntent.QuickReconnect);
+        session.Disconnect();
+
+        await Task.Delay(BalanceConstants.ReconnectInitialDelayMs + 500);
+        Assert.Equal(ConnectionPhase.Offline, session.ConnectionPhase);
+        Assert.False(session.IsConnected);
+    }
+
+    [Fact]
+    public async Task QuickReconnect_prefers_last_connected_device_id()
+    {
+        const string boardId = "FAKE-BOARD-002";
+        var connection = new FakeBalanceBoardConnection
+        {
+            DiscoveredDevices = ["FAKE-BOARD-001", boardId],
+        };
+        var settings = new AppSettings { LastConnectedDeviceId = boardId };
+        using var session = CreateSession(connection, new FakeBluetoothPairingService(), settings);
+        var result = await session.ConnectWithIntentAsync(ConnectionIntent.QuickReconnect);
+        Assert.True(result.IsSuccess);
+        Assert.Equal(boardId, session.ConnectedDeviceId);
     }
 }

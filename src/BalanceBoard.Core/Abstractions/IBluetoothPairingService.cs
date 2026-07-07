@@ -4,6 +4,8 @@ namespace BalanceBoard.Core.Abstractions;
 
 public interface IBluetoothPairingService
 {
+    bool IsBluetoothAvailable();
+
     void WakePairedDevices(Action<string>? log = null);
 
     BluetoothPairingResult PairDiscoverableBoard(

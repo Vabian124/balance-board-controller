@@ -11,6 +11,7 @@ public sealed class FakeBalanceBoardConnection : IBalanceBoardConnection
     public IReadOnlyList<string> DiscoveredDevices { get; set; } = ["FAKE-BOARD-001"];
     public bool ReturnNotBalanceBoard { get; set; }
     public bool FireReadingAfterDisconnect { get; set; }
+    public bool BlockReadings { get; set; }
     public Exception? ConnectException { get; set; }
     public int ConnectAttempts { get; private set; }
     public int DisconnectCount { get; private set; }
@@ -27,7 +28,7 @@ public sealed class FakeBalanceBoardConnection : IBalanceBoardConnection
 
     public IReadOnlyList<string> DiscoverDeviceIds() => DiscoveredDevices;
 
-    public bool Connect(int deviceIndex = 0)
+    public bool Connect(int deviceIndex = 0, string? preferredDeviceId = null)
     {
         ConnectAttempts++;
         if (ConnectException is not null)
@@ -46,7 +47,19 @@ public sealed class FakeBalanceBoardConnection : IBalanceBoardConnection
             return false;
         }
 
-        ConnectedDeviceId = DiscoveredDevices[Math.Min(deviceIndex, DiscoveredDevices.Count - 1)];
+        var index = deviceIndex;
+        if (!string.IsNullOrWhiteSpace(preferredDeviceId))
+        {
+            var match = DiscoveredDevices
+                .Select((id, i) => (id, i))
+                .FirstOrDefault(pair => string.Equals(pair.id, preferredDeviceId, StringComparison.OrdinalIgnoreCase));
+            if (!string.IsNullOrWhiteSpace(match.id))
+            {
+                index = match.i;
+            }
+        }
+
+        ConnectedDeviceId = DiscoveredDevices[Math.Min(index, DiscoveredDevices.Count - 1)];
         IsConnected = true;
         ConnectLog?.Invoke($"[CONNECT] Fake HID connect to {ConnectedDeviceId}");
         if (ReturnNotBalanceBoard)
@@ -58,6 +71,12 @@ public sealed class FakeBalanceBoardConnection : IBalanceBoardConnection
 
         StatusChanged?.Invoke($"Connected to {ConnectedDeviceId}.");
         return true;
+    }
+
+    public void SimulateDrop()
+    {
+        IsConnected = false;
+        ConnectedDeviceId = null;
     }
 
     public void Disconnect()
@@ -79,7 +98,7 @@ public sealed class FakeBalanceBoardConnection : IBalanceBoardConnection
     {
         lock (_sync)
         {
-            if (!IsConnected)
+            if (!IsConnected || BlockReadings)
             {
                 return null;
             }

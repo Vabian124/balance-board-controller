@@ -41,7 +41,7 @@ public sealed class BalanceBoardConnection : IBalanceBoardConnection
         }
     }
 
-    public bool Connect(int deviceIndex = 0)
+    public bool Connect(int deviceIndex = 0, string? preferredDeviceId = null)
     {
         Disconnect();
 
@@ -56,6 +56,25 @@ public sealed class BalanceBoardConnection : IBalanceBoardConnection
             {
                 StatusChanged?.Invoke("No balance board found yet — automatic pairing will run when you connect.");
                 return false;
+            }
+
+            if (!string.IsNullOrWhiteSpace(preferredDeviceId))
+            {
+                for (var i = 0; i < _collection.Count; i++)
+                {
+                    var deviceId = DeviceIdRules.ExtractFromHidPath(_collection[i].HIDDevicePath);
+                    if (!string.Equals(deviceId, preferredDeviceId, StringComparison.OrdinalIgnoreCase))
+                    {
+                        continue;
+                    }
+
+                    if (TryConnectDevice(_collection[i], i))
+                    {
+                        return true;
+                    }
+
+                    Disconnect();
+                }
             }
 
             if (deviceIndex >= 0 && deviceIndex < _collection.Count)

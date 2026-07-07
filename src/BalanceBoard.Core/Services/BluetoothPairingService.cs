@@ -18,6 +18,19 @@ public sealed class BluetoothPairingResult
 /// </summary>
 public sealed class BluetoothPairingService : IBluetoothPairingService
 {
+    public bool IsBluetoothAvailable()
+    {
+        try
+        {
+            var radio = BluetoothRadio.PrimaryRadio;
+            return radio is not null && radio.Mode != RadioMode.PowerOff;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
     public static void Warmup()
     {
         try

@@ -36,6 +36,23 @@ internal static class SafeCallbacks
         }
     }
 
+    public static void Raise(Action<Models.ConnectionPhase>? handler, Models.ConnectionPhase phase)
+    {
+        if (handler is null)
+        {
+            return;
+        }
+
+        try
+        {
+            handler(phase);
+        }
+        catch
+        {
+            // Subscriber faults must not take down the worker or UI.
+        }
+    }
+
     public static void Raise(Action? handler)
     {
         if (handler is null)

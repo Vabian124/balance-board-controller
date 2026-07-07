@@ -15,7 +15,7 @@ public interface IBalanceBoardConnection : IDisposable
 
     IReadOnlyList<string> DiscoverDeviceIds();
 
-    bool Connect(int deviceIndex = 0);
+    bool Connect(int deviceIndex = 0, string? preferredDeviceId = null);
 
     void Disconnect();
 

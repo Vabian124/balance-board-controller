@@ -14,18 +14,30 @@ public sealed class BalanceBoardSession : IDisposable
     private readonly IActionSimulator _input;
     private bool _disposed;
     private CancellationTokenSource? _connectCts;
+    private CancellationTokenSource? _recoveryCts;
     private bool _loggedFirstPoll;
     private bool _wasJumping;
     private string? _lastSettingsLogKey;
+    private bool _manualDisconnect;
+    private DateTime? _connectedAtUtc;
+    private DateTime? _lastReadingUtc;
+    private ConnectionPhase _connectionPhase = ConnectionPhase.Offline;
+    private volatile bool _staleHidHandled;
 
     public void CancelConnect() => _connectCts?.Cancel();
 
     public event Action<ProcessedBalance>? Processed;
     public event Action<string>? Log;
     public event Action<string>? StatusChanged;
+    public event Action<ConnectionPhase>? ConnectionPhaseChanged;
+
+    public ConnectionPhase ConnectionPhase =>
+        _worker.TryInvoke(() => _connectionPhase, out var phase, ConnectionPhase.Offline)
+            ? phase
+            : ConnectionPhase.Offline;
 
     public bool IsConnected =>
-        _worker.TryInvoke(() => _connection.IsConnected, out var connected, false) && connected;
+        _worker.TryInvoke(() => IsSessionHealthy(), out var healthy, false) && healthy;
 
     public string? ConnectedDeviceId
     {
@@ -103,10 +115,10 @@ public sealed class BalanceBoardSession : IDisposable
         return ids ?? Array.Empty<string>();
     }
 
-    public bool Connect(int deviceIndex = 0) =>
+    public bool Connect(int deviceIndex = 0, string? preferredDeviceId = null) =>
         _worker.TryInvoke(() =>
         {
-            if (!_connection.Connect(deviceIndex))
+            if (!_connection.Connect(deviceIndex, preferredDeviceId))
             {
                 return false;
             }
@@ -161,6 +173,8 @@ public sealed class BalanceBoardSession : IDisposable
         int discoveryRounds,
         CancellationToken cancellationToken)
     {
+        StopRecovery();
+        _manualDisconnect = false;
         ConnectionFlowLogger.LogIntent(Log, intent);
         ConnectionFlowLogger.LogHidDiscovery(Log, _connection.DiscoverDeviceIds());
 
@@ -169,14 +183,15 @@ public sealed class BalanceBoardSession : IDisposable
         try
         {
             var ct = _connectCts.Token;
-            if (TryConnect(deviceIndex))
+            var preferredDeviceId = ResolvePreferredDeviceId();
+            if (TryConnect(deviceIndex, preferredDeviceId))
             {
                 ConnectionFlowLogger.LogFlowComplete(Log, true);
                 return ConnectResult.Ok();
             }
 
             var result = intent == ConnectionIntent.QuickReconnect
-                ? TryQuickReconnect(deviceIndex, ct)
+                ? TryQuickReconnect(deviceIndex, preferredDeviceId, ct)
                 : TryPairAndConnect(deviceIndex, discoveryRounds, ct);
 
             ConnectionFlowLogger.LogFlowComplete(Log, result.IsSuccess);
@@ -204,9 +219,9 @@ public sealed class BalanceBoardSession : IDisposable
         }
     }
 
-    private bool TryConnect(int deviceIndex)
+    private bool TryConnect(int deviceIndex, string? preferredDeviceId = null)
     {
-        if (!_connection.Connect(deviceIndex))
+        if (!_connection.Connect(deviceIndex, preferredDeviceId))
         {
             return false;
         }
@@ -215,7 +230,7 @@ public sealed class BalanceBoardSession : IDisposable
         return true;
     }
 
-    private ConnectResult TryQuickReconnect(int deviceIndex, CancellationToken ct)
+    private ConnectResult TryQuickReconnect(int deviceIndex, string? preferredDeviceId, CancellationToken ct)
     {
         Log?.Invoke("Looking for a paired balance board…");
         _pairing.WakePairedDevices(Log);
@@ -227,7 +242,7 @@ public sealed class BalanceBoardSession : IDisposable
         }
 
         ct.ThrowIfCancellationRequested();
-        if (TryConnect(deviceIndex))
+        if (TryConnect(deviceIndex, preferredDeviceId))
         {
             return ConnectResult.Ok();
         }
@@ -248,7 +263,7 @@ public sealed class BalanceBoardSession : IDisposable
             }
 
             ct.ThrowIfCancellationRequested();
-            if (TryConnect(deviceIndex))
+            if (TryConnect(deviceIndex, ResolvePreferredDeviceId()))
             {
                 return ConnectResult.Ok(wakeResult.Message);
             }
@@ -298,7 +313,7 @@ public sealed class BalanceBoardSession : IDisposable
             }
 
             ct.ThrowIfCancellationRequested();
-            if (TryConnect(deviceIndex))
+            if (TryConnect(deviceIndex, ResolvePreferredDeviceId()))
             {
                 return ConnectResult.Ok(pairResult.Message);
             }
@@ -311,6 +326,11 @@ public sealed class BalanceBoardSession : IDisposable
     private void OnConnected()
     {
         _loggedFirstPoll = false;
+        _staleHidHandled = false;
+        _manualDisconnect = false;
+        _connectedAtUtc = DateTime.UtcNow;
+        _lastReadingUtc = null;
+        EndRecovery();
         if (_connection is BalanceBoardConnection)
         {
             Log?.Invoke("Starting balance event stream with health poll.");
@@ -321,6 +341,7 @@ public sealed class BalanceBoardSession : IDisposable
         }
 
         _worker.StartPolling();
+        ProbeInitialHealth();
 
         if (Settings.AutoTareOnConnect)
         {
@@ -330,18 +351,69 @@ public sealed class BalanceBoardSession : IDisposable
         SyncVJoyFromSettings();
     }
 
-    public void Disconnect() => _worker.Invoke(DisconnectCore);
+    private void ProbeInitialHealth()
+    {
+        var reading = _connection.GetCurrentReading();
+        if (reading?.IsBalanceBoard == true)
+        {
+            _lastReadingUtc = DateTime.UtcNow;
+            SetConnectionPhase(ConnectionPhase.Connected);
+            SafeCallbacks.Raise(StatusChanged, "Connected — step on the board (use Tare if weight looks wrong).");
+            return;
+        }
+
+        SetConnectionPhase(ConnectionPhase.Connecting);
+        SafeCallbacks.Raise(StatusChanged, "Connecting to balance board…");
+    }
+
+    private bool IsSessionHealthy()
+    {
+        if (!_connection.IsConnected || _lastReadingUtc is null)
+        {
+            return false;
+        }
+
+        return (DateTime.UtcNow - _lastReadingUtc.Value).TotalMilliseconds
+            <= BalanceConstants.ReadingHealthTimeoutMs;
+    }
+
+    private string? ResolvePreferredDeviceId() =>
+        DeviceIdRules.ShouldPersistConnectionState(Settings.LastConnectedDeviceId)
+            ? Settings.LastConnectedDeviceId
+            : null;
+
+    private void SetConnectionPhase(ConnectionPhase phase)
+    {
+        if (_connectionPhase == phase)
+        {
+            return;
+        }
+
+        _connectionPhase = phase;
+        SafeCallbacks.Raise(ConnectionPhaseChanged, phase);
+    }
+
+    public void Disconnect()
+    {
+        _manualDisconnect = true;
+        StopRecovery();
+        _worker.Invoke(DisconnectCore);
+    }
 
     private void DisconnectCore()
     {
         Log?.Invoke("[DISCONNECT] Stopping poll loop and releasing outputs.");
         _loggedFirstPoll = false;
         _wasJumping = false;
+        _connectedAtUtc = null;
+        _lastReadingUtc = null;
+        _staleHidHandled = false;
         _worker.StopPolling();
         _input.ReleaseAll();
         _vjoy.Center();
         _vjoy.Shutdown();
         _connection.Disconnect();
+        SetConnectionPhase(ConnectionPhase.Offline);
         StatusChanged?.Invoke("Disconnected.");
     }
 
@@ -440,7 +512,23 @@ public sealed class BalanceBoardSession : IDisposable
 
         try
         {
-            var wasReceiving = _loggedFirstPoll;
+            if (_connection.IsConnected && !IsSessionHealthy())
+            {
+                if (_lastReadingUtc is null
+                    && _connectedAtUtc is not null
+                    && (DateTime.UtcNow - _connectedAtUtc.Value).TotalMilliseconds
+                        <= BalanceConstants.ConnectHealthGraceMs)
+                {
+                    // Still waiting for the first balance reading after HID open.
+                }
+                else
+                {
+                    HandleStaleHidSession();
+                    return;
+                }
+            }
+
+            var hadLiveSession = _loggedFirstPoll || _lastReadingUtc is not null;
             var reading = _connection.GetCurrentReading();
             if (reading is not null)
             {
@@ -448,7 +536,7 @@ public sealed class BalanceBoardSession : IDisposable
                 return;
             }
 
-            if (wasReceiving && !_connection.IsConnected)
+            if (hadLiveSession && !_connection.IsConnected)
             {
                 HandleUnexpectedDisconnect();
             }
@@ -460,8 +548,58 @@ public sealed class BalanceBoardSession : IDisposable
         }
     }
 
+    private void HandleStaleHidSession()
+    {
+        if (_staleHidHandled || _manualDisconnect)
+        {
+            return;
+        }
+
+        _staleHidHandled = true;
+        _loggedFirstPoll = false;
+        Log?.Invoke("[DISCONNECT] HID session stale — no balance readings (board may be flashing).");
+        SafeCallbacks.Raise(StatusChanged, "Board link lost — reconnecting…");
+
+        try
+        {
+            _input.ReleaseAll();
+        }
+        catch (Exception ex)
+        {
+            Log?.Invoke($"Release inputs after stale HID: {ex.Message}");
+        }
+
+        try
+        {
+            _vjoy.Center();
+        }
+        catch (Exception ex)
+        {
+            Log?.Invoke($"Center vJoy after stale HID: {ex.Message}");
+        }
+
+        try
+        {
+            _connection.Disconnect();
+        }
+        catch (Exception ex)
+        {
+            Log?.Invoke($"[DISCONNECT] Stale HID close error: {ex.Message}");
+        }
+
+        _connectedAtUtc = null;
+        _lastReadingUtc = null;
+        SetConnectionPhase(ConnectionPhase.Reconnecting);
+        StartBluetoothRecovery();
+    }
+
     private void HandleUnexpectedDisconnect()
     {
+        if (_manualDisconnect)
+        {
+            return;
+        }
+
         _loggedFirstPoll = false;
         try
         {
@@ -481,8 +619,134 @@ public sealed class BalanceBoardSession : IDisposable
             Log?.Invoke($"Center vJoy after disconnect: {ex.Message}");
         }
 
-        SafeCallbacks.Raise(StatusChanged, "Board disconnected.");
-        SafeCallbacks.Raise(Log, "Balance board disconnected unexpectedly.");
+        _connectedAtUtc = null;
+        _lastReadingUtc = null;
+        SetConnectionPhase(ConnectionPhase.Reconnecting);
+        SafeCallbacks.Raise(StatusChanged, "Board disconnected — reconnecting…");
+        SafeCallbacks.Raise(Log, "[DISCONNECT] Balance board disconnected unexpectedly.");
+        StartBluetoothRecovery();
+    }
+
+    private void StartBluetoothRecovery()
+    {
+        if (_disposed || _manualDisconnect)
+        {
+            return;
+        }
+
+        if (!Settings.AutoConnectOnStartup)
+        {
+            SetConnectionPhase(ConnectionPhase.Offline);
+            SafeCallbacks.Raise(StatusChanged, "Board disconnected.");
+            return;
+        }
+
+        if (!DeviceIdRules.ShouldPersistConnectionState(Settings.LastConnectedDeviceId))
+        {
+            SetConnectionPhase(ConnectionPhase.Offline);
+            SafeCallbacks.Raise(StatusChanged, "Board disconnected.");
+            return;
+        }
+
+        if (_recoveryCts is not null)
+        {
+            return;
+        }
+
+        _recoveryCts = new CancellationTokenSource();
+        Log?.Invoke($"[CONNECT] Bluetooth recovery started for {Settings.LastConnectedDeviceId}.");
+        _ = Task.Run(() => BluetoothRecoveryLoop(_recoveryCts.Token));
+    }
+
+    private void StopRecovery()
+    {
+        _recoveryCts?.Cancel();
+        EndRecovery();
+    }
+
+    private void EndRecovery()
+    {
+        var cts = _recoveryCts;
+        _recoveryCts = null;
+        try
+        {
+            cts?.Dispose();
+        }
+        catch
+        {
+            // Recovery teardown must not throw.
+        }
+    }
+
+    private void BluetoothRecoveryLoop(CancellationToken ct)
+    {
+        var delay = BalanceConstants.ReconnectInitialDelayMs;
+        while (!ct.IsCancellationRequested && !_disposed && !_manualDisconnect)
+        {
+            try
+            {
+                if (_connectCts is not null)
+                {
+                    ct.WaitHandle.WaitOne(delay);
+                    continue;
+                }
+
+                if (!_pairing.IsBluetoothAvailable())
+                {
+                    SetConnectionPhase(ConnectionPhase.PairedReconnecting);
+                    SafeCallbacks.Raise(StatusChanged, "Waiting for Bluetooth…");
+                    SafeCallbacks.Raise(Log, "[CONNECT] Bluetooth radio offline — waiting.");
+                    if (ct.WaitHandle.WaitOne(delay))
+                    {
+                        ct.ThrowIfCancellationRequested();
+                    }
+
+                    delay = Math.Min(delay * 2, BalanceConstants.ReconnectMaxDelayMs);
+                    continue;
+                }
+
+                SetConnectionPhase(ConnectionPhase.Reconnecting);
+                SafeCallbacks.Raise(StatusChanged, "Reconnecting…");
+                SafeCallbacks.Raise(Log, "[CONNECT] Recovery attempt — HID reconnect without pairing.");
+
+                var result = _worker.InvokeStrict(() =>
+                    TryQuickReconnect(0, Settings.LastConnectedDeviceId, ct));
+
+                if (result.IsSuccess)
+                {
+                    SafeCallbacks.Raise(Log, "[CONNECT] Bluetooth recovery succeeded.");
+                    EndRecovery();
+                    return;
+                }
+
+                if (ct.WaitHandle.WaitOne(delay))
+                {
+                    ct.ThrowIfCancellationRequested();
+                }
+
+                delay = Math.Min(delay * 2, BalanceConstants.ReconnectMaxDelayMs);
+            }
+            catch (OperationCanceledException)
+            {
+                break;
+            }
+            catch (Exception ex)
+            {
+                SafeCallbacks.Raise(Log, $"[CONNECT] Recovery error: {ex.Message}");
+                if (ct.WaitHandle.WaitOne(delay))
+                {
+                    break;
+                }
+
+                delay = Math.Min(delay * 2, BalanceConstants.ReconnectMaxDelayMs);
+            }
+        }
+
+        EndRecovery();
+        if (!_disposed && !_manualDisconnect && !IsSessionHealthy())
+        {
+            SetConnectionPhase(ConnectionPhase.Offline);
+        }
     }
 
     private void OnReading(BalanceReading reading)
@@ -495,7 +759,13 @@ public sealed class BalanceBoardSession : IDisposable
         if (!_loggedFirstPoll)
         {
             _loggedFirstPoll = true;
+            _lastReadingUtc = DateTime.UtcNow;
+            SetConnectionPhase(ConnectionPhase.Connected);
             Log?.Invoke($"[CONNECT] First balance reading (weight={reading.WeightKg:0.0} kg).");
+        }
+        else
+        {
+            _lastReadingUtc = DateTime.UtcNow;
         }
 
         ProcessedBalance processed;
@@ -563,6 +833,7 @@ public sealed class BalanceBoardSession : IDisposable
 
         _disposed = true;
         CancelConnect();
+        StopRecovery();
         try
         {
             _worker.Invoke(() =>

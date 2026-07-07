@@ -32,6 +32,12 @@ public static class BalanceConstants
     public const int BluetoothFinishWaitMs = 2000;
     public const int PairRoundDelayMs = 1500;
     public const int BluetoothInquirySeconds = 6;
+    /// <summary>After HID open, wait this long for the first balance reading before treating the session as stale.</summary>
+    public const int ConnectHealthGraceMs = 3000;
+    /// <summary>No balance reading within this window means the HID session is dead (board may be flashing).</summary>
+    public const int ReadingHealthTimeoutMs = 2500;
+    public const int ReconnectInitialDelayMs = 1000;
+    public const int ReconnectMaxDelayMs = 30000;
 }
 
 /// <summary>
