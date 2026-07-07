@@ -32,8 +32,8 @@ public partial class MainWindow : Window
             : new BalanceBoardSession();
         _settings = _settingsStore.Load();
         _session.LoadSettings(_settings, initializeVJoy: false);
-        ThemeManager.Apply(_settings.ThemePreference);
         InitializeComponent();
+        ThemeManager.Apply(_settings.ThemePreference);
         _uiReady = true;
         HookSession();
         HookFileLog();
