@@ -67,12 +67,14 @@ Three intents (`ConnectionIntent`):
 
 ## Manual connect flow (`PairAndConnect`)
 
-1. Try HID `Connect()` (fast path if board already visible).
+1. Try HID `Connect()` (fast path if board already visible). Scans **all** visible Wii HID devices if the first index is not a balance board.
 2. One **light** pairing round (`removeStalePairings: false`) — for asleep but paired boards; press SYNC.
 3. Up to **4** full pairing rounds (first round removes stale Nintendo pairings).
 4. Wii permanent PIN (reversed host MAC) — no Windows pairing UI.
 
 All steps honour **Cancel** (`CancellationToken`).
+
+Session logs use `[CONNECT]` markers (intent, HID discovery, pairing rounds, attempts, first reading, flow complete). See [STORAGE.md](STORAGE.md).
 
 ## Shutdown and edge cases
 

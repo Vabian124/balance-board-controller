@@ -108,6 +108,7 @@ public partial class MainWindow : Window
         _session.Log += Log;
         _session.StatusChanged += status => Dispatcher.Invoke(() =>
         {
+            Log(status);
             StatusText.Text = status;
             UpdateConnectionChip(_session.IsConnected);
         });
@@ -289,6 +290,7 @@ public partial class MainWindow : Window
     {
         if (_connectInProgress || _session.IsConnected) return;
 
+        Log($"[CONNECT] UI begin intent={intent} quiet={quiet}");
         _connectInProgress = true;
         _connectCts = new CancellationTokenSource();
         UpdateConnectUi(isBusy: true);
@@ -339,6 +341,7 @@ public partial class MainWindow : Window
             _connectInProgress = false;
             UpdateConnectUi(isBusy: false);
             UpdateConnectionChip(_session.IsConnected);
+            Log($"[CONNECT] UI end connected={_session.IsConnected}");
         }
     }
 
@@ -437,7 +440,15 @@ public partial class MainWindow : Window
         _shutdownCompleted = true;
         CancelConnect();
         if (_uiReady) SaveSettingsFromUi();
-        _session.Dispose();
+        try
+        {
+            _session.Dispose();
+        }
+        catch (Exception ex)
+        {
+            _fileLog.WriteException(ex, "Session dispose");
+        }
+
         Log("Shutting down.");
     }
 

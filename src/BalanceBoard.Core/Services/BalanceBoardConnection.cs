@@ -1,4 +1,3 @@
-using System.Text.RegularExpressions;
 using BalanceBoard.Core.Models;
 using WiimoteLib;
 
@@ -12,6 +11,7 @@ public sealed class BalanceBoardConnection : IDisposable
     public event Action<BalanceReading>? ReadingReceived;
     public event Action<string>? StatusChanged;
     public event Action<string>? Error;
+    public event Action<string>? ConnectLog;
 
     public bool IsConnected { get; private set; }
     public string? ConnectedDeviceId { get; private set; }
@@ -22,11 +22,7 @@ public sealed class BalanceBoardConnection : IDisposable
         {
             var collection = new WiimoteCollection();
             collection.FindAllWiimotes();
-            return collection
-                .Select(d => ExtractDeviceId(d.HIDDevicePath))
-                .Where(id => !string.IsNullOrWhiteSpace(id))
-                .Cast<string>()
-                .ToList();
+            return EnumerateDeviceIds(collection);
         }
         catch (WiimoteNotFoundException)
         {
@@ -34,7 +30,7 @@ public sealed class BalanceBoardConnection : IDisposable
         }
         catch (Exception ex)
         {
-            Error?.Invoke(ex.Message);
+            ReportError(ex);
             return Array.Empty<string>();
         }
     }
@@ -47,6 +43,8 @@ public sealed class BalanceBoardConnection : IDisposable
         {
             var collection = new WiimoteCollection();
             collection.FindAllWiimotes();
+            var deviceIds = EnumerateDeviceIds(collection);
+            ConnectionFlowLogger.LogHidDiscovery(ConnectLog, deviceIds);
 
             if (collection.Count == 0)
             {
@@ -54,40 +52,73 @@ public sealed class BalanceBoardConnection : IDisposable
                 return false;
             }
 
-            if (deviceIndex < 0 || deviceIndex >= collection.Count)
+            if (deviceIndex >= 0 && deviceIndex < collection.Count)
             {
-                deviceIndex = 0;
+                if (TryConnectDevice(collection[deviceIndex], deviceIndex))
+                {
+                    return true;
+                }
+
+                Disconnect();
             }
 
-            _device = collection[deviceIndex];
-            ConnectedDeviceId = ExtractDeviceId(_device.HIDDevicePath);
+            for (var i = 0; i < collection.Count; i++)
+            {
+                if (i == deviceIndex)
+                {
+                    continue;
+                }
 
+                if (TryConnectDevice(collection[i], i))
+                {
+                    return true;
+                }
+
+                Disconnect();
+            }
+
+            StatusChanged?.Invoke("No balance board found among visible Wii HID devices.");
+            return false;
+        }
+        catch (Exception ex)
+        {
+            ReportError(ex);
+            Disconnect();
+            return false;
+        }
+    }
+
+    private bool TryConnectDevice(Wiimote device, int index)
+    {
+        var deviceId = ExtractDeviceId(device.HIDDevicePath);
+        ConnectionFlowLogger.LogHidAttempt(ConnectLog, index, deviceId);
+
+        try
+        {
+            _device = device;
+            ConnectedDeviceId = deviceId;
             _device.WiimoteChanged += OnWiimoteChanged;
             _device.Connect();
             _device.SetReportType(InputReport.IRAccel, false);
             _device.SetLEDs(true, false, false, false);
 
-            if (_device.WiimoteState.ExtensionType != ExtensionType.BalanceBoard)
+            var isBalanceBoard = _device.WiimoteState.ExtensionType == ExtensionType.BalanceBoard;
+            ConnectionFlowLogger.LogHidSuccess(ConnectLog, ConnectedDeviceId, isBalanceBoard);
+
+            if (!isBalanceBoard)
             {
-                StatusChanged?.Invoke("Connected device is not a balance board.");
-            }
-            else
-            {
-                StatusChanged?.Invoke($"Connected to balance board {ConnectedDeviceId}.");
+                StatusChanged?.Invoke($"Connected device {ConnectedDeviceId} is not a balance board.");
+                return false;
             }
 
+            StatusChanged?.Invoke($"Connected to balance board {ConnectedDeviceId}.");
             IsConnected = true;
             return true;
         }
         catch (Exception ex)
         {
-            Error?.Invoke(ex.Message);
-            if (!string.IsNullOrWhiteSpace(ex.StackTrace))
-            {
-                Error?.Invoke(ex.StackTrace);
-            }
-
-            Disconnect();
+            ConnectionFlowLogger.LogHidFailure(ConnectLog, index, ex.Message);
+            ReportError(ex);
             return false;
         }
     }
@@ -121,9 +152,9 @@ public sealed class BalanceBoardConnection : IDisposable
                     _device.WiimoteChanged -= OnWiimoteChanged;
                     _device.Disconnect();
                 }
-                catch
+                catch (Exception ex)
                 {
-                    // ignored
+                    ConnectLog?.Invoke($"[CONNECT] HID disconnect note: {ex.Message}");
                 }
             }
 
@@ -135,9 +166,32 @@ public sealed class BalanceBoardConnection : IDisposable
 
     private void OnWiimoteChanged(object? sender, WiimoteChangedEventArgs e)
     {
-        var reading = ToReading(e.WiimoteState);
-        ReadingReceived?.Invoke(reading);
+        try
+        {
+            var reading = ToReading(e.WiimoteState);
+            ReadingReceived?.Invoke(reading);
+        }
+        catch (Exception ex)
+        {
+            ReportError(ex);
+        }
     }
+
+    private void ReportError(Exception ex)
+    {
+        Error?.Invoke(ex.Message);
+        if (!string.IsNullOrWhiteSpace(ex.StackTrace))
+        {
+            Error?.Invoke(ex.StackTrace);
+        }
+    }
+
+    private static IReadOnlyList<string> EnumerateDeviceIds(WiimoteCollection collection) =>
+        collection
+            .Select(d => ExtractDeviceId(d.HIDDevicePath))
+            .Where(id => !string.IsNullOrWhiteSpace(id))
+            .Cast<string>()
+            .ToList();
 
     private static BalanceReading ToReading(WiimoteState state)
     {
@@ -156,7 +210,7 @@ public sealed class BalanceBoardConnection : IDisposable
 
     private static string? ExtractDeviceId(string hidPath)
     {
-        var match = Regex.Match(hidPath, "e_pid&.*?&(.*?)&", RegexOptions.IgnoreCase);
+        var match = System.Text.RegularExpressions.Regex.Match(hidPath, "e_pid&.*?&(.*?)&", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
         return match.Success ? match.Groups[1].Value.ToUpperInvariant() : hidPath;
     }
 

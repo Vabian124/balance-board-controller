@@ -50,10 +50,23 @@ public sealed class FileLogService
         var line = $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}] [{category}] {message}";
         lock (_sync)
         {
-            File.AppendAllText(_currentLogPath, line + Environment.NewLine);
+            using var stream = new FileStream(
+                _currentLogPath,
+                FileMode.Append,
+                FileAccess.Write,
+                FileShare.ReadWrite,
+                bufferSize: 4096,
+                options: FileOptions.WriteThrough);
+            using var writer = new StreamWriter(stream);
+            writer.WriteLine(line);
         }
 
         LineWritten?.Invoke(line);
+    }
+
+    public void WriteShutdown(string reason = "normal")
+    {
+        Write($"Application shutdown ({reason}).", "SESSION");
     }
 
     public void WriteException(Exception exception, string context)

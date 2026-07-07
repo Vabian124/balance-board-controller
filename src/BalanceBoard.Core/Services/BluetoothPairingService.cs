@@ -116,6 +116,12 @@ public sealed class BluetoothPairingService
         }
         catch (Exception ex)
         {
+            log?.Invoke($"[CONNECT] Pairing error: {ex.Message}");
+            if (!string.IsNullOrWhiteSpace(ex.StackTrace))
+            {
+                log?.Invoke(ex.StackTrace);
+            }
+
             return Fail(ex.Message);
         }
     }
@@ -157,7 +163,11 @@ public sealed class BluetoothPairingService
         }
         catch (Exception ex)
         {
-            log?.Invoke($"HID wake-up note: {ex.Message}");
+            log?.Invoke($"[CONNECT] HID wake-up error: {ex.Message}");
+            if (!string.IsNullOrWhiteSpace(ex.StackTrace))
+            {
+                log?.Invoke(ex.StackTrace);
+            }
         }
     }
 

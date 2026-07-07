@@ -78,6 +78,7 @@ public partial class App : Application
 
     protected override void OnExit(ExitEventArgs e)
     {
+        _fileLog.WriteShutdown($"exit code {e.ApplicationExitCode}");
         SingleInstanceService.Stop();
         ReleaseResources();
         base.OnExit(e);
@@ -86,6 +87,6 @@ public partial class App : Application
     private void ReleaseResources()
     {
         try { _mainWindow?.ForceShutdown(); }
-        catch { /* ignored */ }
+        catch (Exception ex) { _fileLog.WriteException(ex, "Shutdown"); }
     }
 }
