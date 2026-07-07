@@ -33,7 +33,8 @@
 dotnet build BalanceBoard.sln -c Release
 .\start.bat
 dotnet run --project tools/Validate/BalanceBoard.Validate.csproj -c Release
-.\scripts\test-flow.ps1
+dotnet run --project tools/UiSmoke/BalanceBoard.UiSmoke.csproj -c Release
+.\scripts\lint.ps1
 ```
 
 ## License

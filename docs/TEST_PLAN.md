@@ -11,6 +11,8 @@ cd <repo-root>
 
 Checks: build, start/stop lifecycle, second-instance activation, log file creation.
 
+For full static analysis including **XAML runtime load**, run `.\scripts\lint.ps1`.
+
 ## Edge-case matrix
 
 | # | Scenario | Setup | Steps | Expected |

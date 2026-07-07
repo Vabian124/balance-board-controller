@@ -23,5 +23,11 @@ jobs:
       - name: Build
         run: dotnet build BalanceBoard.sln -c Release --no-restore
 
+      - name: Format check
+        run: dotnet format BalanceBoard.sln --verify-no-changes
+
       - name: Validate tool
-        run: dotnet run --project tools/Validate/BalanceBoard.Validate.csproj -c Release --no-restore
+        run: dotnet run --project tools/Validate/BalanceBoard.Validate.csproj -c Release --no-build
+
+      - name: UI smoke (XAML runtime load)
+        run: dotnet run --project tools/UiSmoke/BalanceBoard.UiSmoke.csproj -c Release --no-build

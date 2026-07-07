@@ -70,6 +70,21 @@ Complete map of **maintained source** (ignore `bin/`, `obj/`, `.vs/`).
 | `Program.cs` | CLI: feeder cleanup, vJoy diag, HID discovery, axis sweep test |
 | `BalanceBoard.Validate.csproj` | Console app referencing Core |
 
+## `tools/UiSmoke/`
+
+| Path | Purpose |
+|------|---------|
+| `Program.cs` | STA-thread `MainWindow` load — catches runtime XAML/theme errors |
+| `BalanceBoard.UiSmoke.csproj` | Console app referencing App |
+
+## `scripts/`
+
+| Path | Purpose |
+|------|---------|
+| `lint.ps1` | Full lint: format, build, Validate, UiSmoke, test-flow |
+| `test-flow.ps1` | Process lifecycle smoke tests |
+| `start.ps1` / `stop.ps1` / `restart.ps1` / `connect.ps1` | Dev launch helpers |
+
 ## `libs/x64/`
 
 | File | Purpose |
