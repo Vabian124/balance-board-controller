@@ -9,7 +9,8 @@ Complete map of **maintained source** (ignore `bin/`, `obj/`, `.vs/`).
 | `BalanceBoard.sln` | App + Core + Validate + UiSmoke + Tests |
 | `Directory.Build.props` | Shared nullable, analyzers, code style |
 | `.editorconfig` | Formatting rules |
-| `.github/workflows/build.yml` | CI: restore, Release build, validate tool |
+| `.github/workflows/ci.yml` | CI quality gate (`scripts/ci/lint.ps1`) |
+| `.github/workflows/release.yml` | Tag release: lint gate + publish zip |
 | `.gitignore` | Excludes logs, baseline, loose reference binaries, build output |
 
 ## `src/BalanceBoard.App/` — WPF application

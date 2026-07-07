@@ -15,6 +15,8 @@ public sealed class BalanceBoardSession : IDisposable
     private bool _disposed;
     private CancellationTokenSource? _connectCts;
     private bool _loggedFirstPoll;
+    private bool _wasJumping;
+    private string? _lastSettingsLogKey;
 
     public void CancelConnect() => _connectCts?.Cancel();
 
@@ -64,6 +66,17 @@ public sealed class BalanceBoardSession : IDisposable
     public void LoadSettings(AppSettings settings, bool initializeVJoy = true)
     {
         Settings = settings;
+        var key =
+            $"{settings.ActiveProfileName}|{settings.EnableVJoy}|{settings.JumpWeightThresholdKg:0.0}|{settings.UiDetailLevel}";
+        if (!string.Equals(key, _lastSettingsLogKey, StringComparison.Ordinal))
+        {
+            _lastSettingsLogKey = key;
+            Log?.Invoke(
+                $"[SETTINGS] Profile={settings.ActiveProfileName} " +
+                $"vJoy={settings.EnableVJoy} jumpThreshold={settings.JumpWeightThresholdKg:0.0}kg " +
+                $"detail={settings.UiDetailLevel}");
+        }
+
         if (!initializeVJoy)
         {
             return;
@@ -300,14 +313,14 @@ public sealed class BalanceBoardSession : IDisposable
         _loggedFirstPoll = false;
         if (_connection is BalanceBoardConnection)
         {
-            Log?.Invoke("Starting balance event stream.");
-            _worker.StopPolling();
+            Log?.Invoke("Starting balance event stream with health poll.");
         }
         else
         {
             Log?.Invoke("Starting balance poll loop.");
-            _worker.StartPolling();
         }
+
+        _worker.StartPolling();
 
         if (Settings.AutoTareOnConnect)
         {
@@ -321,8 +334,9 @@ public sealed class BalanceBoardSession : IDisposable
 
     private void DisconnectCore()
     {
-        Log?.Invoke("[CONNECT] Disconnecting.");
+        Log?.Invoke("[DISCONNECT] Stopping poll loop and releasing outputs.");
         _loggedFirstPoll = false;
+        _wasJumping = false;
         _worker.StopPolling();
         _input.ReleaseAll();
         _vjoy.Center();
@@ -405,7 +419,15 @@ public sealed class BalanceBoardSession : IDisposable
     {
         if (!_disposed)
         {
-            Poll();
+            try
+            {
+                Poll();
+            }
+            catch (Exception ex)
+            {
+                Log?.Invoke($"Reading callback error: {ex.Message}");
+                Log?.Invoke(ex.StackTrace ?? string.Empty);
+            }
         }
     }
 
@@ -418,10 +440,17 @@ public sealed class BalanceBoardSession : IDisposable
 
         try
         {
+            var wasReceiving = _loggedFirstPoll;
             var reading = _connection.GetCurrentReading();
             if (reading is not null)
             {
                 OnReading(reading);
+                return;
+            }
+
+            if (wasReceiving && !_connection.IsConnected)
+            {
+                HandleUnexpectedDisconnect();
             }
         }
         catch (Exception ex)
@@ -429,6 +458,31 @@ public sealed class BalanceBoardSession : IDisposable
             Log?.Invoke($"Poll error: {ex.Message}");
             Log?.Invoke(ex.StackTrace ?? string.Empty);
         }
+    }
+
+    private void HandleUnexpectedDisconnect()
+    {
+        _loggedFirstPoll = false;
+        try
+        {
+            _input.ReleaseAll();
+        }
+        catch (Exception ex)
+        {
+            Log?.Invoke($"Release inputs after disconnect: {ex.Message}");
+        }
+
+        try
+        {
+            _vjoy.Center();
+        }
+        catch (Exception ex)
+        {
+            Log?.Invoke($"Center vJoy after disconnect: {ex.Message}");
+        }
+
+        SafeCallbacks.Raise(StatusChanged, "Board disconnected.");
+        SafeCallbacks.Raise(Log, "Balance board disconnected unexpectedly.");
     }
 
     private void OnReading(BalanceReading reading)
@@ -457,6 +511,7 @@ public sealed class BalanceBoardSession : IDisposable
         }
 
         SafeCallbacks.Raise(Processed, processed);
+        LogJumpEdge(processed);
 
         if (Settings.EnableVJoy && _vjoy.IsReady)
         {
@@ -466,7 +521,7 @@ public sealed class BalanceBoardSession : IDisposable
             }
             catch (Exception ex)
             {
-                Log?.Invoke($"vJoy output error: {ex.Message}");
+                Log?.Invoke($"[VJOY] Output error: {ex.Message}");
                 Log?.Invoke(ex.StackTrace ?? string.Empty);
             }
         }
@@ -483,6 +538,20 @@ public sealed class BalanceBoardSession : IDisposable
                 Log?.Invoke(ex.StackTrace ?? string.Empty);
             }
         }
+    }
+
+    private void LogJumpEdge(ProcessedBalance processed)
+    {
+        if (processed.Jump && !_wasJumping)
+        {
+            Log?.Invoke(
+                $"[JUMP] Detected weight={processed.WeightKg:0.0}kg " +
+                $"threshold={Settings.JumpWeightThresholdKg:0.0}kg " +
+                $"profile={Settings.ActiveProfileName} " +
+                $"vJoy={Settings.MapJumpToVJoyButton}");
+        }
+
+        _wasJumping = processed.Jump;
     }
 
     public void Dispose()
