@@ -1,0 +1,40 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:sys="clr-namespace:System;assembly=mscorlib">
+
+    <!-- System-aware brushes — follow Windows light/dark/high-contrast -->
+    <SolidColorBrush x:Key="Brush.Background" Color="{DynamicResource {x:Static SystemColors.WindowColorKey}}"/>
+    <SolidColorBrush x:Key="Brush.Foreground" Color="{DynamicResource {x:Static SystemColors.WindowTextColorKey}}"/>
+    <SolidColorBrush x:Key="Brush.Muted" Color="{DynamicResource {x:Static SystemColors.GrayTextColorKey}}"/>
+    <SolidColorBrush x:Key="Brush.Card" Color="{DynamicResource {x:Static SystemColors.ControlColorKey}}"/>
+    <SolidColorBrush x:Key="Brush.CardBorder" Color="{DynamicResource {x:Static SystemColors.ControlDarkColorKey}}"/>
+    <SolidColorBrush x:Key="Brush.Accent" Color="{DynamicResource {x:Static SystemColors.HighlightColorKey}}"/>
+    <SolidColorBrush x:Key="Brush.AccentText" Color="{DynamicResource {x:Static SystemColors.HighlightTextColorKey}}"/>
+    <SolidColorBrush x:Key="Brush.Hover" Color="{DynamicResource {x:Static SystemColors.ControlLightColorKey}}"/>
+    <SolidColorBrush x:Key="Brush.Pressed" Color="{DynamicResource {x:Static SystemColors.ControlDarkColorKey}}"/>
+
+    <!-- Semantic status (work in both themes) -->
+    <Color x:Key="Color.Success">#16A34A</Color>
+    <Color x:Key="Color.Warning">#D97706</Color>
+    <Color x:Key="Color.Danger">#DC2626</Color>
+    <Color x:Key="Color.Info">#2563EB</Color>
+    <SolidColorBrush x:Key="Brush.Success" Color="{StaticResource Color.Success}"/>
+    <SolidColorBrush x:Key="Brush.Warning" Color="{StaticResource Color.Warning}"/>
+    <SolidColorBrush x:Key="Brush.Danger" Color="{StaticResource Color.Danger}"/>
+    <SolidColorBrush x:Key="Brush.Info" Color="{StaticResource Color.Info}"/>
+
+    <!-- Balance board visual -->
+    <SolidColorBrush x:Key="Brush.BoardSurface" Color="{DynamicResource {x:Static SystemColors.ControlDarkColorKey}}"/>
+    <SolidColorBrush x:Key="Brush.BoardBorder" Color="{DynamicResource {x:Static SystemColors.ControlDarkDarkColorKey}}"/>
+    <SolidColorBrush x:Key="Brush.BoardDot" Color="{DynamicResource {x:Static SystemColors.GrayTextColorKey}}"/>
+    <SolidColorBrush x:Key="Brush.BoardCenter" Color="{DynamicResource {x:Static SystemColors.HighlightColorKey}}"/>
+
+    <FontFamily x:Key="Font.UI">Segoe UI Variable Text, Segoe UI, sans-serif</FontFamily>
+    <FontFamily x:Key="Font.Mono">Cascadia Mono, Consolas, monospace</FontFamily>
+
+    <sys:Double x:Key="Radius.Card">10</sys:Double>
+    <sys:Double x:Key="Radius.Button">6</sys:Double>
+    <Thickness x:Key="Thickness.Page">20</Thickness>
+    <Thickness x:Key="Thickness.Card">16</Thickness>
+
+</ResourceDictionary>

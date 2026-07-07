@@ -10,7 +10,8 @@ alwaysApply: false
 
 - `MainWindow.xaml(.cs)` — dashboard, debug suite, settings sync
 - `SetupWizardWindow.xaml(.cs)` — onboarding flow
-- `Themes/ModernTheme.xaml` — colors, `Card`, `StatusPill`, button styles
+- `Themes/Colors.xaml` — system light/dark brushes (`SystemColors`)
+- `Themes/Controls.xaml` — buttons, cards, typography
 - `Controls/BalanceBoardVisual` — live balance dot
 
 ## Patterns

@@ -49,6 +49,17 @@ dotnet run --project src/BalanceBoard.App/BalanceBoard.App.csproj -c Release
 dotnet publish src/BalanceBoard.App/BalanceBoard.App.csproj -c Release -r win-x64 --self-contained
 ```
 
+### Dev scripts (start / stop / restart)
+
+```powershell
+.\scripts\start.ps1      # launch instantly (dev mode, no hang)
+.\scripts\stop.ps1       # graceful exit, then force stop
+.\scripts\restart.ps1    # stop + start
+.\scripts\connect.ps1    # start and auto-connect
+```
+
+Use `--dev` to skip killing other instances. Use `--connect` to auto-pair on launch.
+
 ## Debug Suite
 
 Open the **Debug Suite** tab to:
