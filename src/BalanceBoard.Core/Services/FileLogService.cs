@@ -2,6 +2,16 @@ using BalanceBoard.Core.Models;
 
 namespace BalanceBoard.Core.Services;
 
+public static class LogTags
+{
+    public const string Connect = "CONNECT";
+    public const string Jump = "JUMP";
+    public const string VJoy = "VJOY";
+    public const string Settings = "SETTINGS";
+    public const string Disconnect = "DISCONNECT";
+    public const string Error = "ERROR";
+}
+
 public sealed class FileLogService
 {
     private readonly object _sync = new();
@@ -27,7 +37,7 @@ public sealed class FileLogService
         Write(
             $"Flags: HasConnectedBefore={settings.HasConnectedBefore}, " +
             $"AutoConnectOnStartup={settings.AutoConnectOnStartup}, " +
-            $"Profile={settings.ActiveProfileName}",
+            $"Profile={settings.ActiveProfileName}, Detail={settings.UiDetailLevel}, Jump={settings.JumpLevel}",
             "SESSION");
 
         if (DeviceIdRules.ShouldPersistConnectionState(settings.LastConnectedDeviceId))
@@ -42,6 +52,9 @@ public sealed class FileLogService
 
         Write($"Log file: {CurrentLogPath}", "SESSION");
     }
+
+    public void WriteTagged(string tag, string message, string category = "INFO") =>
+        Write($"[{tag}] {message}", category);
 
     public void Write(string message, string category = "INFO")
     {
@@ -83,7 +96,7 @@ public sealed class FileLogService
 
     public void WriteException(Exception exception, string context)
     {
-        Write($"{context}: {exception.GetType().Name}: {exception.Message}", "ERROR");
+        Write($"[{LogTags.Error}] {context}: {exception.GetType().Name}: {exception.Message}", "ERROR");
         if (!string.IsNullOrWhiteSpace(exception.StackTrace))
         {
             foreach (var frame in exception.StackTrace.Split(Environment.NewLine, StringSplitOptions.RemoveEmptyEntries))

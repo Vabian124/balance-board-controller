@@ -87,11 +87,11 @@ App kills prior `BalanceBoardApp` instances on startup. If debugging multiple in
 
 ## CI
 
-`.github/workflows/build.yml`:
+`.github/workflows/ci.yml` (same as `.\scripts\lint.ps1` / `.\scripts\ci\lint.ps1`):
 
-- Trigger: push/PR to `main`
+- Trigger: push/PR to `main`, or manual **workflow_dispatch**
 - Runner: `windows-latest`
-- Steps: restore → Release build → **format check** → Validate → **UI smoke** (loads `MainWindow` XAML on STA thread)
+- Steps: crash-safety grep → **format check** → Release build (`-warnaserror`) → **all test projects** → Validate → **UI smoke** → **lifecycle smoke** (`test-flow.ps1`)
 
 ### Linting and static analysis
 

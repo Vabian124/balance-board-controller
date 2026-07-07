@@ -27,18 +27,30 @@ Feature release: accessibility, mouse mode, dark theme, and balance-visual fixes
 - Desktop preset jump action: Space → **left mouse click**
 - `RunDeferredStartup` only applies default game profile on **first launch**
 
-## Unreleased
+## [1.1.1] - 2026-07-07
 
-### Fixed
-- Connect crash after Bluetooth pairing — `ObjectDisposedException` in WiimoteLib `OnReadData` (unsafe HID wake probe + collection not released)
-- Simulated board IDs (`SIM-BOARD-*`) no longer pollute `LastConnectedDeviceId` / session log "Last board" after `--simulate-board` runs
-- Redundant vJoy re-acquire spam when toggling settings or applying presets (same device already held)
-- Dev mode (`--dev`) no longer terminates sibling `BalanceBoardApp` instances during vJoy cleanup
+Stability and accessibility release: crash-proof disconnect, Minecraft preset, jump tuning, progressive UI.
 
 ### Added
+- **UI detail levels** — Simple / Standard / Advanced progressive disclosure (persisted in settings)
+- **Jump presets** — Easy / Normal / Hard (`JumpPresets`) for one-foot and lighter users
+- Top-center **jump banner** on balance visual plus prominent "Jump!" direction text
+- **Minecraft (Controlify)** profile with safe theme brush resolution
+- Structured log prefixes: `[CONNECT]`, `[DISCONNECT]`, `[JUMP]`, `[VJOY]`, `[SETTINGS]`, `[ERROR]`
+- `BalanceDisplay` helper shared by WPF visual and unit tests
 - `scripts/dev/sync-vjoy-dlls.ps1` — copy `vJoyInterface*.dll` from vJoy install into `libs/x64/`
 - Connect success sound (Windows notification chime) for real hardware sessions
-- Regression test: connect flow logs `[CONNECT] First balance reading`
+- UiSmoke applies Minecraft preset; integration tests for disconnect and late HID callbacks
+
+### Fixed
+- **Minecraft preset crash** — `ResourceReferenceKeyNotFoundException` / invalid brush cast in profile styling
+- **Disconnect fatals** — `ObjectDisposedException` from WiimoteLib `OnReadData` after HID dispose
+- Connect crash after Bluetooth pairing (unsafe HID wake probe + collection not released)
+- Simulated board IDs (`SIM-BOARD-*`) no longer pollute `LastConnectedDeviceId` after `--simulate-board`
+- Redundant vJoy re-acquire spam when toggling settings or applying presets
+- Dev mode (`--dev`) no longer terminates sibling `BalanceBoardApp` instances during vJoy cleanup
+
+## Unreleased
 
 ## [1.0.0] - 2026-07-07
 
