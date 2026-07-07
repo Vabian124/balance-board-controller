@@ -34,6 +34,7 @@ public static class BalanceBoardProtocol
     /// <summary>Short HID wake: connect, extension init (0x55 via WiimoteLib), report mode, LED, hold, then caller disconnects.</summary>
     public static void WakeDeviceSession(Wiimote device, Action<string>? log = null)
     {
+        log?.Invoke("[CONNECT] wake probe: opening HID session (status + 0x34 continuous).");
         device.Connect();
         var extensionType = device.WiimoteState.ExtensionType;
         if (extensionType == ExtensionType.BalanceBoard)

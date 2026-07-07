@@ -224,15 +224,77 @@ public class ConnectFlowTests
     public async Task Auto_connect_path_wakes_paired_devices()
     {
         var pairing = new FakeBluetoothPairingService();
-        var attempts = 0;
-        var connection = new FakeBalanceBoardConnection
-        {
-            ConnectHandler = _ => ++attempts >= 2,
-        };
+        var connection = new FakeBalanceBoardConnection();
         using var session = CreateSession(connection, pairing);
         var result = await session.ConnectWithIntentAsync(ConnectionIntent.QuickReconnect);
         Assert.True(result.IsSuccess);
         Assert.Equal(1, pairing.WakeCallCount);
+    }
+
+    [Fact]
+    public async Task QuickReconnect_always_wakes_before_hid_connect()
+    {
+        var pairing = new FakeBluetoothPairingService();
+        var connection = new FakeBalanceBoardConnection();
+        var lines = new List<string>();
+        using var session = CreateSession(connection, pairing);
+        session.Log += lines.Add;
+
+        var result = await session.ConnectWithIntentAsync(ConnectionIntent.QuickReconnect);
+
+        Assert.True(result.IsSuccess);
+        Assert.Equal(1, pairing.WakeCallCount);
+        Assert.Contains(lines, line => line.Contains("wake probe", StringComparison.OrdinalIgnoreCase));
+    }
+
+    [Fact]
+    public async Task PairAndConnect_wakes_after_successful_pair()
+    {
+        var pairing = new FakeBluetoothPairingService();
+        pairing.EnqueuePairResult(new BluetoothPairingResult
+        {
+            Success = true,
+            Message = "Paired 1 Nintendo device(s).",
+            DevicesPaired = 1,
+        });
+
+        var connection = new FakeBalanceBoardConnection
+        {
+            ConnectHandler = _ => pairing.WakeCallCount > 0,
+        };
+        using var session = CreateSession(connection, pairing);
+        var result = await session.ConnectWithIntentAsync(ConnectionIntent.PairAndConnect, discoveryRounds: 1);
+        Assert.True(result.IsSuccess);
+        Assert.True(pairing.WakeCallCount >= 1);
+    }
+
+    [Fact]
+    public async Task Bluetooth_recovery_pauses_when_radio_unavailable_then_resumes()
+    {
+        const string boardId = "FAKE-BOARD-001";
+        var connection = new FakeBalanceBoardConnection { DiscoveredDevices = [boardId] };
+        var pairing = new FakeBluetoothPairingService { BluetoothAvailable = false };
+        var settings = new AppSettings
+        {
+            AutoConnectOnStartup = true,
+            LastConnectedDeviceId = boardId,
+        };
+        using var session = CreateSession(connection, pairing, settings);
+        var lines = new List<string>();
+        session.Log += lines.Add;
+
+        await session.ConnectWithIntentAsync(ConnectionIntent.QuickReconnect);
+        Assert.True(session.IsConnected);
+
+        connection.SimulateDrop();
+        await Task.Delay(300);
+        Assert.Contains(lines, line => line.Contains("radio unavailable", StringComparison.OrdinalIgnoreCase));
+
+        pairing.BluetoothAvailable = true;
+        await Task.Delay(BalanceConstants.ReconnectInitialDelayMs + BalanceConstants.ConnectHealthGraceMs + 1200);
+
+        Assert.True(session.IsConnected);
+        Assert.Contains(lines, line => line.Contains("radio available", StringComparison.OrdinalIgnoreCase));
     }
 
     [Fact]
@@ -373,12 +435,12 @@ public class ConnectFlowTests
     {
         const string boardId = "FAKE-BOARD-001";
         var connection = new FakeBalanceBoardConnection { DiscoveredDevices = [boardId] };
-        var connectCalls = 0;
-        connection.ConnectHandler = _ => ++connectCalls > 1;
         var pairing = new FakeBluetoothPairingService
         {
             AdapterMac = "AABBCCDDEEFF",
         };
+        var connectCalls = 0;
+        connection.ConnectHandler = _ => ++connectCalls > 0 && pairing.WakeCallCount > 0;
         pairing.EnqueuePairResult(new BluetoothPairingResult
         {
             Success = true,

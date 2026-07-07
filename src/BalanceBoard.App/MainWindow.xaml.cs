@@ -141,7 +141,7 @@ public partial class MainWindow : Window
             try
             {
                 SafeLog(status);
-                StatusText.Text = status;
+                StatusText.Text = FormatStatusForUser(status);
                 UpdateConnectionChip(_session.ConnectionPhase);
             }
             catch (Exception ex)
@@ -651,13 +651,14 @@ public partial class MainWindow : Window
     {
         try
         {
+            var simple = _settings.UiDetailLevel == UiDetailLevel.Simple;
             ConnectionChipText.Text = phase switch
             {
-                ConnectionPhase.Connected => "Board: connected",
-                ConnectionPhase.Connecting => "Board: connecting…",
-                ConnectionPhase.Reconnecting => "Board: reconnecting…",
-                ConnectionPhase.PairedReconnecting => "Board: paired, reconnecting…",
-                _ => "Board: offline",
+                ConnectionPhase.Connected => simple ? "Board: ready!" : "Board: connected",
+                ConnectionPhase.Connecting => simple ? "Board: finding…" : "Board: connecting…",
+                ConnectionPhase.Reconnecting => simple ? "Board: trying again…" : "Board: reconnecting…",
+                ConnectionPhase.PairedReconnecting => simple ? "Board: waiting for Bluetooth…" : "Board: paired, reconnecting…",
+                _ => simple ? "Board: not connected" : "Board: offline",
             };
 
             ConnectionChip.BorderBrush = phase == ConnectionPhase.Connected
@@ -815,8 +816,12 @@ public partial class MainWindow : Window
         UpdateConnectUi(isBusy: true);
         StatusText.Text = intent switch
         {
-            ConnectionIntent.QuickReconnect => "Reconnecting to your balance board…",
-            _ => "Searching — press SYNC on the board (red button under batteries)",
+            ConnectionIntent.QuickReconnect => _settings.UiDetailLevel == UiDetailLevel.Simple
+                ? "Finding board…"
+                : "Reconnecting to your balance board…",
+            _ => _settings.HasConnectedBefore
+                ? "Finding board…"
+                : "Searching — press SYNC on the board (red button under batteries)",
         };
 
         try
@@ -828,8 +833,10 @@ public partial class MainWindow : Window
             {
                 MarkConnectedSuccessfully();
                 StatusText.Text = _session.ConnectionPhase == ConnectionPhase.Connected
-                    ? "Connected — step on the board (use Tare if weight looks wrong)."
-                    : "Connecting to balance board…";
+                    ? (_settings.UiDetailLevel == UiDetailLevel.Simple
+                        ? "Connected!"
+                        : "Connected — step on the board (use Tare if weight looks wrong).")
+                    : "Finding board…";
                 Log(result.Message ?? "Connected.");
                 if (!_startupOptions.SimulateBoard)
                 {
@@ -840,17 +847,10 @@ public partial class MainWindow : Window
             }
             else if (!token.IsCancellationRequested)
             {
-                StatusText.Text = result.Status switch
-                {
-                    ConnectStatus.Cancelled => "Cancelled.",
-                    ConnectStatus.NoDevices => intent == ConnectionIntent.QuickReconnect
-                        ? "Board offline — turn it on or press SYNC, then click Connect."
-                        : "Not found — press SYNC, then Connect again.",
-                    _ => result.Message ?? "Connection failed — see session log.",
-                };
+                StatusText.Text = FormatConnectFailure(intent, result);
                 if (!quiet)
                 {
-                    Log(StatusText.Text);
+                    Log(result.Message ?? StatusText.Text);
                 }
             }
         }
@@ -874,6 +874,55 @@ public partial class MainWindow : Window
             Log($"[CONNECT] UI end connected={_session.IsConnected}");
         }
     }
+
+    private string FormatStatusForUser(string status)
+    {
+        if (_settings.UiDetailLevel != UiDetailLevel.Simple)
+        {
+            return status;
+        }
+
+        if (status.Contains("Connected", StringComparison.OrdinalIgnoreCase))
+        {
+            return "Connected!";
+        }
+
+        if (status.Contains("SYNC", StringComparison.OrdinalIgnoreCase)
+            || status.Contains("pair", StringComparison.OrdinalIgnoreCase))
+        {
+            return "Need help pairing — ask a grown-up to press SYNC under the battery cover.";
+        }
+
+        if (status.Contains("Bluetooth", StringComparison.OrdinalIgnoreCase))
+        {
+            return "Waiting for Bluetooth…";
+        }
+
+        if (status.Contains("again", StringComparison.OrdinalIgnoreCase)
+            || status.Contains("Finding", StringComparison.OrdinalIgnoreCase))
+        {
+            return status;
+        }
+
+        return "Working on it…";
+    }
+
+    private string FormatConnectFailure(ConnectionIntent intent, ConnectResult result) =>
+        result.Status switch
+        {
+            ConnectStatus.Cancelled => "Cancelled.",
+            ConnectStatus.NoDevices => _settings.UiDetailLevel == UiDetailLevel.Simple
+                ? "Board not found — we'll keep trying if auto-connect is on."
+                : intent == ConnectionIntent.QuickReconnect
+                    ? "Board offline — turn it on or press SYNC, then click Connect."
+                    : "Not found — press SYNC, then Connect again.",
+            ConnectStatus.PairingFailed => _settings.UiDetailLevel == UiDetailLevel.Simple
+                ? "Could not find the board — ask a grown-up to press SYNC, then Connect."
+                : "Press SYNC on the board, then click Connect.",
+            _ => _settings.UiDetailLevel == UiDetailLevel.Simple
+                ? "Something went wrong — see the log for details."
+                : result.Message ?? "Connection failed — see session log.",
+        };
 
     private void MarkConnectedSuccessfully()
     {

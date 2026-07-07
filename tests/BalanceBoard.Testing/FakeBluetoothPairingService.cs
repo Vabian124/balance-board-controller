@@ -21,7 +21,7 @@ public sealed class FakeBluetoothPairingService : IBluetoothPairingService
     public void WakePairedDevices(Action<string>? log = null)
     {
         WakeCallCount++;
-        log?.Invoke("Fake wake paired devices.");
+        log?.Invoke("[CONNECT] wake probe: starting paired-device wake sequence (fake).");
     }
 
     public BluetoothPairingResult PairDiscoverableBoard(

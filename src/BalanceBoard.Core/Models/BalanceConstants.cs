@@ -38,10 +38,16 @@ public static class BalanceConstants
     public const int ConnectHealthGraceMs = 3000;
     /// <summary>No balance reading within this window means the HID session is dead (board may be flashing).</summary>
     public const int ReadingHealthTimeoutMs = 2500;
-    public const int ReconnectInitialDelayMs = 1000;
+    public const int ReconnectInitialDelayMs = 750;
     public const int ReconnectMaxDelayMs = 30000;
     /// <summary>HID-only recovery attempts before escalating to light Bluetooth re-pair.</summary>
     public const int RecoveryPairAfterAttempts = 3;
+    /// <summary>Light re-pair attempts before escalating to full SYNC pairing (stale bond removal).</summary>
+    public const int RecoveryFullPairAfterAttempts = 6;
+    /// <summary>Poll interval while waiting for Bluetooth radio to become ready after power-on.</summary>
+    public const int BtRadioReadyPollMs = 250;
+    /// <summary>Consecutive radio-ready polls required before resuming HID recovery.</summary>
+    public const int BtRadioReadyStablePolls = 2;
 }
 
 /// <summary>

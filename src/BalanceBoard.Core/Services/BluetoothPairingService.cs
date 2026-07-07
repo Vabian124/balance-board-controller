@@ -181,11 +181,16 @@ public sealed class BluetoothPairingService : IBluetoothPairingService
 
     public void WakePairedDevices(Action<string>? log = null)
     {
+        log?.Invoke("[CONNECT] wake probe: starting paired-device wake sequence.");
         var woke = WiimoteCollectionHelper.WakeDevices(log);
         if (woke > 0)
         {
-            log?.Invoke($"Woke {woke} Wii HID device(s).");
+            log?.Invoke($"[CONNECT] wake probe: held {woke} session(s) for {BalanceConstants.WakeProbeHoldMs} ms.");
             Thread.Sleep(BalanceConstants.PostWakeSettleMs);
+        }
+        else
+        {
+            log?.Invoke("[CONNECT] wake probe: no sessions opened (board may be asleep).");
         }
     }
 

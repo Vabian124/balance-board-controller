@@ -35,6 +35,13 @@ internal static class WiimoteCollectionHelper
         {
             collection = new WiimoteCollection();
             collection.FindAllWiimotes();
+            if (collection.Count == 0)
+            {
+                log?.Invoke("[CONNECT] wake probe: no Wii HID devices visible.");
+                return 0;
+            }
+
+            log?.Invoke($"[CONNECT] wake probe: {collection.Count} Wii HID device(s) found.");
             var woke = 0;
 
             foreach (var wii in collection)
