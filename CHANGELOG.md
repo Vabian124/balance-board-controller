@@ -29,6 +29,18 @@ Stability and accessibility release: crash-proof disconnect, Minecraft preset, j
 
 ## Unreleased
 
+## [1.2.1] - 2026-07-07
+
+Sensitivity UX fix and per-profile response curves.
+
+### Added
+- **Response curves** — Linear, Ease in/out, Exponential, and Minecraft snappy presets (Advanced tab); persisted in settings
+- **One-foot mode** toggle — applies highly sensitive + easy jump + ease-in/out curve in one click
+- **Standard-tier sliders** — deadzone, sensitivity, invert, and jump threshold on Profiles when simple presets are off
+
+### Fixed
+- **Simple presets unchecked** no longer hides all sliders — manual tuning appears on Profiles without requiring Advanced detail level
+
 ## [1.2.0] - 2026-07-07
 
 Production release: correct version metadata and release asset naming.

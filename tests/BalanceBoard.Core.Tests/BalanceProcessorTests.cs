@@ -151,6 +151,57 @@ public class BalanceMathTests
         Assert.Equal(0, joyX);
         Assert.Equal(0, joyY);
     }
+
+    [Fact]
+    public void MapCenterOfGravityAxes_exponential_curve_boosts_edge_output()
+    {
+        var linear = new AppSettings
+        {
+            SendCenterOfGravityToAxes = true,
+            DeadzonePercent = 0,
+            Sensitivity = 1.0,
+            ResponseCurve = ResponseCurve.Linear,
+        };
+        var exponential = new AppSettings
+        {
+            SendCenterOfGravityToAxes = true,
+            DeadzonePercent = 0,
+            Sensitivity = 1.0,
+            ResponseCurve = ResponseCurve.Exponential,
+        };
+
+        var (linearX, _) = BalanceMath.MapCenterOfGravityAxes(70f, 50f, linear);
+        var (expX, _) = BalanceMath.MapCenterOfGravityAxes(70f, 50f, exponential);
+
+        Assert.True(Math.Abs(expX) < Math.Abs(linearX));
+    }
+
+    [Theory]
+    [InlineData(ResponseCurve.Linear, 0f, 0f)]
+    [InlineData(ResponseCurve.Linear, 1f, 1f)]
+    [InlineData(ResponseCurve.Exponential, 0.5f, 0.25f)]
+    [InlineData(ResponseCurve.MinecraftSnappy, 1f, 1f)]
+    public void SensitivityCurve_Map_matches_expected(ResponseCurve curve, float input, float expected)
+    {
+        Assert.Equal(expected, SensitivityCurve.Map(input, curve), precision: 3);
+    }
+}
+
+public class OneFootPresetsTests
+{
+    [Fact]
+    public void Apply_sets_high_sensitivity_easy_jump_and_curve()
+    {
+        var settings = new AppSettings();
+        OneFootPresets.Apply(settings);
+
+        Assert.True(settings.OneFootMode);
+        Assert.False(settings.UseSimpleSensitivity);
+        Assert.Equal(SensitivityLevel.HighlySensitive, settings.SensitivityLevel);
+        Assert.Equal(JumpLevel.Easy, settings.JumpLevel);
+        Assert.Equal(ResponseCurve.EaseInOut, settings.ResponseCurve);
+        Assert.Equal(1, settings.DeadzonePercent);
+    }
 }
 
 public class VirtualKeyCodesTests
@@ -487,6 +538,7 @@ public class ActionPresetsTests
         Assert.Equal(JumpLevel.Normal, settings.JumpLevel);
         Assert.True(settings.DisableKeyboardActions);
         Assert.Equal(SensitivityLevel.Medium, settings.SensitivityLevel);
+        Assert.Equal(ResponseCurve.MinecraftSnappy, settings.ResponseCurve);
     }
 
     [Fact]

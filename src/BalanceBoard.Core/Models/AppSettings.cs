@@ -23,6 +23,8 @@ public sealed class AppSettings
     public double Sensitivity { get; set; } = 1.0;
     public SensitivityLevel SensitivityLevel { get; set; } = SensitivityLevel.Medium;
     public bool UseSimpleSensitivity { get; set; } = true;
+    public ResponseCurve ResponseCurve { get; set; } = ResponseCurve.Linear;
+    public bool OneFootMode { get; set; }
     public float JumpWeightThresholdKg { get; set; } = BalanceConstants.JumpWeightThresholdKg;
     public double JumpHoldSeconds { get; set; } = BalanceConstants.JumpHoldSeconds;
     public JumpLevel JumpLevel { get; set; } = JumpLevel.Normal;

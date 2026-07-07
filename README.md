@@ -18,7 +18,7 @@ Clean rewrite of [WiiBalanceWalker v0.5](https://github.com/lshachar/WiiBalanceW
 - **Jump presets** — **Easy** / **Normal** / **Hard** for one-foot and lighter users; jump banner on balance visual
 - **Game profiles** — Game Controller, **Minecraft (Controlify)**, Pedal/Rudder, Hand-Free Desktop, Balance Mouse
 - **Theme** — System / Light / Dark with accessible dropdown contrast in both themes
-- **Sensitivity presets** — Low through Highly sensitive; advanced sliders when detail level is Advanced
+- **Sensitivity presets** — Low through Highly sensitive; manual deadzone/sensitivity sliders when simple presets are off; response curves in Advanced
 - **Smart connect** — first launch pairs on demand; returning users auto-reconnect
 - **Crash-safe lifecycle** — dedicated STA `ConnectionWorker` for WiimoteLib; hardened disconnect (no post-dispose HID callbacks)
 - **Structured logs** — `[CONNECT]`, `[DISCONNECT]`, `[JUMP]`, `[VJOY]`, `[SETTINGS]`, `[ERROR]` tags in session log
@@ -60,7 +60,7 @@ Or double-click **`start.bat`** after a build — it auto-builds on first run.
 
 | Setting | Where | What it does |
 |---------|-------|----------------|
-| **UI detail** | Profiles tab | Simple hides Advanced tab; Standard adds theme/calibration; Advanced shows full sliders and bindings |
+| **UI detail** | Profiles tab | Simple hides Advanced tab; Standard adds manual sliders when presets off; Advanced adds triggers, curves, bindings |
 | **Jump feel** | Profiles tab (Simple) or Advanced | Easy / Normal / Hard — how much weight must leave the board to jump |
 | **Profile** | Profiles tab | Pick a preset; **Minecraft (Controlify)** for modded Minecraft with vJoy |
 | **Theme** | Advanced tab (Standard+) | System / Light / Dark |

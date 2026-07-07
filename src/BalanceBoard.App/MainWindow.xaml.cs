@@ -191,10 +191,12 @@ public partial class MainWindow : Window
         JumpThresholdSlider.Value = _settings.JumpWeightThresholdKg;
         JumpHoldSlider.Value = _settings.JumpHoldSeconds;
         SimpleSensitivityCheck.IsChecked = _settings.UseSimpleSensitivity;
+        OneFootModeCheck.IsChecked = _settings.OneFootMode;
         InvertXCheck.IsChecked = _settings.InvertX;
         InvertYCheck.IsChecked = _settings.InvertY;
 
         UpdateSensitivityModeUi();
+        PopulateResponseCurveCombo();
         UpdateJumpPresetButtons();
         UpdateProfileButtonStyles();
         ApplyDetailLevel();
@@ -269,11 +271,30 @@ public partial class MainWindow : Window
 
     private void UpdateSensitivityModeUi()
     {
-        var simple = SimpleSensitivityCheck.IsChecked == true;
-        SimpleSensitivityPanel.Visibility = simple ? Visibility.Visible : Visibility.Collapsed;
-        var showAdvancedSliders = _settings.UiDetailLevel == UiDetailLevel.Advanced && !simple;
-        AdvancedSensitivityPanel.Visibility = showAdvancedSliders ? Visibility.Visible : Visibility.Collapsed;
+        var useSimplePresets = SimpleSensitivityCheck.IsChecked == true;
+        var detail = _settings.UiDetailLevel;
+        var showStandard = !useSimplePresets;
+        var showAdvanced = !useSimplePresets && detail == UiDetailLevel.Advanced;
+
+        SimpleSensitivityPanel.Visibility = useSimplePresets ? Visibility.Visible : Visibility.Collapsed;
+        StandardSensitivityPanel.Visibility = showStandard ? Visibility.Visible : Visibility.Collapsed;
+        AdvancedSensitivityPanel.Visibility = showAdvanced ? Visibility.Visible : Visibility.Collapsed;
         UpdateSensitivityPresetButtons();
+    }
+
+    private void PopulateResponseCurveCombo()
+    {
+        if (ResponseCurveCombo.Items.Count == 0)
+        {
+            foreach (ResponseCurve curve in Enum.GetValues<ResponseCurve>())
+            {
+                ResponseCurveCombo.Items.Add(SensitivityCurve.DisplayName(curve));
+            }
+        }
+
+        _suppressSettingEvents = true;
+        ResponseCurveCombo.SelectedIndex = (int)_settings.ResponseCurve;
+        _suppressSettingEvents = false;
     }
 
     private void UpdateSensitivityPresetButtons()
@@ -394,8 +415,8 @@ public partial class MainWindow : Window
         DetailLevelDescription.Text = detail switch
         {
             UiDetailLevel.Simple => "Simple — Dashboard and Profiles only; we handle the rest.",
-            UiDetailLevel.Standard => "Standard — theme, calibration, and invert options.",
-            UiDetailLevel.Advanced => "Advanced — full sliders, vJoy, bindings, and diagnostics.",
+            UiDetailLevel.Standard => "Standard — deadzone, sensitivity, invert, and jump threshold when presets are off.",
+            UiDetailLevel.Advanced => "Advanced — full sliders, response curves, vJoy, bindings, and diagnostics.",
             _ => string.Empty,
         };
 
@@ -409,9 +430,7 @@ public partial class MainWindow : Window
         CalibrationSection.Visibility = simple ? Visibility.Collapsed : Visibility.Visible;
         InvertPanel.Visibility = simple ? Visibility.Collapsed : Visibility.Visible;
         FineTuneSection.Visibility = simple ? Visibility.Collapsed : Visibility.Visible;
-        AdvancedSensitivityPanel.Visibility = advanced && SimpleSensitivityCheck.IsChecked != true
-            ? Visibility.Visible
-            : Visibility.Collapsed;
+        UpdateSensitivityModeUi();
         DiagnosticsSection.Visibility = advanced ? Visibility.Visible : Visibility.Collapsed;
         SessionLogSection.Visibility = advanced ? Visibility.Visible : Visibility.Collapsed;
 
@@ -693,6 +712,11 @@ public partial class MainWindow : Window
         _settings.JumpWeightThresholdKg = (float)JumpThresholdSlider.Value;
         _settings.JumpHoldSeconds = JumpHoldSlider.Value;
         _settings.UseSimpleSensitivity = SimpleSensitivityCheck.IsChecked == true;
+        _settings.OneFootMode = OneFootModeCheck.IsChecked == true;
+        if (ResponseCurveCombo.SelectedIndex is >= 0 and <= (int)ResponseCurve.MinecraftSnappy)
+        {
+            _settings.ResponseCurve = (ResponseCurve)ResponseCurveCombo.SelectedIndex;
+        }
         if (ProfileCombo.SelectedItem is string profile)
         {
             _settings.ActiveProfileName = profile;
@@ -896,6 +920,7 @@ public partial class MainWindow : Window
         JumpThresholdSlider.Value = _settings.JumpWeightThresholdKg;
         JumpHoldSlider.Value = _settings.JumpHoldSeconds;
         SimpleSensitivityCheck.IsChecked = _settings.UseSimpleSensitivity;
+        OneFootModeCheck.IsChecked = _settings.OneFootMode;
         InvertXCheck.IsChecked = _settings.InvertX;
         InvertYCheck.IsChecked = _settings.InvertY;
         ThemeCombo.SelectedItem = _settings.ThemePreference;
@@ -914,6 +939,7 @@ public partial class MainWindow : Window
         UpdateProfileButtonStyles();
         UpdateJumpPresetButtons();
         UpdateSensitivityModeUi();
+        PopulateResponseCurveCombo();
         ApplyDetailLevel();
         _suppressSettingEvents = false;
         UpdateSliderLabels();
@@ -976,7 +1002,9 @@ public partial class MainWindow : Window
     private void ApplySensitivityPreset(SensitivityLevel level)
     {
         SensitivityPresets.Apply(_settings, level);
+        _settings.OneFootMode = false;
         _suppressSettingEvents = true;
+        OneFootModeCheck.IsChecked = false;
         TriggerLeftRightSlider.Value = _settings.TriggerLeftRight;
         TriggerForwardBackwardSlider.Value = _settings.TriggerForwardBackward;
         DeadzoneSlider.Value = _settings.DeadzonePercent;
@@ -992,6 +1020,39 @@ public partial class MainWindow : Window
     private void SensitivityHighly_Click(object sender, RoutedEventArgs e) => ApplySensitivityPreset(SensitivityLevel.HighlySensitive);
 
     private void DetailLevelCombo_SelectionChanged(object sender, SelectionChangedEventArgs e) => SaveSettingsFromUi();
+
+    private void ResponseCurveCombo_SelectionChanged(object sender, SelectionChangedEventArgs e) => SaveSettingsFromUi();
+
+    private void OneFootMode_Changed(object sender, RoutedEventArgs e)
+    {
+        if (!_uiReady || _suppressSettingEvents)
+        {
+            return;
+        }
+
+        if (OneFootModeCheck.IsChecked == true)
+        {
+            OneFootPresets.Apply(_settings);
+            _suppressSettingEvents = true;
+            SimpleSensitivityCheck.IsChecked = false;
+            TriggerLeftRightSlider.Value = _settings.TriggerLeftRight;
+            TriggerForwardBackwardSlider.Value = _settings.TriggerForwardBackward;
+            DeadzoneSlider.Value = _settings.DeadzonePercent;
+            SensitivitySlider.Value = _settings.Sensitivity;
+            JumpThresholdSlider.Value = _settings.JumpWeightThresholdKg;
+            JumpHoldSlider.Value = _settings.JumpHoldSeconds;
+            ResponseCurveCombo.SelectedIndex = (int)_settings.ResponseCurve;
+            _suppressSettingEvents = false;
+            UpdateJumpPresetButtons();
+            UpdateSensitivityPresetButtons();
+        }
+        else
+        {
+            OneFootPresets.Clear(_settings);
+        }
+
+        SaveSettingsFromUi();
+    }
 
     private void ApplyJumpPreset(JumpLevel level)
     {

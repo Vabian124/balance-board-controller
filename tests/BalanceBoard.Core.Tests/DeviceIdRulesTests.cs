@@ -60,6 +60,8 @@ public class SettingsStoreTests
             JumpLevel = JumpLevel.Easy,
             UiDetailLevel = UiDetailLevel.Advanced,
             EnableVJoy = true,
+            ResponseCurve = ResponseCurve.MinecraftSnappy,
+            OneFootMode = true,
         };
 
         store.Save(settings);
@@ -72,6 +74,8 @@ public class SettingsStoreTests
         Assert.Equal(settings.JumpLevel, loaded.JumpLevel);
         Assert.Equal(settings.UiDetailLevel, loaded.UiDetailLevel);
         Assert.Equal(settings.EnableVJoy, loaded.EnableVJoy);
+        Assert.Equal(settings.ResponseCurve, loaded.ResponseCurve);
+        Assert.Equal(settings.OneFootMode, loaded.OneFootMode);
         Assert.True(File.Exists(store.SettingsPath));
     }
 

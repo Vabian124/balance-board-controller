@@ -68,6 +68,7 @@ public static class ActionPresets
         settings.MapJumpToVJoyButton = true;
         JumpPresets.Apply(settings, JumpLevel.Normal);
         SensitivityPresets.Apply(settings, SensitivityLevel.Medium);
+        settings.ResponseCurve = ResponseCurve.MinecraftSnappy;
         TriggerDefaults.ApplyTo(settings);
     }
 

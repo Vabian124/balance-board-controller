@@ -175,6 +175,12 @@ public static class BalanceMath
             y = ApplyDeadzone(y, settings.DeadzonePercent);
         }
 
+        if (settings.ResponseCurve != ResponseCurve.Linear)
+        {
+            x = SensitivityCurve.ApplyToPercent(x, settings.ResponseCurve);
+            y = SensitivityCurve.ApplyToPercent(y, settings.ResponseCurve);
+        }
+
         return (
             ToJoyAxis(x, settings.Sensitivity, settings.InvertX),
             ToJoyAxis(y, settings.Sensitivity, settings.InvertY));
