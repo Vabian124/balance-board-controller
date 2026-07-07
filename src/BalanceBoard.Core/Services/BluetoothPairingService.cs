@@ -36,10 +36,12 @@ public sealed class BluetoothPairingService
         }
     }
 
-    public BluetoothPairingResult PairDiscoverableBoard(Action<string>? log = null)
+    public BluetoothPairingResult PairDiscoverableBoard(Action<string>? log = null, CancellationToken cancellationToken = default)
     {
         try
         {
+            cancellationToken.ThrowIfCancellationRequested();
+
             using var btClient = new BluetoothClient();
             var radio = BluetoothRadio.PrimaryRadio;
             if (radio is null)
@@ -57,6 +59,7 @@ public sealed class BluetoothPairingService
 
             log?.Invoke("Removing stale Nintendo pairings…");
             RemoveExistingNintendoDevices(btClient);
+            cancellationToken.ThrowIfCancellationRequested();
 
             log?.Invoke("Searching for balance board — press the red SYNC button under the battery cover.");
             var discovered = btClient.DiscoverDevices(255, false, false, true);
@@ -64,6 +67,8 @@ public sealed class BluetoothPairingService
 
             foreach (var device in discovered)
             {
+                cancellationToken.ThrowIfCancellationRequested();
+
                 if (!IsNintendoDevice(device))
                 {
                     continue;
@@ -83,7 +88,12 @@ public sealed class BluetoothPairingService
             }
 
             log?.Invoke("Finishing Bluetooth setup…");
-            Thread.Sleep(4000);
+            if (cancellationToken.WaitHandle.WaitOne(TimeSpan.FromSeconds(4)))
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+            }
+
+            cancellationToken.ThrowIfCancellationRequested();
             WakePairedWiimotes(log);
 
             return new BluetoothPairingResult
@@ -92,6 +102,10 @@ public sealed class BluetoothPairingService
                 Message = $"Paired {paired} Nintendo device(s).",
                 DevicesPaired = paired,
             };
+        }
+        catch (OperationCanceledException)
+        {
+            return Fail("Pairing cancelled.");
         }
         catch (Exception ex)
         {

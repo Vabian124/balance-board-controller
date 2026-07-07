@@ -3,6 +3,7 @@ using System.IO;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
+using BalanceBoard.App.Services;
 using BalanceBoard.Core.Models;
 using BalanceBoard.Core.Services;
 
@@ -13,14 +14,17 @@ public partial class MainWindow : Window
     private readonly SettingsStore _settingsStore = new();
     private readonly BalanceBoardSession _session = new();
     private readonly FileLogService _fileLog = new();
+    private readonly StartupOptions _startupOptions;
     private AppSettings _settings = new();
     private bool _uiReady;
     private bool _shutdownCompleted;
-    private string _lastHealthReport = string.Empty;
     private bool _connectInProgress;
+    private CancellationTokenSource? _connectCts;
+    private string _lastHealthReport = string.Empty;
 
-    public MainWindow(int competingProcessesStopped = 0)
+    public MainWindow(StartupOptions startupOptions, int competingProcessesStopped = 0)
     {
+        _startupOptions = startupOptions;
         _settings = _settingsStore.Load();
         _session.LoadSettings(_settings);
         InitializeComponent();
@@ -29,19 +33,41 @@ public partial class MainWindow : Window
         PopulateUi();
         RefreshVJoyStatus();
         UpdateSliderLabels();
+        UpdateConnectUi(isBusy: false);
 
         if (competingProcessesStopped > 0)
         {
-            Log($"Stopped {competingProcessesStopped} competing feeder process(es) before startup.");
-            foreach (var name in FeederProcessCleanup.LastTerminatedProcesses)
-            {
-                Log($"  - {name}");
-            }
+            Log($"Stopped {competingProcessesStopped} competing process(es).");
         }
 
-        Log("Balance Board Controller ready.");
-        Log($"Session log file: {_fileLog.CurrentLogPath}");
-        UpdateConnectionPill(false);
+        Log("Ready.");
+        Log($"Log file: {_fileLog.CurrentLogPath}");
+        UpdateConnectionChip(false);
+    }
+
+    public void RunDeferredStartup(bool connectOnLaunch, int competingProcessesStopped = 0)
+    {
+        if (competingProcessesStopped > 0)
+        {
+            Log($"Startup cleanup stopped {competingProcessesStopped} competing process(es).");
+        }
+
+        BluetoothPairingService.Warmup();
+
+        if (_settings.ActiveProfileName != ActionPresets.GameController)
+        {
+            _session.ApplyControllerPreset();
+            SyncUiFromSettings();
+        }
+
+        var diag = VJoyDiagnostics.Inspect(_settings.VJoyDeviceId);
+        Log($"vJoy: driver={(diag.DriverEnabled ? "OK" : "missing")}, status={diag.DeviceStatus}");
+        RefreshVJoyStatus();
+
+        if (connectOnLaunch || _settings.AutoConnectOnStartup)
+        {
+            BeginConnect();
+        }
     }
 
     private void HookSession()
@@ -51,8 +77,7 @@ public partial class MainWindow : Window
         _session.StatusChanged += status => Dispatcher.Invoke(() =>
         {
             StatusText.Text = status;
-            UpdateConnectionPill(_session.IsConnected);
-            Log(status);
+            UpdateConnectionChip(_session.IsConnected);
         });
     }
 
@@ -63,6 +88,13 @@ public partial class MainWindow : Window
             LogBox.AppendText(line + Environment.NewLine);
             LogBox.ScrollToEnd();
         });
+    }
+
+    private void Window_Loaded(object sender, RoutedEventArgs e) => _uiReady = true;
+
+    private void Window_Closing(object? sender, System.ComponentModel.CancelEventArgs e)
+    {
+        CancelConnect();
     }
 
     private void PopulateUi()
@@ -90,50 +122,15 @@ public partial class MainWindow : Window
         for (uint i = 1; i <= 16; i++) VJoyDeviceCombo.Items.Add(i);
         VJoyDeviceCombo.SelectedItem = _settings.VJoyDeviceId;
         _suppressSettingEvents = false;
-        UpdateActiveActionsSummary();
     }
 
     private void UpdateSliderLabels()
     {
         DeadzoneLabel.Text = $"Deadzone: {DeadzoneSlider.Value:0}%";
-        SensitivityLabel.Text = $"Sensitivity: {SensitivitySlider.Value:0.0}x";
+        SensitivityLabel.Text = $"Sensitivity: {SensitivitySlider.Value:0.0}×";
         TriggerLeftRightLabel.Text = $"Left/right trigger: {TriggerLeftRightSlider.Value:0}%";
         TriggerForwardBackwardLabel.Text = $"Forward/back trigger: {TriggerForwardBackwardSlider.Value:0}%";
     }
-
-    private void UpdateActiveActionsSummary()
-    {
-        if (!_uiReady) return;
-
-        ActiveActionsText.Text = _settings.DisableKeyboardActions
-            ? $"Profile: {_settings.ActiveProfileName} · vJoy output"
-            : $"Profile: {_settings.ActiveProfileName} · {DescribeBindings()}";
-    }
-
-    private string DescribeBindings()
-    {
-        var parts = new List<string>();
-        foreach (var pair in _settings.Actions.OrderBy(p => p.Key))
-        {
-            var label = DescribeBinding(pair.Value);
-            if (label is not null)
-            {
-                parts.Add($"{pair.Key}: {label}");
-            }
-        }
-
-        return parts.Count == 0 ? "No keyboard/mouse bindings" : string.Join(" · ", parts);
-    }
-
-    private static string? DescribeBinding(ActionBinding binding) =>
-        binding.Kind switch
-        {
-            ActionKind.Key => binding.KeyName,
-            ActionKind.MouseButton => binding.MouseButton,
-            ActionKind.MouseMoveX => $"mouse X {binding.Amount}",
-            ActionKind.MouseMoveY => $"mouse Y {binding.Amount}",
-            _ => null,
-        };
 
     private void OnProcessed(ProcessedBalance data)
     {
@@ -141,52 +138,37 @@ public partial class MainWindow : Window
         {
             BoardVisual.Data = data;
             WeightText.Text = $"Weight: {data.WeightKg:0.0} kg";
-            BalanceText.Text = $"Balance X/Y: {data.BalanceX:0.0}% / {data.BalanceY:0.0}%";
+            BalanceText.Text = $"Balance: {data.BalanceX:0.0}% / {data.BalanceY:0.0}%";
             DirectionText.Text = DescribeDirection(data);
             ActiveActionsText.Text = DescribeActiveInputs(data);
             SensorText.Text =
                 $"TL {data.TopLeftKg:0.0}  TR {data.TopRightKg:0.0}  BL {data.BottomLeftKg:0.0}  BR {data.BottomRightKg:0.0}\n" +
-                $"vJoy axes  X={data.JoyX,6}  Y={data.JoyY,6}  Z={data.JoyZ,6}";
+                $"vJoy  X={data.JoyX,6}  Y={data.JoyY,6}  Z={data.JoyZ,6}";
         });
     }
 
     private static string DescribeDirection(ProcessedBalance data)
     {
-        if (data.WeightKg < 5)
-        {
-            return "Step on the board to begin";
-        }
-
+        if (data.WeightKg < 5) return "Step on the board";
         var parts = new List<string>();
         if (data.MoveForward) parts.Add("forward");
         if (data.MoveBackward) parts.Add("backward");
         if (data.MoveLeft) parts.Add("left");
         if (data.MoveRight) parts.Add("right");
         if (data.Jump) parts.Add("jump");
-        if (parts.Count == 0) return "Centered";
-        return "Leaning " + string.Join(" · ", parts);
+        return parts.Count == 0 ? "Centered" : string.Join(" · ", parts);
     }
 
     private string DescribeActiveInputs(ProcessedBalance data)
     {
-        if (data.WeightKg < 5)
-        {
-            return $"Profile: {_settings.ActiveProfileName}";
-        }
-
+        if (data.WeightKg < 5) return $"Profile: {_settings.ActiveProfileName}";
         var active = new List<string>();
         if (data.MoveForward) active.Add("Forward");
         if (data.MoveBackward) active.Add("Backward");
         if (data.MoveLeft) active.Add("Left");
         if (data.MoveRight) active.Add("Right");
-        if (data.Modifier) active.Add("Modifier");
         if (data.Jump) active.Add("Jump");
-        if (data.DiagonalLeft) active.Add("Diagonal left");
-        if (data.DiagonalRight) active.Add("Diagonal right");
-
-        return active.Count == 0
-            ? $"Profile: {_settings.ActiveProfileName} · Centered"
-            : $"Active: {string.Join(", ", active)}";
+        return active.Count == 0 ? "Centered" : $"Active: {string.Join(", ", active)}";
     }
 
     private void RefreshVJoyStatus()
@@ -194,31 +176,31 @@ public partial class MainWindow : Window
         var diag = VJoyDiagnostics.Inspect(_settings.VJoyDeviceId);
         VJoyStatusText.Text =
             $"Driver: {(diag.DriverEnabled ? "OK" : "MISSING")}\n" +
-            $"Device status: {diag.DeviceStatus}\n" +
-            $"Axes X/Y/Z/RX/RY/RZ: {diag.HasAxisX}/{diag.HasAxisY}/{diag.HasAxisZ}/{diag.HasAxisRx}/{diag.HasAxisRy}/{diag.HasAxisRz}\n" +
-            $"Buttons: {diag.ButtonCount}\n" +
-            $"DLL match: {diag.DriverMatchesDll}\n" +
-            (diag.Error ?? "No issues detected.");
+            $"Status: {diag.DeviceStatus}\n" +
+            $"Axes: {diag.HasAxisX}/{diag.HasAxisY}/{diag.HasAxisZ}/{diag.HasAxisRx}/{diag.HasAxisRy}/{diag.HasAxisRz}\n" +
+            (diag.Error ?? "OK");
 
         var ok = diag.DriverEnabled && diag.DeviceStatus is not "VJD_STAT_MISS" and not "VJD_STAT_BUSY";
-        VJoyPillText.Text = ok ? "vJoy: ready" : "vJoy: needs attention";
-        VJoyPill.Background = new SolidColorBrush(ok
-            ? (Color)FindResource("SurfaceAltColor")
-            : (Color)FindResource("WarningColor"));
+        VJoyChipText.Text = ok ? "vJoy: ready" : "vJoy: check";
+        VJoyChip.BorderBrush = ok ? (Brush)FindResource("Brush.Success") : (Brush)FindResource("Brush.Warning");
     }
 
-    private void UpdateConnectionPill(bool connected)
+    private void UpdateConnectionChip(bool connected)
     {
-        ConnectionPillText.Text = connected ? "Connected" : "Disconnected";
-        ConnectionPill.Background = new SolidColorBrush(connected
-            ? (Color)FindResource("SuccessColor")
-            : (Color)FindResource("SurfaceAltColor"));
+        ConnectionChipText.Text = connected ? "Board: connected" : "Board: offline";
+        ConnectionChip.BorderBrush = connected
+            ? (Brush)FindResource("Brush.Success")
+            : (Brush)FindResource("Brush.CardBorder");
     }
 
-    private void Log(string message)
+    private void UpdateConnectUi(bool isBusy)
     {
-        _fileLog.Write(message);
+        ConnectButton.IsEnabled = !isBusy;
+        CancelButton.Visibility = isBusy ? Visibility.Visible : Visibility.Collapsed;
+        DisconnectButton.IsEnabled = !isBusy && _session.IsConnected;
     }
+
+    private void Log(string message) => _fileLog.Write(message);
 
     private bool _suppressSettingEvents;
 
@@ -242,87 +224,91 @@ public partial class MainWindow : Window
         else if (VJoyDeviceCombo.SelectedItem is int intId) _settings.VJoyDeviceId = (uint)intId;
 
         UpdateSliderLabels();
-        UpdateActiveActionsSummary();
         _settingsStore.Save(_settings);
         _session.LoadSettings(_settings);
         RefreshVJoyStatus();
     }
 
-    private void SettingChanged(object sender, RoutedEventArgs e)
-    {
-        SaveSettingsFromUi();
-    }
-
+    private void SettingChanged(object sender, RoutedEventArgs e) => SaveSettingsFromUi();
     private void SettingChanged(object sender, SelectionChangedEventArgs e) => SaveSettingsFromUi();
 
-    private void SettingChanged(object sender, TextChangedEventArgs e) => SaveSettingsFromUi();
-
-    private void Window_Loaded(object sender, RoutedEventArgs e)
+    private void ConnectButton_Click(object sender, RoutedEventArgs e)
     {
-        _uiReady = true;
-
-        var diag = VJoyDiagnostics.Inspect(_settings.VJoyDeviceId);
-        Log($"Startup vJoy check: driver={(diag.DriverEnabled ? "OK" : "MISSING")}, status={diag.DeviceStatus}, axes X/Y={diag.HasAxisX}/{diag.HasAxisY}");
-        if (!string.IsNullOrWhiteSpace(diag.Error))
-        {
-            Log(diag.Error);
-        }
-
-        BluetoothPairingService.Warmup();
-
-        if (_settings.ActiveProfileName != ActionPresets.GameController)
-        {
-            _session.ApplyControllerPreset();
-            SyncUiFromSettings();
-        }
-
-        BeginAutoConnect();
+        SaveSettingsFromUi();
+        BeginConnect();
     }
 
-    private async void BeginAutoConnect()
+    private void CancelButton_Click(object sender, RoutedEventArgs e) => CancelConnect();
+
+    private void CancelConnect()
     {
-        if (_connectInProgress || _session.IsConnected)
+        _connectCts?.Cancel();
+        _session.CancelConnect();
+        if (_connectInProgress)
         {
-            return;
+            StatusText.Text = "Cancelling…";
         }
+    }
+
+    private async void BeginConnect()
+    {
+        if (_connectInProgress || _session.IsConnected) return;
 
         _connectInProgress = true;
-        ConnectButton.IsEnabled = false;
-        StatusText.Text = "Finding and pairing balance board…";
+        _connectCts = new CancellationTokenSource();
+        UpdateConnectUi(isBusy: true);
+        StatusText.Text = "Searching — press SYNC on the board (red button under batteries)";
 
         try
         {
-            var connected = await Task.Run(() => StaThread.Run(() => _session.ConnectOrPair()));
+            var token = _connectCts.Token;
+            var connected = await Task.Run(
+                () => StaThread.Run(() => _session.ConnectOrPair(cancellationToken: token)),
+                token);
+
             if (connected)
             {
                 _settings.SetupWizardCompleted = true;
                 SaveSettingsFromUi();
-                Log("Balance board connected and ready.");
+                StatusText.Text = "Connected — step on the board to play.";
+                Log("Connected.");
             }
-            else
+            else if (!token.IsCancellationRequested)
             {
-                StatusText.Text = "Press SYNC on the board (red button under batteries), then click Connect.";
+                StatusText.Text = "Not found — press SYNC, then Connect again.";
             }
+        }
+        catch (OperationCanceledException)
+        {
+            StatusText.Text = "Cancelled.";
         }
         catch (Exception ex)
         {
-            Log($"Connection error: {ex.Message}");
-            StatusText.Text = "Connection error — see Debug Suite log.";
+            Log($"Error: {ex.Message}");
+            StatusText.Text = "Error — see session log.";
         }
         finally
         {
+            _connectCts?.Dispose();
+            _connectCts = null;
             _connectInProgress = false;
-            ConnectButton.IsEnabled = true;
+            UpdateConnectUi(isBusy: false);
+            UpdateConnectionChip(_session.IsConnected);
         }
     }
 
+    private void DisconnectButton_Click(object sender, RoutedEventArgs e)
+    {
+        _session.Disconnect();
+        StatusText.Text = "Disconnected.";
+        UpdateConnectionChip(false);
+    }
+
+    private void ExitButton_Click(object sender, RoutedEventArgs e) => Close();
+
     private void ProfileCombo_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
-        if (!_uiReady || _suppressSettingEvents || ProfileCombo.SelectedItem is not string profile)
-        {
-            return;
-        }
-
+        if (!_uiReady || _suppressSettingEvents || ProfileCombo.SelectedItem is not string profile) return;
         _session.ApplyProfile(profile);
         SyncUiFromSettings();
         SaveSettingsFromUi();
@@ -338,40 +324,9 @@ public partial class MainWindow : Window
         TriggerLeftRightSlider.Value = _settings.TriggerLeftRight;
         TriggerForwardBackwardSlider.Value = _settings.TriggerForwardBackward;
         if (ActionPresets.All.Contains(_settings.ActiveProfileName))
-        {
             ProfileCombo.SelectedItem = _settings.ActiveProfileName;
-        }
-
         _suppressSettingEvents = false;
         UpdateSliderLabels();
-        UpdateActiveActionsSummary();
-    }
-
-    private void ConnectButton_Click(object sender, RoutedEventArgs e)
-    {
-        SaveSettingsFromUi();
-        BeginAutoConnect();
-    }
-
-    private void DisconnectButton_Click(object sender, RoutedEventArgs e) => _session.Disconnect();
-
-    private void SetupButton_Click(object sender, RoutedEventArgs e) => ShowSetupWizard();
-
-    private void ShowSetupWizard()
-    {
-        var wizard = new SetupWizardWindow(_session) { Owner = this };
-        if (wizard.ShowDialog() == true)
-        {
-            _session.ApplyControllerPreset();
-            _settings.SetupWizardCompleted = true;
-            SyncUiFromSettings();
-            SaveSettingsFromUi();
-            Log("Setup Wizard completed — Game Controller preset active.");
-        }
-        else
-        {
-            Log("Setup Wizard closed without finishing all steps.");
-        }
     }
 
     private void Tare_Click(object sender, RoutedEventArgs e) => _session.Tare();
@@ -401,56 +356,35 @@ public partial class MainWindow : Window
 
     private void RunHealthCheckButton_Click(object sender, RoutedEventArgs e)
     {
-        Log("Running health check...");
         var report = DiagnosticsReport.Run(_settings.VJoyDeviceId);
         _lastHealthReport = report.ToClipboardText();
-
         HealthSummaryText.Text = report.Summary;
-        HealthSummaryText.Foreground = new SolidColorBrush(report.IsHealthy
-            ? (Color)FindResource("SuccessColor")
-            : (Color)FindResource("WarningColor"));
-
-        foreach (var line in report.Lines)
-        {
-            Log(line);
-        }
-
+        foreach (var line in report.Lines) Log(line);
         RefreshVJoyStatus();
     }
 
     private void CopyReportButton_Click(object sender, RoutedEventArgs e)
     {
         var text = string.IsNullOrWhiteSpace(_lastHealthReport) ? LogBox.Text : _lastHealthReport;
-        if (string.IsNullOrWhiteSpace(text))
-        {
-            MessageBox.Show(this, "Run a health check first, or wait for log output.", "Nothing to copy", MessageBoxButton.OK, MessageBoxImage.Information);
-            return;
-        }
-
-        Clipboard.SetText(text);
-        Log("Diagnostics copied to clipboard.");
+        if (!string.IsNullOrWhiteSpace(text)) Clipboard.SetText(text);
     }
 
     private void OpenLogFolderButton_Click(object sender, RoutedEventArgs e)
     {
         Directory.CreateDirectory(_fileLog.LogDirectory);
         Process.Start(new ProcessStartInfo(_fileLog.LogDirectory) { UseShellExecute = true });
-        Log($"Opened log folder: {_fileLog.LogDirectory}");
     }
 
-    private void ClearLogViewButton_Click(object sender, RoutedEventArgs e)
-    {
-        LogBox.Clear();
-        Log("Log view cleared (file log preserved).");
-    }
+    private void ClearLogViewButton_Click(object sender, RoutedEventArgs e) => LogBox.Clear();
 
     public void ForceShutdown()
     {
         if (_shutdownCompleted) return;
         _shutdownCompleted = true;
+        CancelConnect();
         if (_uiReady) SaveSettingsFromUi();
         _session.Dispose();
-        Log("Application shutting down.");
+        Log("Shutting down.");
     }
 
     protected override void OnClosed(EventArgs e)

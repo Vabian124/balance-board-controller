@@ -12,6 +12,9 @@ public sealed class BalanceBoardSession : IDisposable
     private readonly System.Timers.Timer _pollTimer = new(50);
     private AppSettings _settings = new();
     private bool _disposed;
+    private CancellationTokenSource? _connectCts;
+
+    public void CancelConnect() => _connectCts?.Cancel();
 
     public event Action<ProcessedBalance>? Processed;
     public event Action<string>? Log;
@@ -57,45 +60,71 @@ public sealed class BalanceBoardSession : IDisposable
     /// <summary>
     /// Connect to an already-paired board, or automatically Bluetooth-pair then connect (WiiBalanceWalker PIN method).
     /// </summary>
-    public bool ConnectOrPair(int deviceIndex = 0, int discoveryRounds = 6)
+    public bool ConnectOrPair(int deviceIndex = 0, int discoveryRounds = 4, CancellationToken cancellationToken = default)
     {
-        if (Connect(deviceIndex))
+        _connectCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+
+        try
         {
-            return true;
-        }
-
-        for (var round = 1; round <= discoveryRounds; round++)
-        {
-            if (round == 1)
-            {
-                Log?.Invoke("Balance board not found — starting automatic Bluetooth pairing. Press the red SYNC button.");
-            }
-            else
-            {
-                Log?.Invoke($"Still searching… press SYNC again (round {round}/{discoveryRounds}).");
-            }
-
-            var pairResult = _pairing.PairDiscoverableBoard(Log);
-            Log?.Invoke(pairResult.Message);
-
-            if (!pairResult.Success)
-            {
-                if (round < discoveryRounds)
-                {
-                    Thread.Sleep(3000);
-                }
-                continue;
-            }
-
-            Thread.Sleep(1500);
+            var ct = _connectCts.Token;
             if (Connect(deviceIndex))
             {
                 return true;
             }
-        }
 
-        StatusChanged?.Invoke("Press SYNC on the board, then click Connect.");
-        return false;
+            for (var round = 1; round <= discoveryRounds; round++)
+            {
+                ct.ThrowIfCancellationRequested();
+
+                if (round == 1)
+                {
+                    Log?.Invoke("Balance board not found — starting automatic Bluetooth pairing. Press the red SYNC button.");
+                }
+                else
+                {
+                    Log?.Invoke($"Still searching… press SYNC again (round {round}/{discoveryRounds}).");
+                }
+
+                var pairResult = _pairing.PairDiscoverableBoard(Log, ct);
+                Log?.Invoke(pairResult.Message);
+
+                if (!pairResult.Success)
+                {
+                    if (round < discoveryRounds && !ct.WaitHandle.WaitOne(TimeSpan.FromSeconds(3)))
+                    {
+                        // waited 3s
+                    }
+
+                    ct.ThrowIfCancellationRequested();
+                    continue;
+                }
+
+                if (!ct.WaitHandle.WaitOne(TimeSpan.FromMilliseconds(1500)))
+                {
+                    // settle delay
+                }
+
+                ct.ThrowIfCancellationRequested();
+                if (Connect(deviceIndex))
+                {
+                    return true;
+                }
+            }
+
+            StatusChanged?.Invoke("Press SYNC on the board, then click Connect.");
+            return false;
+        }
+        catch (OperationCanceledException)
+        {
+            Log?.Invoke("Connection cancelled.");
+            StatusChanged?.Invoke("Connection cancelled.");
+            return false;
+        }
+        finally
+        {
+            _connectCts?.Dispose();
+            _connectCts = null;
+        }
     }
 
     private void OnConnected()
@@ -233,6 +262,7 @@ public sealed class BalanceBoardSession : IDisposable
         }
 
         _disposed = true;
+        CancelConnect();
         _pollTimer.Stop();
         _pollTimer.Dispose();
         _input.ReleaseAll();

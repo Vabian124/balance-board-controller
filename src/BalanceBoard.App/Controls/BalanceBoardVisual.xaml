@@ -1,15 +1,19 @@
 <UserControl x:Class="BalanceBoard.App.Controls.BalanceBoardVisual"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             MinHeight="240" MinWidth="240">
-    <Grid>
-        <Border Background="#111827" CornerRadius="18" BorderBrush="#334155" BorderThickness="1"/>
-        <Canvas x:Name="BoardCanvas" Margin="28">
-            <Ellipse x:Name="TopLeftDot" Width="16" Height="16" Fill="#475569"/>
-            <Ellipse x:Name="TopRightDot" Width="16" Height="16" Fill="#475569"/>
-            <Ellipse x:Name="BottomLeftDot" Width="16" Height="16" Fill="#475569"/>
-            <Ellipse x:Name="BottomRightDot" Width="16" Height="16" Fill="#475569"/>
-            <Ellipse x:Name="CenterDot" Width="22" Height="22" Fill="#7C6CFF" Stroke="#E2E8F0" StrokeThickness="2"/>
+             MinHeight="220" MinWidth="220">
+    <Border Background="{DynamicResource Brush.BoardSurface}"
+            BorderBrush="{DynamicResource Brush.BoardBorder}"
+            BorderThickness="1"
+            CornerRadius="{StaticResource Radius.Card}">
+        <Canvas x:Name="BoardCanvas" Margin="24">
+            <Ellipse x:Name="TopLeftDot" Width="14" Height="14" Fill="{DynamicResource Brush.BoardDot}"/>
+            <Ellipse x:Name="TopRightDot" Width="14" Height="14" Fill="{DynamicResource Brush.BoardDot}"/>
+            <Ellipse x:Name="BottomLeftDot" Width="14" Height="14" Fill="{DynamicResource Brush.BoardDot}"/>
+            <Ellipse x:Name="BottomRightDot" Width="14" Height="14" Fill="{DynamicResource Brush.BoardDot}"/>
+            <Ellipse x:Name="CenterDot" Width="20" Height="20"
+                     Fill="{DynamicResource Brush.BoardCenter}"
+                     Stroke="{DynamicResource Brush.Foreground}" StrokeThickness="2"/>
         </Canvas>
-    </Grid>
+    </Border>
 </UserControl>

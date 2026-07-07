@@ -11,7 +11,7 @@ public sealed class AppSettings
     public bool SendLoadSensorsToAxes { get; set; }
     public bool DisableKeyboardActions { get; set; } = true;
     public uint VJoyDeviceId { get; set; } = 1;
-    public bool AutoConnectOnStartup { get; set; } = true;
+    public bool AutoConnectOnStartup { get; set; }
     public bool AutoTareOnConnect { get; set; } = true;
     public bool StartMinimized { get; set; }
     public double DeadzonePercent { get; set; } = 5;
