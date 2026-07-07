@@ -1,2 +1,2 @@
-# Start and auto-connect (press SYNC when prompted)
-& (Join-Path $PSScriptRoot "start.ps1") --connect
+& (Join-Path $PSScriptRoot "dev\connect.ps1") @args
+exit $LASTEXITCODE

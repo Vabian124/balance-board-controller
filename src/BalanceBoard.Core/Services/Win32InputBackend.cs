@@ -71,7 +71,7 @@ public sealed class Win32InputBackend : IInputBackend
             dwType = INPUT_KEYBOARD,
             U = new InputUnion { ki = new KEYBDINPUT { wScan = scan, dwFlags = KEYEVENTF_SCANCODE } }
         };
-        SendInput(1, ref input, Marshal.SizeOf<INPUT>());
+        _ = SendInput(1, ref input, Marshal.SizeOf<INPUT>());
     }
 
     public void KeyUp(ushort virtualKey)
@@ -85,7 +85,7 @@ public sealed class Win32InputBackend : IInputBackend
                 ki = new KEYBDINPUT { wScan = scan, dwFlags = KEYEVENTF_SCANCODE | KEYEVENTF_KEYUP }
             }
         };
-        SendInput(1, ref input, Marshal.SizeOf<INPUT>());
+        _ = SendInput(1, ref input, Marshal.SizeOf<INPUT>());
     }
 
     public void MouseDown(string button)
@@ -115,7 +115,7 @@ public sealed class Win32InputBackend : IInputBackend
             dwType = INPUT_MOUSE,
             U = new InputUnion { mi = new MOUSEINPUT { dx = deltaX, dy = deltaY, dwFlags = MOUSEEVENTF_MOVE } }
         };
-        SendInput(1, ref input, Marshal.SizeOf<INPUT>());
+        _ = SendInput(1, ref input, Marshal.SizeOf<INPUT>());
     }
 
     private static void SendMouse(uint flag, int data)
@@ -125,7 +125,7 @@ public sealed class Win32InputBackend : IInputBackend
             dwType = INPUT_MOUSE,
             U = new InputUnion { mi = new MOUSEINPUT { dwFlags = flag, mouseData = data } }
         };
-        SendInput(1, ref input, Marshal.SizeOf<INPUT>());
+        _ = SendInput(1, ref input, Marshal.SizeOf<INPUT>());
     }
 
     private static bool TryGetMouseButton(string button, bool down, out uint flag, out int data)

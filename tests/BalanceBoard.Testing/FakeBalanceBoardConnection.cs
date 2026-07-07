@@ -8,7 +8,7 @@ public sealed class FakeBalanceBoardConnection : IBalanceBoardConnection
     private readonly object _sync = new();
 
     public Func<int, bool>? ConnectHandler { get; set; }
-    public IReadOnlyList<string> DiscoveredDevices { get; set; } = new[] { "FAKE-BOARD-001" };
+    public IReadOnlyList<string> DiscoveredDevices { get; set; } = ["FAKE-BOARD-001"];
     public bool ReturnNotBalanceBoard { get; set; }
     public Exception? ConnectException { get; set; }
     public int ConnectAttempts { get; private set; }

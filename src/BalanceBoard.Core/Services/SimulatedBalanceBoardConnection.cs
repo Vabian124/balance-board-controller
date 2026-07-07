@@ -20,7 +20,7 @@ public sealed class SimulatedBalanceBoardConnection : IBalanceBoardConnection
     public bool IsConnected { get; private set; }
     public string? ConnectedDeviceId { get; private set; }
 
-    public IReadOnlyList<string> DiscoverDeviceIds() => new[] { "SIM-BOARD-001" };
+    public IReadOnlyList<string> DiscoverDeviceIds() => ["SIM-BOARD-001"];
 
     public bool Connect(int deviceIndex = 0)
     {

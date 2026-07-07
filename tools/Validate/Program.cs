@@ -19,7 +19,10 @@ Console.WriteLine($"Device status: {diag.DeviceStatus}");
 Console.WriteLine($"Axes X/Y/Z/RX/RY/RZ: {diag.HasAxisX}/{diag.HasAxisY}/{diag.HasAxisZ}/{diag.HasAxisRx}/{diag.HasAxisRy}/{diag.HasAxisRz}");
 Console.WriteLine($"Buttons: {diag.ButtonCount}");
 Console.WriteLine($"DLL match: {diag.DriverMatchesDll}");
-if (!string.IsNullOrWhiteSpace(diag.Error)) Console.WriteLine($"Note: {diag.Error}");
+if (!string.IsNullOrWhiteSpace(diag.Error))
+{
+    Console.WriteLine($"Note: {diag.Error}");
+}
 
 using var session = new BalanceBoardSession();
 try

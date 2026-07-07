@@ -84,7 +84,10 @@ public partial class App : Application
                 });
             }
 
-            if (_mainWindow is null) return;
+            if (_mainWindow is null)
+            {
+                return;
+            }
 
             await _mainWindow.Dispatcher.InvokeAsync(() =>
             {

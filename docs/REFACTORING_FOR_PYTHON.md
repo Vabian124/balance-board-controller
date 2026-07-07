@@ -65,7 +65,7 @@ When porting to Python, reproduce these assertions against the same inputs. See 
 - `Win32InputBackend` — `user32.dll` SendInput
 - `VJoyController` — `vJoyInterfaceWrap`
 - `BluetoothPairingService`, `BalanceBoardConnection`, `FeederProcessCleanup`
-- `StaThread`, `SingleInstanceService` (in App project)
+- `ConnectionWorker`, `SingleInstanceService` (in App project)
 
 ## Next optional cleanups (not done)
 

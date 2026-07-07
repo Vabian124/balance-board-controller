@@ -7,6 +7,7 @@
 | [CODEMAP.md](CODEMAP.md) | Agents & devs | Every source file explained |
 | [ARCHITECTURE.md](ARCHITECTURE.md) | Agents & devs | Data flow, presets, vJoy lifecycle |
 | [DEVELOPMENT.md](DEVELOPMENT.md) | Devs | Build, debug, CI, DLL notes |
+| [testing/README.md](testing/README.md) | Devs | Test pyramid, CI, hardware scripts |
 | [GLOSSARY.md](GLOSSARY.md) | Everyone | Domain terminology |
 | [ROADMAP.md](ROADMAP.md) | Agents & devs | Planned features |
 | [updates/README.md](updates/README.md) | Agents | **Audit log** — what shipped, when, which commit |

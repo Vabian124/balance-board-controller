@@ -15,8 +15,8 @@ public partial class MainWindow : Window
     private readonly BalanceBoardSession _session;
     private readonly FileLogService _fileLog;
     private readonly StartupOptions _startupOptions;
-    private AppSettings _settings = new();
-    private bool _uiReady;
+    private readonly AppSettings _settings = new();
+    private readonly bool _uiReady;
     private bool _shutdownCompleted;
     private bool _connectInProgress;
     private CancellationTokenSource? _connectCts;
@@ -171,7 +171,11 @@ public partial class MainWindow : Window
         InvertYCheck.IsChecked = _settings.InvertY;
 
         VJoyDeviceCombo.Items.Clear();
-        for (uint i = 1; i <= 16; i++) VJoyDeviceCombo.Items.Add(i);
+        for (uint i = 1; i <= 16; i++)
+        {
+            VJoyDeviceCombo.Items.Add(i);
+        }
+
         VJoyDeviceCombo.SelectedItem = _settings.VJoyDeviceId;
         _suppressSettingEvents = false;
     }
@@ -208,25 +212,73 @@ public partial class MainWindow : Window
 
     private static string DescribeDirection(ProcessedBalance data)
     {
-        if (data.WeightKg < 5) return "Step on the board";
+        if (data.WeightKg < 5)
+        {
+            return "Step on the board";
+        }
+
         var parts = new List<string>();
-        if (data.MoveForward) parts.Add("forward");
-        if (data.MoveBackward) parts.Add("backward");
-        if (data.MoveLeft) parts.Add("left");
-        if (data.MoveRight) parts.Add("right");
-        if (data.Jump) parts.Add("jump");
+        if (data.MoveForward)
+        {
+            parts.Add("forward");
+        }
+
+        if (data.MoveBackward)
+        {
+            parts.Add("backward");
+        }
+
+        if (data.MoveLeft)
+        {
+            parts.Add("left");
+        }
+
+        if (data.MoveRight)
+        {
+            parts.Add("right");
+        }
+
+        if (data.Jump)
+        {
+            parts.Add("jump");
+        }
+
         return parts.Count == 0 ? "Centered" : string.Join(" · ", parts);
     }
 
     private string DescribeActiveInputs(ProcessedBalance data)
     {
-        if (data.WeightKg < 5) return $"Profile: {_settings.ActiveProfileName}";
+        if (data.WeightKg < 5)
+        {
+            return $"Profile: {_settings.ActiveProfileName}";
+        }
+
         var active = new List<string>();
-        if (data.MoveForward) active.Add("Forward");
-        if (data.MoveBackward) active.Add("Backward");
-        if (data.MoveLeft) active.Add("Left");
-        if (data.MoveRight) active.Add("Right");
-        if (data.Jump) active.Add("Jump");
+        if (data.MoveForward)
+        {
+            active.Add("Forward");
+        }
+
+        if (data.MoveBackward)
+        {
+            active.Add("Backward");
+        }
+
+        if (data.MoveLeft)
+        {
+            active.Add("Left");
+        }
+
+        if (data.MoveRight)
+        {
+            active.Add("Right");
+        }
+
+        if (data.Jump)
+        {
+            active.Add("Jump");
+        }
+
         return active.Count == 0 ? "Centered" : $"Active: {string.Join(", ", active)}";
     }
 
@@ -277,7 +329,10 @@ public partial class MainWindow : Window
 
     private void SaveSettingsFromUi()
     {
-        if (!_uiReady || _suppressSettingEvents) return;
+        if (!_uiReady || _suppressSettingEvents)
+        {
+            return;
+        }
 
         _settings.EnableVJoy = EnableVJoyCheck.IsChecked == true;
         _settings.SendCenterOfGravityToAxes = SendCgCheck.IsChecked == true;
@@ -291,8 +346,14 @@ public partial class MainWindow : Window
         _settings.Sensitivity = SensitivitySlider.Value;
         _settings.InvertX = InvertXCheck.IsChecked == true;
         _settings.InvertY = InvertYCheck.IsChecked == true;
-        if (VJoyDeviceCombo.SelectedItem is uint id) _settings.VJoyDeviceId = id;
-        else if (VJoyDeviceCombo.SelectedItem is int intId) _settings.VJoyDeviceId = (uint)intId;
+        if (VJoyDeviceCombo.SelectedItem is uint id)
+        {
+            _settings.VJoyDeviceId = id;
+        }
+        else if (VJoyDeviceCombo.SelectedItem is int intId)
+        {
+            _settings.VJoyDeviceId = (uint)intId;
+        }
 
         UpdateSliderLabels();
         _settingsStore.Save(_settings);
@@ -331,7 +392,10 @@ public partial class MainWindow : Window
 
     private async void BeginConnect(ConnectionIntent intent, bool quiet = false)
     {
-        if (_connectInProgress || _session.IsConnected) return;
+        if (_connectInProgress || _session.IsConnected)
+        {
+            return;
+        }
 
         Log($"[CONNECT] UI begin intent={intent} quiet={quiet}");
         _connectInProgress = true;
@@ -340,6 +404,7 @@ public partial class MainWindow : Window
         StatusText.Text = intent switch
         {
             ConnectionIntent.QuickReconnect => "Reconnecting to your balance board…",
+            ConnectionIntent.PairAndConnect => throw new NotImplementedException(),
             _ => "Searching — press SYNC on the board (red button under batteries)",
         };
 
@@ -363,6 +428,12 @@ public partial class MainWindow : Window
                     ConnectStatus.NoDevices => intent == ConnectionIntent.QuickReconnect
                         ? "Board offline — turn it on or press SYNC, then click Connect."
                         : "Not found — press SYNC, then Connect again.",
+                    ConnectStatus.Success => throw new NotImplementedException(),
+                    ConnectStatus.PairingFailed => throw new NotImplementedException(),
+                    ConnectStatus.HidFailed => throw new NotImplementedException(),
+                    ConnectStatus.NotBalanceBoard => throw new NotImplementedException(),
+                    ConnectStatus.TimedOut => throw new NotImplementedException(),
+                    ConnectStatus.Error => throw new NotImplementedException(),
                     _ => result.Message ?? "Connection failed — see session log.",
                 };
                 if (!quiet)
@@ -432,7 +503,11 @@ public partial class MainWindow : Window
 
     private void ProfileCombo_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
-        if (!_uiReady || _suppressSettingEvents || ProfileCombo.SelectedItem is not string profile) return;
+        if (!_uiReady || _suppressSettingEvents || ProfileCombo.SelectedItem is not string profile)
+        {
+            return;
+        }
+
         _session.ApplyProfile(profile);
         SyncUiFromSettings();
         SaveSettingsFromUi();
@@ -448,14 +523,17 @@ public partial class MainWindow : Window
         TriggerLeftRightSlider.Value = _settings.TriggerLeftRight;
         TriggerForwardBackwardSlider.Value = _settings.TriggerForwardBackward;
         if (ActionPresets.All.Contains(_settings.ActiveProfileName))
+        {
             ProfileCombo.SelectedItem = _settings.ActiveProfileName;
+        }
+
         _suppressSettingEvents = false;
         UpdateSliderLabels();
     }
 
-    private void Tare_Click(object sender, RoutedEventArgs e) => RunSessionAction(() => _session.Tare(), "Tare");
-    private void SetCenter_Click(object sender, RoutedEventArgs e) => RunSessionAction(() => _session.SetCenter(), "Set center");
-    private void ResetCenter_Click(object sender, RoutedEventArgs e) => RunSessionAction(() => _session.ResetCenter(), "Reset center");
+    private void Tare_Click(object sender, RoutedEventArgs e) => RunSessionAction(_session.Tare, "Tare");
+    private void SetCenter_Click(object sender, RoutedEventArgs e) => RunSessionAction(_session.SetCenter, "Set center");
+    private void ResetCenter_Click(object sender, RoutedEventArgs e) => RunSessionAction(_session.ResetCenter, "Reset center");
 
     private void RunSessionAction(Action action, string label)
     {
@@ -496,14 +574,21 @@ public partial class MainWindow : Window
         var report = DiagnosticsReport.Run(_settings.VJoyDeviceId);
         _lastHealthReport = report.ToClipboardText();
         HealthSummaryText.Text = report.Summary;
-        foreach (var line in report.Lines) Log(line);
+        foreach (var line in report.Lines)
+        {
+            Log(line);
+        }
+
         RefreshVJoyStatus();
     }
 
     private void CopyReportButton_Click(object sender, RoutedEventArgs e)
     {
         var text = string.IsNullOrWhiteSpace(_lastHealthReport) ? LogBox.Text : _lastHealthReport;
-        if (!string.IsNullOrWhiteSpace(text)) Clipboard.SetText(text);
+        if (!string.IsNullOrWhiteSpace(text))
+        {
+            Clipboard.SetText(text);
+        }
     }
 
     private void OpenLogFolderButton_Click(object sender, RoutedEventArgs e)
@@ -516,10 +601,18 @@ public partial class MainWindow : Window
 
     public void ForceShutdown()
     {
-        if (_shutdownCompleted) return;
+        if (_shutdownCompleted)
+        {
+            return;
+        }
+
         _shutdownCompleted = true;
         CancelConnect();
-        if (_uiReady) SaveSettingsFromUi();
+        if (_uiReady)
+        {
+            SaveSettingsFromUi();
+        }
+
         try
         {
             _session.Dispose();

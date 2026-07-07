@@ -5,7 +5,6 @@ namespace BalanceBoard.Core.Services;
 
 public sealed class SettingsStore
 {
-    private readonly string _settingsPath;
     private readonly JsonSerializerOptions _jsonOptions = new() { WriteIndented = true };
 
     public SettingsStore(string? baseDirectory = null)
@@ -13,29 +12,29 @@ public sealed class SettingsStore
         if (baseDirectory is not null)
         {
             Directory.CreateDirectory(baseDirectory);
-            _settingsPath = Path.Combine(baseDirectory, "settings.json");
+            SettingsPath = Path.Combine(baseDirectory, "settings.json");
         }
         else
         {
             AppDataPaths.EnsureRoot();
-            _settingsPath = AppDataPaths.SettingsFile;
+            SettingsPath = AppDataPaths.SettingsFile;
         }
     }
 
-    public string SettingsPath => _settingsPath;
+    public string SettingsPath { get; }
 
-    public bool HasPersistedSettings => File.Exists(_settingsPath);
+    public bool HasPersistedSettings => File.Exists(SettingsPath);
 
     public AppSettings Load()
     {
-        if (!File.Exists(_settingsPath))
+        if (!File.Exists(SettingsPath))
         {
             return new AppSettings();
         }
 
         try
         {
-            var json = File.ReadAllText(_settingsPath);
+            var json = File.ReadAllText(SettingsPath);
             var settings = JsonSerializer.Deserialize<AppSettings>(json) ?? new AppSettings();
             if (ApplyMigrations(settings, json))
             {
@@ -53,12 +52,12 @@ public sealed class SettingsStore
     public void Save(AppSettings settings)
     {
         var json = JsonSerializer.Serialize(settings, _jsonOptions);
-        var directory = Path.GetDirectoryName(_settingsPath)!;
+        var directory = Path.GetDirectoryName(SettingsPath)!;
         Directory.CreateDirectory(directory);
-        var tempPath = _settingsPath + ".tmp";
+        var tempPath = SettingsPath + ".tmp";
 
         File.WriteAllText(tempPath, json);
-        File.Move(tempPath, _settingsPath, overwrite: true);
+        File.Move(tempPath, SettingsPath, overwrite: true);
     }
 
     public void UpdateConnectionState(AppSettings settings, string? deviceId)
@@ -74,7 +73,7 @@ public sealed class SettingsStore
     {
         get
         {
-            var dir = Path.Combine(Path.GetDirectoryName(_settingsPath)!, "profiles");
+            var dir = Path.Combine(Path.GetDirectoryName(SettingsPath)!, "profiles");
             Directory.CreateDirectory(dir);
             return dir;
         }
@@ -89,19 +88,22 @@ public sealed class SettingsStore
 
     public IReadOnlyList<string> ListProfiles()
     {
-        return Directory.GetFiles(ProfilesDirectory, "*.json")
+        return [.. Directory.GetFiles(ProfilesDirectory, "*.json")
             .Select(Path.GetFileNameWithoutExtension)
             .Where(n => n is not null)
             .Cast<string>()
-            .OrderBy(n => n)
-            .ToList();
+            .OrderBy(n => n)];
     }
 
     public AppSettings? LoadProfile(string name)
     {
         var safeName = string.Join("_", name.Split(Path.GetInvalidFileNameChars()));
         var path = Path.Combine(ProfilesDirectory, $"{safeName}.json");
-        if (!File.Exists(path)) return null;
+        if (!File.Exists(path))
+        {
+            return null;
+        }
+
         return JsonSerializer.Deserialize<AppSettings>(File.ReadAllText(path));
     }
 

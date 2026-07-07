@@ -12,7 +12,6 @@ public sealed class BalanceBoardSession : IDisposable
     private readonly BalanceProcessor _processor = new();
     private readonly IGameControllerOutput _vjoy;
     private readonly IActionSimulator _input;
-    private AppSettings _settings = new();
     private bool _disposed;
     private CancellationTokenSource? _connectCts;
     private bool _loggedFirstPoll;
@@ -34,7 +33,7 @@ public sealed class BalanceBoardSession : IDisposable
             return deviceId;
         }
     }
-    public AppSettings Settings => _settings;
+    public AppSettings Settings { get; private set; } = new();
 
     public BalanceBoardSession(
         IGameControllerOutput? gameController = null,
@@ -63,7 +62,7 @@ public sealed class BalanceBoardSession : IDisposable
 
     public void LoadSettings(AppSettings settings, bool initializeVJoy = true)
     {
-        _settings = settings;
+        Settings = settings;
         if (!initializeVJoy)
         {
             return;
@@ -74,9 +73,9 @@ public sealed class BalanceBoardSession : IDisposable
 
     private void SyncVJoyFromSettings()
     {
-        if (_settings.EnableVJoy)
+        if (Settings.EnableVJoy)
         {
-            _vjoy.Initialize(_settings.VJoyDeviceId);
+            _vjoy.Initialize(Settings.VJoyDeviceId);
         }
         else
         {
@@ -86,7 +85,7 @@ public sealed class BalanceBoardSession : IDisposable
 
     public IReadOnlyList<string> DiscoverDevices()
     {
-        _worker.TryInvoke(() => _connection.DiscoverDeviceIds(), out var ids, Array.Empty<string>());
+        _worker.TryInvoke(_connection.DiscoverDeviceIds, out var ids, Array.Empty<string>());
         return ids ?? Array.Empty<string>();
     }
 
@@ -300,7 +299,7 @@ public sealed class BalanceBoardSession : IDisposable
         Log?.Invoke("Starting balance poll loop.");
         _loggedFirstPoll = false;
         _worker.StartPolling();
-        if (_settings.AutoTareOnConnect)
+        if (Settings.AutoTareOnConnect)
         {
             TareCore();
         }
@@ -334,7 +333,11 @@ public sealed class BalanceBoardSession : IDisposable
     public void SetCenter() => _worker.Invoke(() =>
     {
         var reading = _connection.GetCurrentReading();
-        if (reading is null) return;
+        if (reading is null)
+        {
+            return;
+        }
+
         _processor.SetCenterFromCurrentReading(reading);
         Log?.Invoke("Current balance set as center.");
     });
@@ -370,14 +373,14 @@ public sealed class BalanceBoardSession : IDisposable
 
     public void ApplyProfile(string profileName)
     {
-        ActionPresets.Apply(_settings, profileName);
+        ActionPresets.Apply(Settings, profileName);
         SyncVJoyFromSettings();
         Log?.Invoke($"Applied profile: {profileName}");
     }
 
     private void ApplyPreset(Action<AppSettings> apply, string logMessage)
     {
-        apply(_settings);
+        apply(Settings);
         SyncVJoyFromSettings();
         Log?.Invoke(logMessage);
     }
@@ -420,7 +423,7 @@ public sealed class BalanceBoardSession : IDisposable
         ProcessedBalance processed;
         try
         {
-            processed = _processor.Process(reading, _settings);
+            processed = _processor.Process(reading, Settings);
         }
         catch (Exception ex)
         {
@@ -431,7 +434,7 @@ public sealed class BalanceBoardSession : IDisposable
 
         SafeCallbacks.Raise(Processed, processed);
 
-        if (_settings.EnableVJoy && _vjoy.IsReady)
+        if (Settings.EnableVJoy && _vjoy.IsReady)
         {
             try
             {
@@ -444,11 +447,11 @@ public sealed class BalanceBoardSession : IDisposable
             }
         }
 
-        if (!_settings.DisableKeyboardActions)
+        if (!Settings.DisableKeyboardActions)
         {
             try
             {
-                _input.Apply(processed, _settings);
+                _input.Apply(processed, Settings);
             }
             catch (Exception ex)
             {

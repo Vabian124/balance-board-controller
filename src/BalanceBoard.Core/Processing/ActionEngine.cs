@@ -8,12 +8,10 @@ namespace BalanceBoard.Core.Processing;
 /// Portable action-slot state machine. Maps movement flags to bindings via <see cref="IInputBackend"/>.
 /// Port to Python <c>action_engine.py</c> with a pluggable backend.
 /// </summary>
-public sealed class ActionEngine : IActionSimulator
+public sealed class ActionEngine(IInputBackend backend) : IActionSimulator
 {
-    private readonly IInputBackend _backend;
+    private readonly IInputBackend _backend = backend;
     private readonly Dictionary<string, RuntimeAction> _actions = new();
-
-    public ActionEngine(IInputBackend backend) => _backend = backend;
 
     public void Apply(ProcessedBalance data, AppSettings settings)
     {
@@ -100,6 +98,12 @@ public sealed class ActionEngine : IActionSimulator
                 case ActionKind.MouseMoveY:
                     _timer.Start();
                     break;
+                case ActionKind.None:
+                    break;
+                case ActionKind.Key:
+                    break;
+                default:
+                    break;
             }
         }
 
@@ -119,6 +123,16 @@ public sealed class ActionEngine : IActionSimulator
                     break;
                 case ActionKind.MouseButton:
                     _backend.MouseUp(_binding.MouseButton);
+                    break;
+                case ActionKind.None:
+                    break;
+                case ActionKind.Key:
+                    break;
+                case ActionKind.MouseMoveX:
+                    break;
+                case ActionKind.MouseMoveY:
+                    break;
+                default:
                     break;
             }
         }

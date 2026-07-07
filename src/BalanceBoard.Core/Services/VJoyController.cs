@@ -109,7 +109,11 @@ public sealed class VJoyController : IGameControllerOutput
 
     public void Center()
     {
-        if (!IsReady || _joystick is null) return;
+        if (!IsReady || _joystick is null)
+        {
+            return;
+        }
+
         try
         {
             WriteAxes(0, 0, 0, 0, 0, 0, false);
@@ -123,7 +127,10 @@ public sealed class VJoyController : IGameControllerOutput
 
     private void WriteAxes(short x, short y, short z, short rx, short ry, short rz, bool buttonA)
     {
-        if (_joystick is null) return;
+        if (_joystick is null)
+        {
+            return;
+        }
 
         _joystick.SetAxis(x, _deviceId, HID_USAGES.HID_USAGE_X);
         _joystick.SetAxis(y, _deviceId, HID_USAGES.HID_USAGE_Y);

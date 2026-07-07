@@ -37,7 +37,10 @@ public partial class BalanceBoardVisual : UserControl
     {
         var w = BoardCanvas.ActualWidth;
         var h = BoardCanvas.ActualHeight;
-        if (w <= 0 || h <= 0) return;
+        if (w <= 0 || h <= 0)
+        {
+            return;
+        }
 
         Canvas.SetLeft(TopLeftDot, 0);
         Canvas.SetTop(TopLeftDot, 0);
@@ -54,7 +57,10 @@ public partial class BalanceBoardVisual : UserControl
         LayoutDots();
         var w = BoardCanvas.ActualWidth;
         var h = BoardCanvas.ActualHeight;
-        if (w <= 0 || h <= 0) return;
+        if (w <= 0 || h <= 0)
+        {
+            return;
+        }
 
         UpdateCorner(TopLeftDot, data.TopLeftKg);
         UpdateCorner(TopRightDot, data.TopRightKg);
