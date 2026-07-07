@@ -315,18 +315,17 @@ public class ConnectFlowTests
     [Fact]
     public async Task Connect_while_already_in_progress_returns_already_in_progress()
     {
-        var pairing = new FakeBluetoothPairingService { PairDelayMs = 800 };
-        pairing.EnqueuePairResult(new BluetoothPairingResult { Success = false, Message = "round 1 miss" });
-        pairing.EnqueuePairResult(new BluetoothPairingResult { Success = false, Message = "round 2 miss" });
+        var pairing = new FakeBluetoothPairingService { BluetoothAvailable = false };
+        using var session = CreateSession(new FakeBalanceBoardConnection(), pairing);
 
-        var connection = new FakeBalanceBoardConnection { ConnectHandler = _ => false };
-        using var session = CreateSession(connection, pairing);
-        var first = Task.Run(() => session.ConnectWithIntent(ConnectionIntent.PairAndConnect, discoveryRounds: 2));
-        await Task.Delay(100);
-        var second = session.ConnectWithIntent(ConnectionIntent.PairAndConnect, discoveryRounds: 1);
+        var first = session.ConnectWithIntentAsync(ConnectionIntent.PairAndConnect, discoveryRounds: 1);
+        await Task.Delay(50);
+        var second = await session.ConnectWithIntentAsync(ConnectionIntent.PairAndConnect, discoveryRounds: 1);
 
         Assert.Equal(ConnectStatus.AlreadyInProgress, second.Status);
-        await first;
+        session.CancelConnect();
+        var firstResult = await first;
+        Assert.Equal(ConnectStatus.Cancelled, firstResult.Status);
     }
 
     [Fact]

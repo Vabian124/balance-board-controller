@@ -15,6 +15,7 @@ public sealed class BalanceBoardSession : IDisposable
     private bool _disposed;
     private CancellationTokenSource? _connectCts;
     private CancellationTokenSource? _recoveryCts;
+    private Task? _recoveryTask;
     private bool _loggedFirstPoll;
     private bool _wasJumping;
     private string? _lastSettingsLogKey;
@@ -796,19 +797,32 @@ public sealed class BalanceBoardSession : IDisposable
 
         _recoveryCts = new CancellationTokenSource();
         Log?.Invoke($"[CONNECT] Bluetooth recovery started for {Settings.LastConnectedDeviceId}.");
-        _ = Task.Run(() => BluetoothRecoveryLoop(_recoveryCts.Token));
+        _recoveryTask = Task.Run(() => BluetoothRecoveryLoop(_recoveryCts.Token));
     }
 
     private void StopRecovery()
     {
         _recoveryCts?.Cancel();
+        var task = _recoveryTask;
         EndRecovery();
+        if (task is not null)
+        {
+            try
+            {
+                task.Wait(TimeSpan.FromSeconds(3));
+            }
+            catch
+            {
+                // Recovery teardown must not throw.
+            }
+        }
     }
 
     private void EndRecovery()
     {
         var cts = _recoveryCts;
         _recoveryCts = null;
+        _recoveryTask = null;
         try
         {
             cts?.Dispose();
