@@ -56,7 +56,7 @@ public sealed class BluetoothPairingService : IBluetoothPairingService
             if (ProbeRadio(out var modeName))
             {
                 var mode = GetRadioMode();
-                if (mode is not null && mode != RadioMode.PowerOff)
+                if (mode is not null and not RadioMode.PowerOff)
                 {
                     if (attempt > 1)
                     {
