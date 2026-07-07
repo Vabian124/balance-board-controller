@@ -1,0 +1,33 @@
+# Balance Board Controller
+
+> Windows .NET 8 app: Wii Fit Balance Board → vJoy game controller and/or keyboard-mouse (SendInput).
+
+## Essential docs
+
+- [AGENTS.md](AGENTS.md): Primary onboarding for AI coding agents — start here
+- [docs/CODEMAP.md](docs/CODEMAP.md): File-by-file map of the repository
+- [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md): Runtime data flow, threading, presets
+- [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md): Build, run, test, CI, troubleshooting
+- [docs/GLOSSARY.md](docs/GLOSSARY.md): Domain terms (tare, vJoy, triggers, etc.)
+- [docs/ROADMAP.md](docs/ROADMAP.md): Planned features and extension points
+- [README.md](README.md): User-facing setup and features
+
+## Repository layout
+
+- `src/BalanceBoard.App/` — WPF UI (MainWindow, SetupWizard, Debug Suite)
+- `src/BalanceBoard.Core/` — Board connection, processing, vJoy, input simulation, settings
+- `tools/Validate/` — CLI health-check tool
+- `libs/x64/` — WiimoteLib + vJoy native DLLs
+- `WiiBalanceWalker/` — Legacy v0.5 reference (MS-PL, do not confuse with main app)
+
+## Quick commands
+
+```powershell
+dotnet build BalanceBoard.sln -c Release
+dotnet run --project src/BalanceBoard.App/BalanceBoard.App.csproj -c Release
+dotnet run --project tools/Validate/BalanceBoard.Validate.csproj -c Release
+```
+
+## License
+
+MIT (new code). Third-party notices in THIRD_PARTY_NOTICES.md.

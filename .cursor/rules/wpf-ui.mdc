@@ -1,0 +1,26 @@
+---
+description: WPF UI patterns for Balance Board App
+globs: src/BalanceBoard.App/**/*
+alwaysApply: false
+---
+
+# WPF UI
+
+## Files
+
+- `MainWindow.xaml(.cs)` — dashboard, debug suite, settings sync
+- `SetupWizardWindow.xaml(.cs)` — onboarding flow
+- `Themes/ModernTheme.xaml` — colors, `Card`, `StatusPill`, button styles
+- `Controls/BalanceBoardVisual` — live balance dot
+
+## Patterns
+
+- Load settings **before** `InitializeComponent()` in `MainWindow` ctor
+- Use `_suppressSettingEvents = true` when populating controls programmatically
+- Preset buttons: `session.Apply*Preset()` → `SyncUiFromSettings()` → `SaveSettingsFromUi()`
+- Log via `_fileLog.Write` or `session.Log`; UI appends in `HookFileLog`
+- Dispatcher: session events may fire off UI thread — use `Dispatcher.Invoke`
+
+## Styling
+
+Reuse `{StaticResource Card}`, `SectionTitle`, `SecondaryButton`, `GhostButton`, `AccentBrush`.

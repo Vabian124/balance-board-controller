@@ -4,6 +4,8 @@ A modern .NET 8 desktop app for using a **Nintendo Wii Fit Balance Board** on Wi
 
 Built as a clean rewrite of [WiiBalanceWalker v0.5](https://github.com/lshachar/WiiBalanceWalker) with an updated UI, setup wizard, diagnostics, and safer process handling.
 
+> **AI assistants / coding agents:** read [AGENTS.md](AGENTS.md) and [llms.txt](llms.txt) first. Full docs live in [`docs/`](docs/).
+
 ## Features
 
 - **Modern dashboard** — live balance visual, direction text, connection status pills
@@ -68,6 +70,8 @@ dotnet run --project tools/Validate/BalanceBoard.Validate.csproj -c Release
 
 | Path | Description |
 |------|-------------|
+| `AGENTS.md` | **AI agent onboarding** — architecture, conventions, where to edit |
+| `docs/` | CODEMAP, ARCHITECTURE, DEVELOPMENT, GLOSSARY, ROADMAP |
 | `src/BalanceBoard.App/` | WPF application (UI, wizard, debug suite) |
 | `src/BalanceBoard.Core/` | Board connection, processing, vJoy, logging |
 | `tools/Validate/` | Command-line health check tool |
