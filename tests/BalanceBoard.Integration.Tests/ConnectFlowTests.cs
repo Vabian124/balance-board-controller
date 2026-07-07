@@ -187,9 +187,30 @@ public class ConnectFlowTests
     public async Task Disconnect_stops_polling_without_crash()
     {
         using var session = CreateSession(new FakeBalanceBoardConnection(), new FakeBluetoothPairingService());
+        var lines = new List<string>();
+        session.Log += lines.Add;
+
         await session.ConnectWithIntentAsync(ConnectionIntent.QuickReconnect);
         session.Disconnect();
+
         Assert.False(session.IsConnected);
+        Assert.Contains(lines, line => line.Contains("[DISCONNECT]", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public async Task Disconnect_survives_late_reading_callback()
+    {
+        var connection = new FakeBalanceBoardConnection { FireReadingAfterDisconnect = true };
+        using var session = CreateSession(connection, new FakeBluetoothPairingService());
+        var lines = new List<string>();
+        session.Log += lines.Add;
+
+        await session.ConnectWithIntentAsync(ConnectionIntent.QuickReconnect);
+        session.Disconnect();
+
+        await Task.Delay(100);
+        Assert.False(session.IsConnected);
+        Assert.Equal(1, connection.DisconnectCount);
     }
 
     [Fact]

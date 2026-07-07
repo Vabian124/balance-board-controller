@@ -10,6 +10,7 @@ public sealed class FakeBalanceBoardConnection : IBalanceBoardConnection
     public Func<int, bool>? ConnectHandler { get; set; }
     public IReadOnlyList<string> DiscoveredDevices { get; set; } = ["FAKE-BOARD-001"];
     public bool ReturnNotBalanceBoard { get; set; }
+    public bool FireReadingAfterDisconnect { get; set; }
     public Exception? ConnectException { get; set; }
     public int ConnectAttempts { get; private set; }
     public int DisconnectCount { get; private set; }
@@ -18,9 +19,7 @@ public sealed class FakeBalanceBoardConnection : IBalanceBoardConnection
 #pragma warning disable CS0067
     public event Action<string>? Error;
 #pragma warning restore CS0067
-#pragma warning disable CS0067
     public event Action? ReadingAvailable;
-#pragma warning restore CS0067
     public event Action<string>? ConnectLog;
 
     public bool IsConnected { get; private set; }
@@ -66,6 +65,10 @@ public sealed class FakeBalanceBoardConnection : IBalanceBoardConnection
         DisconnectCount++;
         IsConnected = false;
         ConnectedDeviceId = null;
+        if (FireReadingAfterDisconnect)
+        {
+            ReadingAvailable?.Invoke();
+        }
     }
 
     public void Tare()
