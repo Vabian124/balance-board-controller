@@ -167,18 +167,72 @@ public static class BalanceMath
             return (0, 0);
         }
 
-        var x = balanceX;
-        var y = balanceY;
-        if (settings.DeadzonePercent > 0)
+        var deadzoneX = ResolveDeadzonePercent(settings.DeadzoneLeftRightPercent, settings.DeadzonePercent);
+        var deadzoneY = ResolveDeadzonePercent(settings.DeadzoneForwardBackwardPercent, settings.DeadzonePercent);
+        var (x, y) = ApplyEllipticalDeadzone(balanceX, balanceY, deadzoneX, deadzoneY);
+
+        var sensX = ResolveSensitivity(settings.SensitivityLeftRight, settings.Sensitivity);
+        var sensY = ResolveSensitivity(settings.SensitivityForwardBackward, settings.Sensitivity);
+
+        var joyX = settings.LockLeftRightAxis
+            ? (short)0
+            : MapLeanToJoyAxis(x, sensX, settings.InvertX, settings.ResponseCurve);
+        var joyY = settings.LockForwardBackwardAxis
+            ? (short)0
+            : MapLeanToJoyAxis(y, sensY, settings.InvertY, settings.ResponseCurve);
+
+        return (joyX, joyY);
+    }
+
+    /// <summary>Elliptical deadzone — diagonal leans keep full range (fixes corner-only stick output).</summary>
+    public static (float X, float Y) ApplyEllipticalDeadzone(
+        float balanceX,
+        float balanceY,
+        double deadzoneX,
+        double deadzoneY)
+    {
+        var center = BalanceConstants.BalanceCenterPercent;
+        if (deadzoneX <= 0 && deadzoneY <= 0)
         {
-            x = ApplyDeadzone(x, settings.DeadzonePercent);
-            y = ApplyDeadzone(y, settings.DeadzonePercent);
+            return (balanceX, balanceY);
         }
 
-        return (
-            MapLeanToJoyAxis(x, settings.Sensitivity, settings.InvertX, settings.ResponseCurve),
-            MapLeanToJoyAxis(y, settings.Sensitivity, settings.InvertY, settings.ResponseCurve));
+        if (deadzoneX <= 0)
+        {
+            return (balanceX, ApplyDeadzone(balanceY, deadzoneY));
+        }
+
+        if (deadzoneY <= 0)
+        {
+            return (ApplyDeadzone(balanceX, deadzoneX), balanceY);
+        }
+
+        var dx = balanceX - center;
+        var dy = balanceY - center;
+        var dzx = Math.Max(deadzoneX, 0.001);
+        var dzy = Math.Max(deadzoneY, 0.001);
+        var ex = dx / dzx;
+        var ey = dy / dzy;
+        var len = Math.Sqrt(ex * ex + ey * ey);
+        if (len <= 1.0)
+        {
+            return (center, center);
+        }
+
+        var maxLen = Math.Sqrt(
+            (center / dzx) * (center / dzx) +
+            (center / dzy) * (center / dzy));
+        var t = Math.Min(1.0, (len - 1.0) / Math.Max(maxLen - 1.0, 1e-6));
+        var outEx = ex / len * t * maxLen;
+        var outEy = ey / len * t * maxLen;
+        return ((float)(center + outEx * dzx), (float)(center + outEy * dzy));
     }
+
+    public static double ResolveDeadzonePercent(double? axisValue, double fallback) =>
+        axisValue ?? fallback;
+
+    public static double ResolveSensitivity(double axisValue, double fallback) =>
+        axisValue > 0 ? axisValue : fallback;
 
     /// <summary>
     /// Maps balance percent (0–100, center 50) to a vJoy axis.

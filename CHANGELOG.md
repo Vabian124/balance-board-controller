@@ -2,6 +2,18 @@
 
 All notable user-facing changes. For detailed agent work logs see [`docs/updates/`](docs/updates/).
 
+## [1.3.0] - 2026-07-07
+
+vJoy stick center mapping and per-axis tuning.
+
+### Added
+- **Per-axis deadzone and sensitivity** — optional split tuning for left/right vs forward/back on Fine Tuning tab
+- `VJoyAxisMapping` — maps signed stick values (0 = center) to each vJoy device's axis min/max range
+
+### Fixed
+- **Idle stick at top-left** — unsigned vJoy configs (0–32767) now center at ~16384 instead of sending 0
+- **Nullable deadzone settings** — per-axis deadzone uses `double?` in settings JSON when split mode is off
+
 ## [1.2.4] - 2026-07-07
 
 Connect reliability, Fine Tuning tab, and hair-trigger stick sensitivity.

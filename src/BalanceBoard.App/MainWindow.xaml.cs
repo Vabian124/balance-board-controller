@@ -207,6 +207,17 @@ public partial class MainWindow : Window
         OneFootModeCheck.IsChecked = _settings.OneFootMode;
         InvertXCheck.IsChecked = _settings.InvertX;
         InvertYCheck.IsChecked = _settings.InvertY;
+        LockLeftRightAxisCheck.IsChecked = _settings.LockLeftRightAxis;
+        LockForwardBackwardAxisCheck.IsChecked = _settings.LockForwardBackwardAxis;
+        var splitSens = _settings.SensitivityLeftRight > 0 || _settings.SensitivityForwardBackward > 0;
+        SplitAxisSensitivityCheck.IsChecked = splitSens;
+        SensitivityLeftRightSlider.Value = _settings.SensitivityLeftRight;
+        SensitivityForwardBackwardSlider.Value = _settings.SensitivityForwardBackward;
+        var splitDz = _settings.DeadzoneLeftRightPercent is not null
+            || _settings.DeadzoneForwardBackwardPercent is not null;
+        SplitAxisDeadzoneCheck.IsChecked = splitDz;
+        DeadzoneLeftRightSlider.Value = _settings.DeadzoneLeftRightPercent ?? _settings.DeadzonePercent;
+        DeadzoneForwardBackwardSlider.Value = _settings.DeadzoneForwardBackwardPercent ?? _settings.DeadzonePercent;
 
         UpdateSensitivityModeUi();
         PopulateResponseCurveCombo();
@@ -277,6 +288,22 @@ public partial class MainWindow : Window
         var sens = SensitivitySlider.Value;
         var leanForFull = sens >= 0.25 ? 50.0 / sens : 50.0;
         SensitivityLabel.Text = $"Sensitivity: {sens:0.0}× (~{leanForFull:0.#}% lean → full stick)";
+
+        var sensX = SensitivityLeftRightSlider.Value > 0 ? SensitivityLeftRightSlider.Value : sens;
+        var sensY = SensitivityForwardBackwardSlider.Value > 0 ? SensitivityForwardBackwardSlider.Value : sens;
+        SensitivityLeftRightLabel.Text =
+            $"Left / right sensitivity: {(SensitivityLeftRightSlider.Value > 0 ? $"{sensX:0.0}×" : "same as main")}";
+        SensitivityForwardBackwardLabel.Text =
+            $"Forward / back sensitivity: {(SensitivityForwardBackwardSlider.Value > 0 ? $"{sensY:0.0}×" : "same as main")}";
+
+        var mainDz = DeadzoneSlider.Value;
+        var splitDz = SplitAxisDeadzoneCheck.IsChecked == true;
+        DeadzoneLeftRightLabel.Text = splitDz
+            ? $"Left / right deadzone: {DeadzoneLeftRightSlider.Value:0}%"
+            : $"Left / right deadzone: {mainDz:0}% (main)";
+        DeadzoneForwardBackwardLabel.Text = splitDz
+            ? $"Forward / back deadzone: {DeadzoneForwardBackwardSlider.Value:0}%"
+            : $"Forward / back deadzone: {mainDz:0}% (main)";
         TriggerLeftRightLabel.Text = $"Left/right trigger: {TriggerLeftRightSlider.Value:0}%";
         TriggerForwardBackwardLabel.Text = $"Forward/back trigger: {TriggerForwardBackwardSlider.Value:0}%";
         JumpThresholdLabel.Text = _settings.UiDetailLevel == UiDetailLevel.Simple
@@ -298,6 +325,10 @@ public partial class MainWindow : Window
         StandardSensitivityPanel.Visibility = showTuning ? Visibility.Visible : Visibility.Collapsed;
         AdvancedSensitivityPanel.Visibility = showAdvancedTuning ? Visibility.Visible : Visibility.Collapsed;
         FineTuneHintText.Visibility = useSimplePresets ? Visibility.Visible : Visibility.Collapsed;
+        SplitAxisDeadzonePanel.Visibility =
+            showTuning && SplitAxisDeadzoneCheck.IsChecked == true ? Visibility.Visible : Visibility.Collapsed;
+        SplitAxisSensitivityPanel.Visibility =
+            showTuning && SplitAxisSensitivityCheck.IsChecked == true ? Visibility.Visible : Visibility.Collapsed;
         UpdateSensitivityPresetButtons();
     }
 
@@ -769,6 +800,20 @@ public partial class MainWindow : Window
 
         _settings.InvertX = InvertXCheck.IsChecked == true;
         _settings.InvertY = InvertYCheck.IsChecked == true;
+        _settings.LockLeftRightAxis = LockLeftRightAxisCheck.IsChecked == true;
+        _settings.LockForwardBackwardAxis = LockForwardBackwardAxisCheck.IsChecked == true;
+        _settings.SensitivityLeftRight = SplitAxisSensitivityCheck.IsChecked == true
+            ? SensitivityLeftRightSlider.Value
+            : 0;
+        _settings.SensitivityForwardBackward = SplitAxisSensitivityCheck.IsChecked == true
+            ? SensitivityForwardBackwardSlider.Value
+            : 0;
+        _settings.DeadzoneLeftRightPercent = SplitAxisDeadzoneCheck.IsChecked == true
+            ? DeadzoneLeftRightSlider.Value
+            : null;
+        _settings.DeadzoneForwardBackwardPercent = SplitAxisDeadzoneCheck.IsChecked == true
+            ? DeadzoneForwardBackwardSlider.Value
+            : null;
         if (VJoyDeviceCombo.SelectedItem is uint id)
         {
             _settings.VJoyDeviceId = id;
@@ -800,17 +845,6 @@ public partial class MainWindow : Window
             // Manual Connect always runs full pairing (WiiBalanceWalker: BT add + HID connect).
             // QuickReconnect is reserved for auto-connect on startup.
             const ConnectionIntent intent = ConnectionIntent.PairAndConnect;
-            DebugSessionTrace.Write(
-                "MainWindow.xaml.cs:ConnectButton_Click",
-                "connect intent chosen",
-                "H2",
-                new
-                {
-                    intent = intent.ToString(),
-                    hasConnectedBefore = _settings.HasConnectedBefore,
-                    lastDeviceId = _settings.LastConnectedDeviceId,
-                    simulateBoard = _startupOptions.SimulateBoard,
-                });
             BeginConnect(intent);
         }
         catch (Exception ex)
@@ -1024,6 +1058,16 @@ public partial class MainWindow : Window
         OneFootModeCheck.IsChecked = _settings.OneFootMode;
         InvertXCheck.IsChecked = _settings.InvertX;
         InvertYCheck.IsChecked = _settings.InvertY;
+        LockLeftRightAxisCheck.IsChecked = _settings.LockLeftRightAxis;
+        LockForwardBackwardAxisCheck.IsChecked = _settings.LockForwardBackwardAxis;
+        SplitAxisSensitivityCheck.IsChecked =
+            _settings.SensitivityLeftRight > 0 || _settings.SensitivityForwardBackward > 0;
+        SensitivityLeftRightSlider.Value = _settings.SensitivityLeftRight;
+        SensitivityForwardBackwardSlider.Value = _settings.SensitivityForwardBackward;
+        SplitAxisDeadzoneCheck.IsChecked = _settings.DeadzoneLeftRightPercent is not null
+            || _settings.DeadzoneForwardBackwardPercent is not null;
+        DeadzoneLeftRightSlider.Value = _settings.DeadzoneLeftRightPercent ?? _settings.DeadzonePercent;
+        DeadzoneForwardBackwardSlider.Value = _settings.DeadzoneForwardBackwardPercent ?? _settings.DeadzonePercent;
         ThemeCombo.SelectedItem = _settings.ThemePreference;
         DetailLevelCombo.SelectedIndex = (int)_settings.UiDetailLevel;
         if (ActionPresets.All.Contains(_settings.ActiveProfileName))
@@ -1120,6 +1164,77 @@ public partial class MainWindow : Window
     private void SensitivityHigh_Click(object sender, RoutedEventArgs e) => ApplySensitivityPreset(SensitivityLevel.High);
     private void SensitivityHighly_Click(object sender, RoutedEventArgs e) => ApplySensitivityPreset(SensitivityLevel.HighlySensitive);
     private void SensitivityHairTrigger_Click(object sender, RoutedEventArgs e) => ApplySensitivityPreset(SensitivityLevel.HairTrigger);
+
+    private void AxisLock_Changed(object sender, RoutedEventArgs e)
+    {
+        if (!_uiReady || _suppressSettingEvents)
+        {
+            return;
+        }
+
+        if (LockLeftRightAxisCheck.IsChecked == true)
+        {
+            _suppressSettingEvents = true;
+            LockForwardBackwardAxisCheck.IsChecked = false;
+            _suppressSettingEvents = false;
+        }
+        else if (LockForwardBackwardAxisCheck.IsChecked == true)
+        {
+            _suppressSettingEvents = true;
+            LockLeftRightAxisCheck.IsChecked = false;
+            _suppressSettingEvents = false;
+        }
+
+        SaveSettingsFromUi();
+    }
+
+    private void SplitAxisSensitivity_Changed(object sender, RoutedEventArgs e)
+    {
+        if (!_uiReady || _suppressSettingEvents)
+        {
+            return;
+        }
+
+        if (SplitAxisSensitivityCheck.IsChecked != true)
+        {
+            _suppressSettingEvents = true;
+            SensitivityLeftRightSlider.Value = 0;
+            SensitivityForwardBackwardSlider.Value = 0;
+            _suppressSettingEvents = false;
+        }
+
+        UpdateSensitivityModeUi();
+        UpdateSliderLabels();
+        SaveSettingsFromUi();
+    }
+
+    private void SplitAxisDeadzone_Changed(object sender, RoutedEventArgs e)
+    {
+        if (!_uiReady || _suppressSettingEvents)
+        {
+            return;
+        }
+
+        if (SplitAxisDeadzoneCheck.IsChecked == true)
+        {
+            _suppressSettingEvents = true;
+            if (_settings.DeadzoneLeftRightPercent is null)
+            {
+                DeadzoneLeftRightSlider.Value = DeadzoneSlider.Value;
+            }
+
+            if (_settings.DeadzoneForwardBackwardPercent is null)
+            {
+                DeadzoneForwardBackwardSlider.Value = DeadzoneSlider.Value;
+            }
+
+            _suppressSettingEvents = false;
+        }
+
+        UpdateSensitivityModeUi();
+        UpdateSliderLabels();
+        SaveSettingsFromUi();
+    }
 
     private void DetailLevelCombo_SelectionChanged(object sender, SelectionChangedEventArgs e) => SaveSettingsFromUi();
 

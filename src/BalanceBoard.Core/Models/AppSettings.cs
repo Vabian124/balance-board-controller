@@ -22,7 +22,13 @@ public sealed class AppSettings
     public bool AutoTareOnConnect { get; set; } = true;
     public bool StartMinimized { get; set; }
     public double DeadzonePercent { get; set; } = 5;
+    /// <summary>Per-axis deadzone; null = use <see cref="DeadzonePercent"/>.</summary>
+    public double? DeadzoneLeftRightPercent { get; set; }
+    public double? DeadzoneForwardBackwardPercent { get; set; }
     public double Sensitivity { get; set; } = 1.0;
+    /// <summary>Per-axis stick gain; 0 = use <see cref="Sensitivity"/>.</summary>
+    public double SensitivityLeftRight { get; set; }
+    public double SensitivityForwardBackward { get; set; }
     public SensitivityLevel SensitivityLevel { get; set; } = SensitivityLevel.Medium;
     public bool UseSimpleSensitivity { get; set; } = true;
     public ResponseCurve ResponseCurve { get; set; } = ResponseCurve.Linear;
@@ -35,6 +41,10 @@ public sealed class AppSettings
     public bool SessionLogExpanded { get; set; }
     public bool InvertX { get; set; }
     public bool InvertY { get; set; }
+    /// <summary>vJoy X (left/right) stays centered — forward/back only.</summary>
+    public bool LockLeftRightAxis { get; set; }
+    /// <summary>vJoy Y (forward/back) stays centered — strafe only.</summary>
+    public bool LockForwardBackwardAxis { get; set; }
     public ThemePreference ThemePreference { get; set; } = ThemePreference.System;
     public string ActiveProfileName { get; set; } = "Default";
     public bool SetupWizardCompleted { get; set; }

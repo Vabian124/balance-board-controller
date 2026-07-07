@@ -6,6 +6,15 @@ namespace BalanceBoard.Core.Services;
 
 public sealed class VJoyController : IGameControllerOutput
 {
+    private readonly struct AxisRange(long min, long max)
+    {
+        public long Min { get; } = min;
+        public long Max { get; } = max;
+        public long Center => (Min + Max) / 2;
+    }
+
+    private static readonly AxisRange SignedFallback = new(-32768, 32767);
+
     private vJoy? _joystick;
     private uint _deviceId = 1;
     private bool _acquired;
@@ -17,6 +26,12 @@ public sealed class VJoyController : IGameControllerOutput
     private short _lastRz;
     private bool _lastButtonA;
     private bool _axesInitialized;
+    private AxisRange _rangeX = SignedFallback;
+    private AxisRange _rangeY = SignedFallback;
+    private AxisRange _rangeZ = SignedFallback;
+    private AxisRange _rangeRx = SignedFallback;
+    private AxisRange _rangeRy = SignedFallback;
+    private AxisRange _rangeRz = SignedFallback;
 
     public event Action<string>? Log;
 
@@ -94,6 +109,7 @@ public sealed class VJoyController : IGameControllerOutput
             _acquired = true;
             _axesInitialized = false;
             LastError = null;
+            CacheAxisRanges(deviceId);
             Log?.Invoke($"[VJOY] Acquired device {deviceId}.");
             return true;
         }
@@ -101,6 +117,42 @@ public sealed class VJoyController : IGameControllerOutput
         LastError = $"Failed to acquire vJoy device {deviceId}.";
         Log?.Invoke($"[VJOY] {LastError}");
         return false;
+    }
+
+    private void CacheAxisRanges(uint deviceId)
+    {
+        _rangeX = ReadAxisRange(deviceId, HID_USAGES.HID_USAGE_X);
+        _rangeY = ReadAxisRange(deviceId, HID_USAGES.HID_USAGE_Y);
+        _rangeZ = ReadAxisRange(deviceId, HID_USAGES.HID_USAGE_Z);
+        _rangeRx = ReadAxisRange(deviceId, HID_USAGES.HID_USAGE_RX);
+        _rangeRy = ReadAxisRange(deviceId, HID_USAGES.HID_USAGE_RY);
+        _rangeRz = ReadAxisRange(deviceId, HID_USAGES.HID_USAGE_RZ);
+    }
+
+    private AxisRange ReadAxisRange(uint deviceId, HID_USAGES usage)
+    {
+        if (_joystick is null)
+        {
+            return SignedFallback;
+        }
+
+        try
+        {
+            long min = 0;
+            long max = 0;
+            _joystick.GetVJDAxisMin(deviceId, usage, ref min);
+            _joystick.GetVJDAxisMax(deviceId, usage, ref max);
+            if (max > min)
+            {
+                return new AxisRange(min, max);
+            }
+        }
+        catch
+        {
+            // Fall back to signed range.
+        }
+
+        return SignedFallback;
     }
 
     public void Update(ProcessedBalance data)
@@ -146,39 +198,46 @@ public sealed class VJoyController : IGameControllerOutput
             return;
         }
 
+        var deviceX = (int)VJoyAxisMapping.SignedToDevice(x, _rangeX.Min, _rangeX.Max);
+        var deviceY = (int)VJoyAxisMapping.SignedToDevice(y, _rangeY.Min, _rangeY.Max);
+        var deviceZ = (int)VJoyAxisMapping.SignedToDevice(z, _rangeZ.Min, _rangeZ.Max);
+        var deviceRx = (int)VJoyAxisMapping.SignedToDevice(rx, _rangeRx.Min, _rangeRx.Max);
+        var deviceRy = (int)VJoyAxisMapping.SignedToDevice(ry, _rangeRy.Min, _rangeRy.Max);
+        var deviceRz = (int)VJoyAxisMapping.SignedToDevice(rz, _rangeRz.Min, _rangeRz.Max);
+
         if (!_axesInitialized || x != _lastX)
         {
-            _joystick.SetAxis(x, _deviceId, HID_USAGES.HID_USAGE_X);
+            _joystick.SetAxis(deviceX, _deviceId, HID_USAGES.HID_USAGE_X);
             _lastX = x;
         }
 
         if (!_axesInitialized || y != _lastY)
         {
-            _joystick.SetAxis(y, _deviceId, HID_USAGES.HID_USAGE_Y);
+            _joystick.SetAxis(deviceY, _deviceId, HID_USAGES.HID_USAGE_Y);
             _lastY = y;
         }
 
         if (!_axesInitialized || z != _lastZ)
         {
-            _joystick.SetAxis(z, _deviceId, HID_USAGES.HID_USAGE_Z);
+            _joystick.SetAxis(deviceZ, _deviceId, HID_USAGES.HID_USAGE_Z);
             _lastZ = z;
         }
 
         if (!_axesInitialized || rx != _lastRx)
         {
-            _joystick.SetAxis(rx, _deviceId, HID_USAGES.HID_USAGE_RX);
+            _joystick.SetAxis(deviceRx, _deviceId, HID_USAGES.HID_USAGE_RX);
             _lastRx = rx;
         }
 
         if (!_axesInitialized || ry != _lastRy)
         {
-            _joystick.SetAxis(ry, _deviceId, HID_USAGES.HID_USAGE_RY);
+            _joystick.SetAxis(deviceRy, _deviceId, HID_USAGES.HID_USAGE_RY);
             _lastRy = ry;
         }
 
         if (!_axesInitialized || rz != _lastRz)
         {
-            _joystick.SetAxis(rz, _deviceId, HID_USAGES.HID_USAGE_RZ);
+            _joystick.SetAxis(deviceRz, _deviceId, HID_USAGES.HID_USAGE_RZ);
             _lastRz = rz;
         }
 

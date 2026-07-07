@@ -62,6 +62,40 @@ public class SettingsStoreTests
     }
 
     [Fact]
+    public void Save_default_settings_does_not_throw()
+    {
+        var dir = Path.Combine(Path.GetTempPath(), "bb-tests", Guid.NewGuid().ToString("N"));
+        var store = new SettingsStore(dir);
+
+        store.Save(new AppSettings());
+
+        Assert.True(File.Exists(store.SettingsPath));
+    }
+
+    [Fact]
+    public void Save_and_Load_roundtrips_per_axis_deadzone()
+    {
+        var dir = Path.Combine(Path.GetTempPath(), "bb-tests", Guid.NewGuid().ToString("N"));
+        var store = new SettingsStore(dir);
+
+        store.Save(new AppSettings { DeadzonePercent = 8 });
+        var loaded = store.Load();
+        Assert.Null(loaded.DeadzoneLeftRightPercent);
+        Assert.Null(loaded.DeadzoneForwardBackwardPercent);
+
+        store.Save(new AppSettings
+        {
+            DeadzonePercent = 8,
+            DeadzoneLeftRightPercent = 3,
+            DeadzoneForwardBackwardPercent = 12,
+        });
+        loaded = store.Load();
+
+        Assert.Equal(3, loaded.DeadzoneLeftRightPercent);
+        Assert.Equal(12, loaded.DeadzoneForwardBackwardPercent);
+    }
+
+    [Fact]
     public void Save_and_Load_roundtrips_settings_fields()
     {
         var dir = Path.Combine(Path.GetTempPath(), "bb-tests", Guid.NewGuid().ToString("N"));

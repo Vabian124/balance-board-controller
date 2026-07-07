@@ -202,6 +202,99 @@ public class BalanceMathTests
         Assert.True(Math.Abs(expX) < Math.Abs(linearX));
     }
 
+    [Fact]
+    public void ApplyEllipticalDeadzone_diagonal_lean_reaches_both_axes()
+    {
+        var (x, y) = BalanceMath.ApplyEllipticalDeadzone(12f, 12f, deadzoneX: 10, deadzoneY: 10);
+
+        Assert.True(x < BalanceConstants.BalanceCenterPercent);
+        Assert.True(y < BalanceConstants.BalanceCenterPercent);
+        Assert.InRange(x, 0f, 20f);
+        Assert.InRange(y, 0f, 20f);
+    }
+
+    [Fact]
+    public void MapCenterOfGravityAxes_high_sensitivity_with_deadzone_reaches_full_diagonal()
+    {
+        var settings = new AppSettings
+        {
+            SendCenterOfGravityToAxes = true,
+            DeadzonePercent = 10,
+            Sensitivity = 20.0,
+            ResponseCurve = ResponseCurve.Linear,
+        };
+
+        var (joyX, joyY) = BalanceMath.MapCenterOfGravityAxes(10f, 10f, settings);
+
+        Assert.InRange(Math.Abs(joyX), 25000, short.MaxValue);
+        Assert.InRange(Math.Abs(joyY), 25000, short.MaxValue);
+        Assert.True(joyX < 0);
+        Assert.True(joyY < 0);
+    }
+
+    [Fact]
+    public void MapCenterOfGravityAxes_lock_left_right_zeros_x()
+    {
+        var settings = new AppSettings
+        {
+            SendCenterOfGravityToAxes = true,
+            DeadzonePercent = 0,
+            Sensitivity = 5.0,
+            LockLeftRightAxis = true,
+        };
+
+        var (joyX, joyY) = BalanceMath.MapCenterOfGravityAxes(50f, 20f, settings);
+
+        Assert.Equal(0, joyX);
+        Assert.NotEqual(0, joyY);
+        Assert.True(joyY < 0);
+    }
+
+    [Fact]
+    public void MapCenterOfGravityAxes_split_sensitivity_uses_per_axis_gain()
+    {
+        var settings = new AppSettings
+        {
+            SendCenterOfGravityToAxes = true,
+            DeadzonePercent = 0,
+            Sensitivity = 1.0,
+            SensitivityLeftRight = 20.0,
+            SensitivityForwardBackward = 1.0,
+            ResponseCurve = ResponseCurve.Linear,
+        };
+
+        var (joyX, joyY) = BalanceMath.MapCenterOfGravityAxes(52.5f, 75f, settings);
+
+        Assert.InRange(Math.Abs(joyX), 30000, short.MaxValue);
+        Assert.InRange(Math.Abs(joyY), 16000, 17000);
+    }
+
+    [Fact]
+    public void MapCenterOfGravityAxes_per_axis_deadzone_overrides_main()
+    {
+        var uniform = new AppSettings
+        {
+            SendCenterOfGravityToAxes = true,
+            DeadzonePercent = 5,
+            Sensitivity = 5.0,
+            ResponseCurve = ResponseCurve.Linear,
+        };
+        var splitX = new AppSettings
+        {
+            SendCenterOfGravityToAxes = true,
+            DeadzonePercent = 5,
+            DeadzoneLeftRightPercent = 0,
+            Sensitivity = 5.0,
+            ResponseCurve = ResponseCurve.Linear,
+        };
+
+        var (uniformX, _) = BalanceMath.MapCenterOfGravityAxes(52f, 50f, uniform);
+        var (splitJoyX, _) = BalanceMath.MapCenterOfGravityAxes(52f, 50f, splitX);
+
+        Assert.Equal(0, uniformX);
+        Assert.NotEqual(0, splitJoyX);
+    }
+
     [Theory]
     [InlineData(ResponseCurve.Linear, 0f, 0f)]
     [InlineData(ResponseCurve.Linear, 1f, 1f)]

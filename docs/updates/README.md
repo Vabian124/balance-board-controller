@@ -6,6 +6,7 @@ Short index for AI assistants. User-facing history: [CHANGELOG.md](../../CHANGEL
 
 | Commit | Summary |
 |--------|---------|
+| [`0f5aa12`](https://github.com/Vabian124/balance-board-controller/commit/0f5aa12) | **v1.3.0** — vJoy unsigned axis center mapping, per-axis deadzone/sensitivity UI, debug trace cleanup |
 | [`29dc308`](https://github.com/Vabian124/balance-board-controller/commit/29dc308) | **v1.2.4** — BT MAC trust, wake-probe crash fix, Fine Tuning tab, hair-trigger sensitivity, HID instance IDs |
 | [`fe1bca6`](https://github.com/Vabian124/balance-board-controller/commit/fe1bca6) | Docs: add v1.2.3 agent update log entry. |
 | [`cec9107`](https://github.com/Vabian124/balance-board-controller/commit/cec9107) | **Dashboard UI revamp** — collapsible session log (default collapsed, last-line preview), visual-first Dashboard layout, `SessionLogExpanded` setting |

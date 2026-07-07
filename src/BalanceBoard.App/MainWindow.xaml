@@ -216,8 +216,30 @@
                                                       Margin="0,0,0,8" Checked="OneFootMode_Changed" Unchecked="OneFootMode_Changed"/>
                                             <TextBlock x:Name="DeadzoneLabel" Style="{DynamicResource Text.Subtitle}"/>
                                             <Slider x:Name="DeadzoneSlider" Minimum="0" Maximum="20" Value="5" TickFrequency="1" IsSnapToTickEnabled="True" ValueChanged="SettingChanged"/>
+                                            <CheckBox x:Name="SplitAxisDeadzoneCheck" Content="Custom deadzone per axis"
+                                                      Margin="0,8,0,0" Checked="SplitAxisDeadzone_Changed" Unchecked="SplitAxisDeadzone_Changed"/>
+                                            <StackPanel x:Name="SplitAxisDeadzonePanel" Visibility="Collapsed" Margin="0,4,0,0">
+                                                <TextBlock x:Name="DeadzoneLeftRightLabel" Style="{DynamicResource Text.Subtitle}"/>
+                                                <Slider x:Name="DeadzoneLeftRightSlider" Minimum="0" Maximum="20" Value="0" TickFrequency="1" IsSnapToTickEnabled="True" ValueChanged="SettingChanged"/>
+                                                <TextBlock x:Name="DeadzoneForwardBackwardLabel" Style="{DynamicResource Text.Subtitle}" Margin="0,8,0,0"/>
+                                                <Slider x:Name="DeadzoneForwardBackwardSlider" Minimum="0" Maximum="20" Value="0" TickFrequency="1" IsSnapToTickEnabled="True" ValueChanged="SettingChanged"/>
+                                                <TextBlock Style="{DynamicResource Text.Subtitle}" Margin="0,4,0,0" TextWrapping="Wrap"
+                                                           Text="Elliptical deadzone keeps diagonals reachable when axes differ."/>
+                                            </StackPanel>
                                             <TextBlock x:Name="SensitivityLabel" Style="{DynamicResource Text.Subtitle}" Margin="0,8,0,0"/>
                                             <Slider x:Name="SensitivitySlider" Minimum="0.5" Maximum="25" Value="1" TickFrequency="0.5" ValueChanged="SettingChanged"/>
+                                            <CheckBox x:Name="LockLeftRightAxisCheck" Content="Forward / backward only (lock left–right stick)"
+                                                      Margin="0,10,0,0" Checked="AxisLock_Changed" Unchecked="AxisLock_Changed"/>
+                                            <CheckBox x:Name="LockForwardBackwardAxisCheck" Content="Left / right only (lock forward–back stick)"
+                                                      Margin="0,4,0,0" Checked="AxisLock_Changed" Unchecked="AxisLock_Changed"/>
+                                            <CheckBox x:Name="SplitAxisSensitivityCheck" Content="Split axis sensitivity"
+                                                      Margin="0,10,0,0" Checked="SplitAxisSensitivity_Changed" Unchecked="SplitAxisSensitivity_Changed"/>
+                                            <StackPanel x:Name="SplitAxisSensitivityPanel" Visibility="Collapsed" Margin="0,4,0,0">
+                                                <TextBlock x:Name="SensitivityLeftRightLabel" Style="{DynamicResource Text.Subtitle}"/>
+                                                <Slider x:Name="SensitivityLeftRightSlider" Minimum="0" Maximum="25" Value="0" TickFrequency="0.5" ValueChanged="SettingChanged"/>
+                                                <TextBlock x:Name="SensitivityForwardBackwardLabel" Style="{DynamicResource Text.Subtitle}" Margin="0,8,0,0"/>
+                                                <Slider x:Name="SensitivityForwardBackwardSlider" Minimum="0" Maximum="25" Value="0" TickFrequency="0.5" ValueChanged="SettingChanged"/>
+                                            </StackPanel>
                                             <TextBlock x:Name="JumpThresholdLabel" Style="{DynamicResource Text.Subtitle}" Margin="0,8,0,0"/>
                                             <Slider x:Name="JumpThresholdSlider" Minimum="0.2" Maximum="80" Value="1" TickFrequency="0.5" ValueChanged="SettingChanged"/>
                                             <StackPanel x:Name="InvertPanel" Margin="0,8,0,0">
