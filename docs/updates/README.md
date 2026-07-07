@@ -6,7 +6,7 @@ Short index for AI assistants. User-facing history: [CHANGELOG.md](../../CHANGEL
 
 | Commit | Summary |
 |--------|---------|
-| [`a53b292`](https://github.com/Vabian124/balance-board-controller/commit/a53b292) | **WiiBrew protocol** — CONNECTION_PROTOCOL.md, `BalanceBoardProtocol` wake/connect `0x34` + extension id `0x0402` logging |
+| [`a53b292`](https://github.com/Vabian124/balance-board-controller/commit/a53b292) | **WiiBrew + WBC.pdf** — `BalanceBoardProtocol`, wake/connect `0x34`, extension `0x0402` logs, CONNECTION_PROTOCOL §12–13 (Nintendo SDK timing/gaps) |
 | [`a59ea89`](https://github.com/Vabian124/balance-board-controller/commit/a59ea89) | **UI + BT adapter** — pinned live log, Fine tuning sliders on Advanced tab, adapter MAC change detection + auto re-pair |
 | [`f025900`](https://github.com/Vabian124/balance-board-controller/commit/f025900) | **BT recovery** — truthful HID health, auto-reconnect after radio drop without SYNC, UI reconnecting states |
 | [`e971a74`](https://github.com/Vabian124/balance-board-controller/commit/e971a74) | **v1.2.1** — sensitivity slider visibility fix, response curves, one-foot mode |
