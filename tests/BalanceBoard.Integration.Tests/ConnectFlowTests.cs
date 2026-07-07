@@ -248,6 +248,33 @@ public class ConnectFlowTests
     }
 
     [Fact]
+    public async Task PairAndConnect_retries_hid_after_pair_when_board_still_booting()
+    {
+        var pairing = new FakeBluetoothPairingService();
+        pairing.EnqueuePairResult(new BluetoothPairingResult
+        {
+            Success = true,
+            Message = "Paired 1 Nintendo device(s).",
+            DevicesPaired = 1,
+        });
+
+        var connectCalls = 0;
+        var connection = new FakeBalanceBoardConnection
+        {
+            ConnectHandler = _ => ++connectCalls >= 3,
+        };
+        using var session = CreateSession(connection, pairing);
+        var lines = new List<string>();
+        session.Log += lines.Add;
+
+        var result = await session.ConnectWithIntentAsync(ConnectionIntent.PairAndConnect, discoveryRounds: 1);
+
+        Assert.True(result.IsSuccess);
+        Assert.Equal(3, connectCalls);
+        Assert.Contains(lines, line => line.Contains("HID not ready yet", StringComparison.Ordinal));
+    }
+
+    [Fact]
     public async Task PairAndConnect_skips_wake_after_successful_pair()
     {
         var pairing = new FakeBluetoothPairingService();

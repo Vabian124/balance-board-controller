@@ -2,7 +2,17 @@
 
 All notable user-facing changes. For detailed agent work logs see [`docs/updates/`](docs/updates/).
 
-## [1.1.1] - 2026-07-07
+## [1.2.3] - 2026-07-07
+
+Wake paired boards without SYNC: Bluetooth reconnect before HID ping, crash-safe HID gate, and smarter Connect button.
+
+### Fixed
+- **Paired board blinking** — wake probe runs Bluetooth inquiry + HID retries when the board is not yet in the Windows HID list (no ping was sent before)
+- **Connect on power-on** — serialized `HidGate` prevents WiimoteLib `OnReadData` / `ThreadPoolBoundHandle` fatals during wake/connect races
+- **Returning users** — Connect button uses `QuickReconnect` (wake-first) when `HasConnectedBefore` is set
+- **Post-pair HID boot** — retry HID open up to 4 times while the board finishes waking after Bluetooth pairing
+
+## [1.2.2] - 2026-07-07
 
 Stability and accessibility release: crash-proof disconnect, Minecraft preset, jump tuning, progressive UI.
 

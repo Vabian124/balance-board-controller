@@ -9,32 +9,55 @@ namespace BalanceBoard.Core.Services;
 /// </summary>
 internal static class WiimoteCollectionHelper
 {
+    /// <summary>Serializes all WiimoteLib HID open/close so wake probes cannot race Connect.</summary>
+    internal static readonly object HidGate = new();
+
     public static IReadOnlyList<string> DiscoverDeviceIds()
     {
-        WiimoteCollection? collection = null;
-        try
+        lock (HidGate)
         {
-            collection = new WiimoteCollection();
-            collection.FindAllWiimotes();
-            return EnumerateDeviceIds(collection);
-        }
-        catch (WiimoteNotFoundException)
-        {
-            return Array.Empty<string>();
-        }
-        finally
-        {
-            ReleaseAll(collection);
+            WiimoteCollection? collection = null;
+            try
+            {
+                collection = new WiimoteCollection();
+                collection.FindAllWiimotes();
+                return EnumerateDeviceIds(collection);
+            }
+            catch (WiimoteNotFoundException)
+            {
+                return Array.Empty<string>();
+            }
+            finally
+            {
+                ReleaseAll(collection);
+            }
         }
     }
 
     public static int WakeDevices(Action<string>? log)
     {
+        lock (HidGate)
+        {
+            return WakeDevicesCore(log);
+        }
+    }
+
+    private static int WakeDevicesCore(Action<string>? log)
+    {
         WiimoteCollection? collection = null;
         try
         {
             collection = new WiimoteCollection();
-            collection.FindAllWiimotes();
+            try
+            {
+                collection.FindAllWiimotes();
+            }
+            catch (WiimoteNotFoundException)
+            {
+                log?.Invoke("[CONNECT] wake probe: no Wii HID devices visible.");
+                return 0;
+            }
+
             if (collection.Count == 0)
             {
                 log?.Invoke("[CONNECT] wake probe: no Wii HID devices visible.");

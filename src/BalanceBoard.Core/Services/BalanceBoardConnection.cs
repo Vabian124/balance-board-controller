@@ -43,7 +43,15 @@ public sealed class BalanceBoardConnection : IBalanceBoardConnection
 
     public bool Connect(int deviceIndex = 0, string? preferredDeviceId = null)
     {
-        Disconnect();
+        lock (WiimoteCollectionHelper.HidGate)
+        {
+            return ConnectCore(deviceIndex, preferredDeviceId);
+        }
+    }
+
+    private bool ConnectCore(int deviceIndex = 0, string? preferredDeviceId = null)
+    {
+        DisconnectCore(extendedDrain: true);
 
         try
         {
@@ -65,6 +73,8 @@ public sealed class BalanceBoardConnection : IBalanceBoardConnection
 
             if (_collection.Count == 0)
             {
+                WiimoteCollectionHelper.ReleaseAll(_collection);
+                _collection = null;
                 StatusChanged?.Invoke("No balance board found yet — automatic pairing will run when you connect.");
                 return false;
             }
@@ -84,7 +94,7 @@ public sealed class BalanceBoardConnection : IBalanceBoardConnection
                         return true;
                     }
 
-                    Disconnect();
+                    DisconnectCore(extendedDrain: true);
                 }
             }
 
@@ -95,7 +105,7 @@ public sealed class BalanceBoardConnection : IBalanceBoardConnection
                     return true;
                 }
 
-                Disconnect();
+                DisconnectCore(extendedDrain: true);
             }
 
             for (var i = 0; i < _collection.Count; i++)
@@ -110,7 +120,7 @@ public sealed class BalanceBoardConnection : IBalanceBoardConnection
                     return true;
                 }
 
-                Disconnect();
+                DisconnectCore(extendedDrain: true);
             }
 
             StatusChanged?.Invoke("No balance board found among visible Wii HID devices.");
@@ -119,7 +129,7 @@ public sealed class BalanceBoardConnection : IBalanceBoardConnection
         catch (Exception ex)
         {
             ReportError(ex);
-            Disconnect();
+            DisconnectCore(extendedDrain: true);
             return false;
         }
     }
@@ -134,7 +144,6 @@ public sealed class BalanceBoardConnection : IBalanceBoardConnection
             _device = device;
             ConnectedDeviceId = deviceId;
             _device.WiimoteChanged += OnWiimoteChanged;
-            // WiimoteLib Connect: status → extension init (0xA400F0←0x55, not 0xAA) → calib read → 0x34 mode.
             _device.Connect();
 
             var extensionType = _device.WiimoteState.ExtensionType;
@@ -142,7 +151,6 @@ public sealed class BalanceBoardConnection : IBalanceBoardConnection
             if (isBalanceBoard)
             {
                 ConnectionFlowLogger.LogExtensionType(ConnectLog, extensionType);
-                // Re-assert continuous 0x34 after init (WiiBrew: reporting disabled until mode reset).
                 BalanceBoardProtocol.ApplyContinuousWeightReports(_device, ConnectLog);
             }
 
@@ -244,13 +252,21 @@ public sealed class BalanceBoardConnection : IBalanceBoardConnection
 
         if (release is not null)
         {
-            ReleaseCollection(release, notify: true);
+            ReleaseCollection(release, notify: true, extendedDrain: true);
         }
 
         return null;
     }
 
     public void Disconnect()
+    {
+        lock (WiimoteCollectionHelper.HidGate)
+        {
+            DisconnectCore(extendedDrain: true);
+        }
+    }
+
+    private void DisconnectCore(bool extendedDrain)
     {
         WiimoteCollection? release;
         lock (_sync)
@@ -262,7 +278,7 @@ public sealed class BalanceBoardConnection : IBalanceBoardConnection
         try
         {
             ConnectLog?.Invoke("[DISCONNECT] Releasing HID collection.");
-            ReleaseCollection(release, notify: false);
+            ReleaseCollection(release, notify: false, extendedDrain);
         }
         finally
         {
@@ -292,7 +308,7 @@ public sealed class BalanceBoardConnection : IBalanceBoardConnection
         return collection;
     }
 
-    private void ReleaseCollection(WiimoteCollection? collection, bool notify)
+    private void ReleaseCollection(WiimoteCollection? collection, bool notify, bool extendedDrain = false)
     {
         if (collection is null)
         {
@@ -301,7 +317,7 @@ public sealed class BalanceBoardConnection : IBalanceBoardConnection
 
         try
         {
-            WiimoteCollectionHelper.ReleaseAll(collection);
+            WiimoteCollectionHelper.ReleaseAll(collection, extendedDrain);
         }
         catch (Exception ex)
         {

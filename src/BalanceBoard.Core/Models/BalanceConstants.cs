@@ -31,6 +31,9 @@ public static class BalanceConstants
     public const int WakeProbePostDisconnectDrainMs = 2000;
     public const int PostPairSettleMs = 1000;
     public const int PostWakeSettleMs = 500;
+    /// <summary>Retry delay when HID is not visible yet after Bluetooth reconnect (board still booting).</summary>
+    public const int PostPairHidRetryMs = 750;
+    public const int PostPairHidRetryAttempts = 4;
     /// <summary>Hold wake HID session (report mode + LED) before disconnect so the board stays paired and awake.</summary>
     public const int WakeProbeHoldMs = 500;
     public const int BluetoothFinishWaitMs = 2000;

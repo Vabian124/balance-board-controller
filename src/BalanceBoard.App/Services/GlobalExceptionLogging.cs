@@ -52,10 +52,24 @@ public static class GlobalExceptionLogging
         };
     }
 
-    private static bool IsBenignDeviceIo(Exception ex) =>
-        ex is IOException or ObjectDisposedException
-        || ex.InnerException is IOException or ObjectDisposedException
-        || ex.Message.Contains("device is not connected", StringComparison.OrdinalIgnoreCase);
+    private static bool IsBenignDeviceIo(Exception ex)
+    {
+        for (var current = ex; current is not null; current = current.InnerException)
+        {
+            if (current is IOException or ObjectDisposedException)
+            {
+                return true;
+            }
+
+            if (current.Message.Contains("device is not connected", StringComparison.OrdinalIgnoreCase)
+                || current.Message.Contains("ThreadPoolBoundHandle", StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
 
     public static void WriteFatal(Exception exception, string context)
     {

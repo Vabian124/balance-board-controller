@@ -187,15 +187,62 @@ public sealed class BluetoothPairingService : IBluetoothPairingService
     public void WakePairedDevices(Action<string>? log = null)
     {
         log?.Invoke("[CONNECT] wake probe: starting paired-device wake sequence.");
-        var woke = WiimoteCollectionHelper.WakeDevices(log);
-        if (woke > 0)
+
+        EnableHidOnRememberedNintendoDevices(log);
+
+        if (WiimoteCollectionHelper.DiscoverDeviceIds().Count == 0)
         {
-            log?.Invoke($"[CONNECT] wake probe: held {woke} session(s) for {BalanceConstants.WakeProbeHoldMs} ms.");
-            Thread.Sleep(BalanceConstants.PostWakeSettleMs);
+            log?.Invoke("[CONNECT] wake probe: no HID devices — Bluetooth inquiry for discoverable board.");
+            var bt = PairDiscoverableBoard(log, default, removeStalePairings: false);
+            if (bt.Success)
+            {
+                log?.Invoke($"[CONNECT] wake probe: Bluetooth reconnect succeeded ({bt.DevicesPaired} device(s)).");
+                Thread.Sleep(BalanceConstants.PostPairSettleMs);
+            }
         }
-        else
+
+        var woke = 0;
+        for (var attempt = 1; attempt <= BalanceConstants.PostPairHidRetryAttempts; attempt++)
         {
-            log?.Invoke("[CONNECT] wake probe: no sessions opened (board may be asleep).");
+            woke = WiimoteCollectionHelper.WakeDevices(log);
+            if (woke > 0)
+            {
+                log?.Invoke($"[CONNECT] wake probe: held {woke} session(s) for {BalanceConstants.WakeProbeHoldMs} ms.");
+                Thread.Sleep(BalanceConstants.PostWakeSettleMs);
+                return;
+            }
+
+            if (attempt < BalanceConstants.PostPairHidRetryAttempts)
+            {
+                log?.Invoke($"[CONNECT] wake probe: retry {attempt}/{BalanceConstants.PostPairHidRetryAttempts - 1}…");
+                Thread.Sleep(BalanceConstants.PostPairHidRetryMs);
+            }
+        }
+
+        log?.Invoke("[CONNECT] wake probe: no sessions opened (board may be asleep).");
+    }
+
+    private static void EnableHidOnRememberedNintendoDevices(Action<string>? log)
+    {
+        try
+        {
+            using var btClient = new BluetoothClient();
+            btClient.InquiryLength = TimeSpan.FromSeconds(1);
+            var remembered = btClient.DiscoverDevices(255, false, true, false);
+            foreach (var device in remembered)
+            {
+                if (!IsNintendoDevice(device))
+                {
+                    continue;
+                }
+
+                device.SetServiceState(BluetoothService.HumanInterfaceDevice, true);
+                log?.Invoke($"[CONNECT] wake probe: enabled HID service on {device.DeviceName}.");
+            }
+        }
+        catch (Exception ex)
+        {
+            log?.Invoke($"[CONNECT] wake probe: remembered-device note: {ex.Message}");
         }
     }
 

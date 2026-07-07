@@ -792,7 +792,9 @@ public partial class MainWindow : Window
         try
         {
             SaveSettingsFromUi();
-            BeginConnect(ConnectionIntent.PairAndConnect);
+            BeginConnect(_settings.HasConnectedBefore
+                ? ConnectionIntent.QuickReconnect
+                : ConnectionIntent.PairAndConnect);
         }
         catch (Exception ex)
         {

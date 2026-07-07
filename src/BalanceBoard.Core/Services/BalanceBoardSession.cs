@@ -252,6 +252,12 @@ public sealed class BalanceBoardSession : IDisposable
                 return quick;
             }
 
+            if (_connection.DiscoverDeviceIds().Count == 0)
+            {
+                _pairing.WakePairedDevices(Log);
+                ct.ThrowIfCancellationRequested();
+            }
+
             if (TryConnect(deviceIndex, preferredDeviceId))
             {
                 ConnectionFlowLogger.LogFlowComplete(Log, true);
@@ -309,13 +315,61 @@ public sealed class BalanceBoardSession : IDisposable
         _pairing.WakePairedDevices(Log);
         ct.ThrowIfCancellationRequested();
 
-        if (TryConnect(deviceIndex, preferredDeviceId))
+        for (var attempt = 1; attempt <= BalanceConstants.PostPairHidRetryAttempts; attempt++)
         {
-            return ConnectResult.Ok();
+            if (TryConnect(deviceIndex, preferredDeviceId))
+            {
+                return ConnectResult.Ok();
+            }
+
+            if (attempt >= BalanceConstants.PostPairHidRetryAttempts)
+            {
+                break;
+            }
+
+            Log?.Invoke($"[CONNECT] HID reconnect: retry {attempt}/{BalanceConstants.PostPairHidRetryAttempts - 1}…");
+            StatusChanged?.Invoke("Finding board…");
+            if (!ct.WaitHandle.WaitOne(TimeSpan.FromMilliseconds(BalanceConstants.PostPairHidRetryMs)))
+            {
+                // waited
+            }
+
+            ct.ThrowIfCancellationRequested();
+            _pairing.WakePairedDevices(Log);
+            ct.ThrowIfCancellationRequested();
         }
 
         StatusChanged?.Invoke("Board not found — trying again soon.");
         return ConnectResult.Fail(ConnectStatus.NoDevices);
+    }
+
+    private ConnectResult TryConnectWithHidRetries(
+        int deviceIndex,
+        string? preferredDeviceId,
+        CancellationToken ct)
+    {
+        for (var attempt = 1; attempt <= BalanceConstants.PostPairHidRetryAttempts; attempt++)
+        {
+            ct.ThrowIfCancellationRequested();
+
+            if (TryConnect(deviceIndex, preferredDeviceId))
+            {
+                return ConnectResult.Ok();
+            }
+
+            if (attempt < BalanceConstants.PostPairHidRetryAttempts)
+            {
+                Log?.Invoke(
+                    $"[CONNECT] HID not ready yet — retry {attempt}/{BalanceConstants.PostPairHidRetryAttempts} " +
+                    $"in {BalanceConstants.PostPairHidRetryMs} ms (board may still be waking).");
+                if (ct.WaitHandle.WaitOne(TimeSpan.FromMilliseconds(BalanceConstants.PostPairHidRetryMs)))
+                {
+                    ct.ThrowIfCancellationRequested();
+                }
+            }
+        }
+
+        return ConnectResult.Fail(ConnectStatus.HidFailed, "Paired but HID connect failed.");
     }
 
     private ConnectResult TryWakeAndConnect(
@@ -334,9 +388,7 @@ public sealed class BalanceBoardSession : IDisposable
             Log?.Invoke("[CONNECT] Skipping wake probe — board was just paired.");
         }
 
-        return TryConnect(deviceIndex, preferredDeviceId)
-            ? ConnectResult.Ok()
-            : ConnectResult.Fail(ConnectStatus.HidFailed, "Paired but HID connect failed.");
+        return TryConnectWithHidRetries(deviceIndex, preferredDeviceId, ct);
     }
 
     private ConnectResult TryPairAndConnect(int deviceIndex, int discoveryRounds, CancellationToken ct)
