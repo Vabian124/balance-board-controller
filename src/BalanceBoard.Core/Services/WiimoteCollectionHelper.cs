@@ -105,17 +105,8 @@ internal static class WiimoteCollectionHelper
 
     private static IReadOnlyList<string> EnumerateDeviceIds(WiimoteCollection collection) =>
         collection
-            .Select(d => ExtractDeviceId(d.HIDDevicePath))
+            .Select(d => DeviceIdRules.ExtractFromHidPath(d.HIDDevicePath))
             .Where(id => !string.IsNullOrWhiteSpace(id))
             .Cast<string>()
             .ToList();
-
-    private static string? ExtractDeviceId(string hidPath)
-    {
-        var match = System.Text.RegularExpressions.Regex.Match(
-            hidPath,
-            "e_pid&.*?&(.*?)&",
-            System.Text.RegularExpressions.RegexOptions.IgnoreCase);
-        return match.Success ? match.Groups[1].Value.ToUpperInvariant() : hidPath;
-    }
 }

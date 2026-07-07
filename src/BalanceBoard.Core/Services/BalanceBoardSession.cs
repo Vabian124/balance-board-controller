@@ -52,6 +52,7 @@ public sealed class BalanceBoardSession : IDisposable
         _connection.StatusChanged += msg => SafeCallbacks.Raise(StatusChanged, msg);
         _connection.ConnectLog += msg => SafeCallbacks.Raise(Log, msg);
         _connection.Error += msg => SafeCallbacks.Raise(Log, $"Error: {msg}");
+        _connection.ReadingAvailable += OnReadingAvailable;
         if (_vjoy is VJoyController vjoyController)
         {
             vjoyController.Log += msg => SafeCallbacks.Raise(Log, msg);
@@ -269,7 +270,7 @@ public sealed class BalanceBoardSession : IDisposable
 
             if (!pairResult.Success)
             {
-                if (round < discoveryRounds && !ct.WaitHandle.WaitOne(TimeSpan.FromSeconds(3)))
+                if (round < discoveryRounds && !ct.WaitHandle.WaitOne(TimeSpan.FromMilliseconds(BalanceConstants.PairRoundDelayMs)))
                 {
                     // wait between rounds
                 }
@@ -296,9 +297,18 @@ public sealed class BalanceBoardSession : IDisposable
 
     private void OnConnected()
     {
-        Log?.Invoke("Starting balance poll loop.");
         _loggedFirstPoll = false;
-        _worker.StartPolling();
+        if (_connection is BalanceBoardConnection)
+        {
+            Log?.Invoke("Starting balance event stream.");
+            _worker.StopPolling();
+        }
+        else
+        {
+            Log?.Invoke("Starting balance poll loop.");
+            _worker.StartPolling();
+        }
+
         if (Settings.AutoTareOnConnect)
         {
             TareCore();
@@ -369,7 +379,10 @@ public sealed class BalanceBoardSession : IDisposable
         ApplyPreset(ActionPresets.ApplyPedal, "Applied pedal preset (vJoy Z/RX/RY/RZ from load sensors).");
 
     public void ApplyKeyboardPreset() =>
-        ApplyPreset(ActionPresets.ApplyKeyboardMovement, "Applied hand-free desktop preset (WASD + Shift + Space).");
+        ApplyPreset(ActionPresets.ApplyKeyboardMovement, "Applied hand-free desktop preset (WASD + Shift + jump click).");
+
+    public void ApplyMousePreset() =>
+        ApplyPreset(ActionPresets.ApplyBalanceMouse, "Applied balance mouse preset (lean to move, jump to click).");
 
     public void ApplyProfile(string profileName)
     {
@@ -383,6 +396,14 @@ public sealed class BalanceBoardSession : IDisposable
         apply(Settings);
         SyncVJoyFromSettings();
         Log?.Invoke(logMessage);
+    }
+
+    private void OnReadingAvailable()
+    {
+        if (!_disposed)
+        {
+            Poll();
+        }
     }
 
     private void Poll()

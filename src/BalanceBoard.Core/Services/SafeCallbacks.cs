@@ -35,4 +35,21 @@ internal static class SafeCallbacks
             // Subscriber faults must not take down the worker or UI.
         }
     }
+
+    public static void Raise(Action? handler)
+    {
+        if (handler is null)
+        {
+            return;
+        }
+
+        try
+        {
+            handler();
+        }
+        catch
+        {
+            // Subscriber faults must not take down the worker or UI.
+        }
+    }
 }

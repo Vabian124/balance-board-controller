@@ -11,7 +11,7 @@ public sealed class BalanceProcessor
     private float _offsetBottomLeft;
     private float _offsetBottomRight;
     private bool _resetCenterPossible;
-    private DateTime _jumpTime = DateTime.UtcNow;
+    private DateTime _jumpTime = DateTime.MinValue;
 
     public void Tare()
     {
@@ -59,6 +59,26 @@ public sealed class BalanceProcessor
             _offsetBottomLeft,
             _offsetBottomRight);
 
+        var jump = BalanceMath.EvaluateJump(
+            weight,
+            settings.JumpWeightThresholdKg,
+            settings.JumpHoldSeconds,
+            DateTime.UtcNow,
+            ref _jumpTime);
+
+        var onBoard = weight > BalanceConstants.WeightOnBoardThresholdKg;
+        if (!onBoard)
+        {
+            return new ProcessedBalance
+            {
+                WeightKg = weight,
+                BalanceX = BalanceConstants.BalanceCenterPercent,
+                BalanceY = BalanceConstants.BalanceCenterPercent,
+                Jump = jump,
+                ButtonA = reading.ButtonA,
+            };
+        }
+
         var (owrTopLeft, owrTopRight, owrBottomLeft, owrBottomRight, total) =
             BalanceMath.ToBalancePercent(topLeft, topRight, bottomLeft, bottomRight);
 
@@ -69,7 +89,6 @@ public sealed class BalanceProcessor
             BalanceMath.EvaluateCardinalMovement(balanceX, balanceY, settings);
 
         var modifier = BalanceMath.EvaluateModifier(balanceX, balanceY, settings);
-        var jump = BalanceMath.EvaluateJump(weight, DateTime.UtcNow, ref _jumpTime);
 
         var (diagonalLeft, diagonalRight) = BalanceMath.EvaluateDiagonals(
             total,
@@ -82,7 +101,7 @@ public sealed class BalanceProcessor
             moveForward,
             moveBackward);
 
-        var (joyX, joyY) = BalanceMath.MapCenterOfGravityAxes(balanceX, balanceY, settings);
+        var (joyX, joyY) = BalanceMath.MapCenterOfGravityAxes(balanceX, balanceY, settings, onBoard);
         var (joyZ, joyRx, joyRy, joyRz) = BalanceMath.MapLoadSensorAxes(reading, settings);
 
         return new ProcessedBalance

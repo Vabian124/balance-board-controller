@@ -18,6 +18,7 @@
 - [docs/GLOSSARY.md](docs/GLOSSARY.md): Domain terms (tare, vJoy, triggers, etc.)
 - [docs/ROADMAP.md](docs/ROADMAP.md): Planned features and extension points
 - [docs/updates/](docs/updates/): Chronological agent work log with git commits and timestamps
+- [docs/suggestions/](docs/suggestions/): Improvement backlog (conventions, refactors) — promote to AGENTS.md when done
 - [README.md](README.md): User-facing setup and features
 
 ## Repository layout

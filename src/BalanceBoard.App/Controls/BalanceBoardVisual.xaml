@@ -4,16 +4,27 @@
              MinHeight="220" MinWidth="220">
     <Border Background="{DynamicResource Brush.BoardSurface}"
             BorderBrush="{DynamicResource Brush.BoardBorder}"
-            BorderThickness="1"
+            BorderThickness="2"
             CornerRadius="{StaticResource Radius.Card}">
-        <Canvas x:Name="BoardCanvas" Margin="24">
-            <Ellipse x:Name="TopLeftDot" Width="14" Height="14" Fill="{DynamicResource Brush.BoardDot}"/>
-            <Ellipse x:Name="TopRightDot" Width="14" Height="14" Fill="{DynamicResource Brush.BoardDot}"/>
-            <Ellipse x:Name="BottomLeftDot" Width="14" Height="14" Fill="{DynamicResource Brush.BoardDot}"/>
-            <Ellipse x:Name="BottomRightDot" Width="14" Height="14" Fill="{DynamicResource Brush.BoardDot}"/>
-            <Ellipse x:Name="CenterDot" Width="20" Height="20"
+        <Canvas x:Name="BoardCanvas" Margin="20">
+            <!-- Corner load pads -->
+            <Border x:Name="TopLeftPad" Width="52" Height="52" CornerRadius="12"
+                    Background="{DynamicResource Brush.BoardPadTL}" Opacity="0.35"/>
+            <Border x:Name="TopRightPad" Width="52" Height="52" CornerRadius="12"
+                    Background="{DynamicResource Brush.BoardPadTR}" Opacity="0.35"/>
+            <Border x:Name="BottomLeftPad" Width="52" Height="52" CornerRadius="12"
+                    Background="{DynamicResource Brush.BoardPadBL}" Opacity="0.35"/>
+            <Border x:Name="BottomRightPad" Width="52" Height="52" CornerRadius="12"
+                    Background="{DynamicResource Brush.BoardPadBR}" Opacity="0.35"/>
+
+            <Ellipse x:Name="TopLeftDot" Width="12" Height="12" Fill="{DynamicResource Brush.BoardPadTL}"/>
+            <Ellipse x:Name="TopRightDot" Width="12" Height="12" Fill="{DynamicResource Brush.BoardPadTR}"/>
+            <Ellipse x:Name="BottomLeftDot" Width="12" Height="12" Fill="{DynamicResource Brush.BoardPadBL}"/>
+            <Ellipse x:Name="BottomRightDot" Width="12" Height="12" Fill="{DynamicResource Brush.BoardPadBR}"/>
+
+            <Ellipse x:Name="CenterDot" Width="22" Height="22"
                      Fill="{DynamicResource Brush.BoardCenter}"
-                     Stroke="{DynamicResource Brush.Foreground}" StrokeThickness="2"/>
+                     Stroke="{DynamicResource Brush.BoardCenterStroke}" StrokeThickness="2.5"/>
         </Canvas>
     </Border>
 </UserControl>

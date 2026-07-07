@@ -51,6 +51,7 @@ public class SimulateBoardProcessTests
 
         Assert.NotEmpty(log);
         Assert.Contains(log, line => line.Contains("[CONNECT]", StringComparison.Ordinal));
+        Assert.Contains(log, line => line.Contains("First balance reading", StringComparison.Ordinal));
         Assert.DoesNotContain(log, line => line.Contains("FATAL", StringComparison.Ordinal));
     }
 

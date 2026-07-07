@@ -47,6 +47,7 @@ public sealed class BluetoothPairingService : IBluetoothPairingService
             cancellationToken.ThrowIfCancellationRequested();
 
             using var btClient = new BluetoothClient();
+            btClient.InquiryLength = TimeSpan.FromSeconds(BalanceConstants.BluetoothInquirySeconds);
             var radio = BluetoothRadio.PrimaryRadio;
             if (radio is null)
             {
@@ -96,7 +97,7 @@ public sealed class BluetoothPairingService : IBluetoothPairingService
             }
 
             log?.Invoke("Finishing Bluetooth setup…");
-            if (cancellationToken.WaitHandle.WaitOne(TimeSpan.FromSeconds(4)))
+            if (cancellationToken.WaitHandle.WaitOne(TimeSpan.FromMilliseconds(BalanceConstants.BluetoothFinishWaitMs)))
             {
                 cancellationToken.ThrowIfCancellationRequested();
             }
@@ -128,6 +129,7 @@ public sealed class BluetoothPairingService : IBluetoothPairingService
 
     private static void RemoveExistingNintendoDevices(BluetoothClient btClient)
     {
+        btClient.InquiryLength = TimeSpan.FromSeconds(BalanceConstants.BluetoothInquirySeconds);
         var existing = btClient.DiscoverDevices(255, false, true, false);
         foreach (var device in existing)
         {

@@ -18,6 +18,9 @@ public sealed class FakeBalanceBoardConnection : IBalanceBoardConnection
 #pragma warning disable CS0067
     public event Action<string>? Error;
 #pragma warning restore CS0067
+#pragma warning disable CS0067
+    public event Action? ReadingAvailable;
+#pragma warning restore CS0067
     public event Action<string>? ConnectLog;
 
     public bool IsConnected { get; private set; }

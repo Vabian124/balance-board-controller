@@ -8,7 +8,7 @@ public sealed class DiagnosticsReport
     public required bool IsHealthy { get; init; }
     public required IReadOnlyList<string> Lines { get; init; }
 
-    public static DiagnosticsReport Run(uint vJoyDeviceId = 1)
+    public static DiagnosticsReport Run(uint vJoyDeviceId = 1, IReadOnlyList<string>? knownHidDevices = null)
     {
         var lines = new List<string>();
         var healthy = true;
@@ -55,8 +55,17 @@ public sealed class DiagnosticsReport
         lines.Add("--- Wii HID devices ---");
         try
         {
-            using var session = new BalanceBoardSession();
-            var devices = session.DiscoverDevices();
+            IReadOnlyList<string> devices;
+            if (knownHidDevices is not null)
+            {
+                devices = knownHidDevices;
+                lines.Add("(Skipped HID probe — board session is active.)");
+            }
+            else
+            {
+                devices = WiimoteCollectionHelper.DiscoverDeviceIds();
+            }
+
             if (devices.Count == 0)
             {
                 lines.Add("No Wii devices detected.");

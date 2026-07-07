@@ -9,6 +9,14 @@ public sealed class VJoyController : IGameControllerOutput
     private vJoy? _joystick;
     private uint _deviceId = 1;
     private bool _acquired;
+    private short _lastX;
+    private short _lastY;
+    private short _lastZ;
+    private short _lastRx;
+    private short _lastRy;
+    private short _lastRz;
+    private bool _lastButtonA;
+    private bool _axesInitialized;
 
     public event Action<string>? Log;
 
@@ -18,6 +26,11 @@ public sealed class VJoyController : IGameControllerOutput
 
     public bool Initialize(uint deviceId = 1, bool attemptCleanupOnBusy = true)
     {
+        if (_acquired && _deviceId == deviceId && _joystick is not null)
+        {
+            return true;
+        }
+
         Shutdown();
         _deviceId = deviceId;
 
@@ -79,6 +92,7 @@ public sealed class VJoyController : IGameControllerOutput
         {
             _joystick.ResetVJD(deviceId);
             _acquired = true;
+            _axesInitialized = false;
             LastError = null;
             Log?.Invoke($"Acquired vJoy device {deviceId}.");
             return true;
@@ -132,13 +146,49 @@ public sealed class VJoyController : IGameControllerOutput
             return;
         }
 
-        _joystick.SetAxis(x, _deviceId, HID_USAGES.HID_USAGE_X);
-        _joystick.SetAxis(y, _deviceId, HID_USAGES.HID_USAGE_Y);
-        _joystick.SetAxis(z, _deviceId, HID_USAGES.HID_USAGE_Z);
-        _joystick.SetAxis(rx, _deviceId, HID_USAGES.HID_USAGE_RX);
-        _joystick.SetAxis(ry, _deviceId, HID_USAGES.HID_USAGE_RY);
-        _joystick.SetAxis(rz, _deviceId, HID_USAGES.HID_USAGE_RZ);
-        _joystick.SetBtn(buttonA, _deviceId, 1);
+        if (!_axesInitialized || x != _lastX)
+        {
+            _joystick.SetAxis(x, _deviceId, HID_USAGES.HID_USAGE_X);
+            _lastX = x;
+        }
+
+        if (!_axesInitialized || y != _lastY)
+        {
+            _joystick.SetAxis(y, _deviceId, HID_USAGES.HID_USAGE_Y);
+            _lastY = y;
+        }
+
+        if (!_axesInitialized || z != _lastZ)
+        {
+            _joystick.SetAxis(z, _deviceId, HID_USAGES.HID_USAGE_Z);
+            _lastZ = z;
+        }
+
+        if (!_axesInitialized || rx != _lastRx)
+        {
+            _joystick.SetAxis(rx, _deviceId, HID_USAGES.HID_USAGE_RX);
+            _lastRx = rx;
+        }
+
+        if (!_axesInitialized || ry != _lastRy)
+        {
+            _joystick.SetAxis(ry, _deviceId, HID_USAGES.HID_USAGE_RY);
+            _lastRy = ry;
+        }
+
+        if (!_axesInitialized || rz != _lastRz)
+        {
+            _joystick.SetAxis(rz, _deviceId, HID_USAGES.HID_USAGE_RZ);
+            _lastRz = rz;
+        }
+
+        if (!_axesInitialized || buttonA != _lastButtonA)
+        {
+            _joystick.SetBtn(buttonA, _deviceId, 1);
+            _lastButtonA = buttonA;
+        }
+
+        _axesInitialized = true;
     }
 
     public void Shutdown()
@@ -157,6 +207,7 @@ public sealed class VJoyController : IGameControllerOutput
         }
 
         _acquired = false;
+        _axesInitialized = false;
         _joystick = null;
     }
 
