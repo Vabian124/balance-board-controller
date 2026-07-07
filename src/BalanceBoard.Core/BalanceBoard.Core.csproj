@@ -24,9 +24,6 @@
 
   <ItemGroup>
     <None Include="..\..\libs\x64\vJoyInterface.dll" Link="vJoyInterface.dll" CopyToOutputDirectory="PreserveNewest" />
-    <None Include="..\..\libs\x64\vJoyInterfaceWrap.dll" Link="vJoyInterfaceWrap.dll" CopyToOutputDirectory="PreserveNewest" />
-    <None Include="..\..\libs\x64\WiimoteLib.dll" Link="WiimoteLib.dll" CopyToOutputDirectory="PreserveNewest" />
-    <None Include="..\..\libs\x64\InTheHand.Net.Personal.dll" Link="InTheHand.Net.Personal.dll" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
 </Project>
