@@ -34,6 +34,8 @@ Upstream inspiration: [WiiBalanceWalker v0.5](https://github.com/lshachar/WiiBal
 8. [docs/ROADMAP.md](docs/ROADMAP.md) — planned work (safe to implement)
 9. [docs/updates/README.md](docs/updates/README.md) — **what past agents did** (timestamped, per commit)
 
+**Python rewrite:** [docs/PYTHON_PORTING.md](docs/PYTHON_PORTING.md) — module map, behavior contract, settings compatibility.
+
 ## Architecture in 30 seconds
 
 ```
