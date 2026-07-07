@@ -1,3 +1,4 @@
+using System.Reflection;
 using System.Windows;
 using System.Windows.Threading;
 using BalanceBoard.App;
@@ -24,6 +25,13 @@ var thread = new Thread(() =>
             var options = StartupOptions.Parse(["--dev", "--no-cleanup", "--allow-multiple"]);
             var window = new MainWindow(options);
             Console.WriteLine("UI smoke: MainWindow constructed and XAML loaded.");
+
+            var click = typeof(MainWindow).GetMethod(
+                "MinecraftPreset_Click",
+                BindingFlags.Instance | BindingFlags.NonPublic);
+            click?.Invoke(window, [null!, new RoutedEventArgs()]);
+            Console.WriteLine("UI smoke: Minecraft preset applied without exception.");
+
             window.Close();
         });
         app.Dispatcher.InvokeShutdown();

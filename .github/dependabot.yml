@@ -5,6 +5,10 @@ updates:
     schedule:
       interval: weekly
     open-pull-requests-limit: 5
+    ignore:
+      # FsCheck 3.x removes bool.ToProperty(); keep 2.16.x until tests are ported.
+      - dependency-name: "FsCheck"
+      - dependency-name: "FsCheck.Xunit"
   - package-ecosystem: github-actions
     directory: "/"
     schedule:

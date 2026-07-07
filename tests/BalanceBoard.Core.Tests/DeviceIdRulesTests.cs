@@ -47,6 +47,35 @@ public class SettingsStoreTests
     }
 
     [Fact]
+    public void Save_and_Load_roundtrips_settings_fields()
+    {
+        var dir = Path.Combine(Path.GetTempPath(), "bb-tests", Guid.NewGuid().ToString("N"));
+        var store = new SettingsStore(dir);
+        var settings = new AppSettings
+        {
+            DeadzonePercent = 12,
+            Sensitivity = 1.5,
+            ActiveProfileName = "TestProfile",
+            JumpWeightThresholdKg = 33f,
+            JumpLevel = JumpLevel.Easy,
+            UiDetailLevel = UiDetailLevel.Advanced,
+            EnableVJoy = true,
+        };
+
+        store.Save(settings);
+        var loaded = store.Load();
+
+        Assert.Equal(settings.DeadzonePercent, loaded.DeadzonePercent);
+        Assert.Equal(settings.Sensitivity, loaded.Sensitivity);
+        Assert.Equal(settings.ActiveProfileName, loaded.ActiveProfileName);
+        Assert.Equal(settings.JumpWeightThresholdKg, loaded.JumpWeightThresholdKg);
+        Assert.Equal(settings.JumpLevel, loaded.JumpLevel);
+        Assert.Equal(settings.UiDetailLevel, loaded.UiDetailLevel);
+        Assert.Equal(settings.EnableVJoy, loaded.EnableVJoy);
+        Assert.True(File.Exists(store.SettingsPath));
+    }
+
+    [Fact]
     public void Load_clears_simulated_last_board_from_older_settings()
     {
         var dir = Path.Combine(Path.GetTempPath(), "bb-tests", Guid.NewGuid().ToString("N"));
