@@ -4,7 +4,9 @@ Thanks for improving Balance Board Controller. This project is optimized for bot
 
 ## For AI coding agents
 
-**Start with [AGENTS.md](AGENTS.md).** It links to architecture, file map, glossary, and roadmap.
+1. **[INSTRUCTIONS.md](INSTRUCTIONS.md)** — every-pass maintenance, commit rules, session checklist
+2. **[AGENTS.md](AGENTS.md)** — architecture, conventions, where to edit
+3. [llms.txt](llms.txt) — machine-readable doc index
 
 Machine-readable index: [llms.txt](llms.txt)
 

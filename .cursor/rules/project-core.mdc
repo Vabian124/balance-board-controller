@@ -5,6 +5,8 @@ alwaysApply: true
 
 # Balance Board Controller
 
+Read `INSTRUCTIONS.md` every pass (commit every change, maintenance checklist).
+
 Read `AGENTS.md` first, then `docs/CODEMAP.md` for file locations.
 
 ## Stack
@@ -22,6 +24,7 @@ Read `AGENTS.md` first, then `docs/CODEMAP.md` for file locations.
 - `MainWindow`: respect `_uiReady` and `_suppressSettingEvents`
 - Minimal diffs; match file-scoped namespaces and existing patterns
 - Never commit logs, baseline/, reference/, or user AppData files
+- **Commit every change** before ending a session (see `INSTRUCTIONS.md`); push only when user asks
 
 ## Verify
 
