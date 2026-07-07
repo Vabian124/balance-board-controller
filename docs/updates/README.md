@@ -33,7 +33,7 @@
 | 12 | 2026-07-07 15:45:00 | [`4fdb527`](https://github.com/Vabian124/balance-board-controller/commit/4fdb527) | [Fix CornerRadius crash](2026-07-07_154500_fix-cornerradius-crash.md) | Cursor — XAML theme bug |
 | 13 | 2026-07-07 15:55:00 | [`b74c488`](https://github.com/Vabian124/balance-board-controller/commit/b74c488) | [Lint and UI smoke](2026-07-07_155500_lint-and-ui-smoke.md) | Cursor — static analysis |
 | 14 | 2026-07-07 16:00:00 | [`1aa734c`](https://github.com/Vabian124/balance-board-controller/commit/1aa734c) | [Python port prep refactor](2026-07-07_160000_python-port-prep.md) | Cursor — BalanceMath, tests |
-| 15 | 2026-07-07 16:10:00 | *(pending)* | [Crash logging hardening](2026-07-07_151500_crash-logging.md) | Cursor — global exception logs |
+| 15 | 2026-07-07 16:10:00 | [`ff60cb2`](https://github.com/Vabian124/balance-board-controller/commit/ff60cb2) | [Crash logging hardening](2026-07-07_151500_crash-logging.md) | Cursor — global exception logs |
 
 ## Quick HEAD check
 
