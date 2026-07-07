@@ -1,3 +1,4 @@
+using BalanceBoard.Core.Abstractions;
 using BalanceBoard.Core.Models;
 
 namespace BalanceBoard.Core.Services;
@@ -7,9 +8,9 @@ public sealed class BalanceBoardSession : IDisposable
     private readonly BalanceBoardConnection _connection = new();
     private readonly BluetoothPairingService _pairing = new();
     private readonly BalanceProcessor _processor = new();
-    private readonly VJoyController _vjoy = new();
-    private readonly InputSimulator _input = new();
-    private readonly System.Timers.Timer _pollTimer = new(50);
+    private readonly IGameControllerOutput _vjoy;
+    private readonly IActionSimulator _input;
+    private readonly System.Timers.Timer _pollTimer = new(BalanceConstants.SessionPollIntervalMs);
     private AppSettings _settings = new();
     private bool _disposed;
     private CancellationTokenSource? _connectCts;
@@ -24,11 +25,17 @@ public sealed class BalanceBoardSession : IDisposable
     public string? ConnectedDeviceId => _connection.ConnectedDeviceId;
     public AppSettings Settings => _settings;
 
-    public BalanceBoardSession()
+    public BalanceBoardSession(IGameControllerOutput? gameController = null, IActionSimulator? actionSimulator = null)
     {
+        _vjoy = gameController ?? new VJoyController();
+        _input = actionSimulator ?? new InputSimulator();
         _connection.StatusChanged += msg => StatusChanged?.Invoke(msg);
         _connection.Error += msg => Log?.Invoke($"Error: {msg}");
-        _vjoy.Log += msg => Log?.Invoke(msg);
+        if (_vjoy is VJoyController vjoyController)
+        {
+            vjoyController.Log += msg => Log?.Invoke(msg);
+        }
+
         _pollTimer.Elapsed += (_, _) => Poll();
         _pollTimer.AutoReset = true;
     }
@@ -41,10 +48,10 @@ public sealed class BalanceBoardSession : IDisposable
             return;
         }
 
-        EnsureVJoyInitialized();
+        SyncVJoyFromSettings();
     }
 
-    private void EnsureVJoyInitialized()
+    private void SyncVJoyFromSettings()
     {
         if (_settings.EnableVJoy)
         {
@@ -211,10 +218,8 @@ public sealed class BalanceBoardSession : IDisposable
         {
             Tare();
         }
-        if (_settings.EnableVJoy)
-        {
-            _vjoy.Initialize(_settings.VJoyDeviceId);
-        }
+
+        SyncVJoyFromSettings();
     }
 
     public void Disconnect()
@@ -260,48 +265,27 @@ public sealed class BalanceBoardSession : IDisposable
         return reading is not null && _processor.CanResetCenter(reading.WeightKg);
     }
 
-    public void ApplyControllerPreset()
-    {
-        ActionPresets.ApplyGameController(_settings);
-        if (_settings.EnableVJoy)
-        {
-            _vjoy.Initialize(_settings.VJoyDeviceId);
-        }
-        else
-        {
-            _vjoy.Shutdown();
-        }
+    public void ApplyControllerPreset() =>
+        ApplyPreset(ActionPresets.ApplyGameController, "Applied game controller preset (vJoy X/Y from balance).");
 
-        Log?.Invoke("Applied game controller preset (vJoy X/Y from balance).");
-    }
+    public void ApplyPedalPreset() =>
+        ApplyPreset(ActionPresets.ApplyPedal, "Applied pedal preset (vJoy Z/RX/RY/RZ from load sensors).");
 
-    public void ApplyPedalPreset()
-    {
-        ActionPresets.ApplyPedal(_settings);
-        if (_settings.EnableVJoy)
-        {
-            _vjoy.Initialize(_settings.VJoyDeviceId);
-        }
-        else
-        {
-            _vjoy.Shutdown();
-        }
-
-        Log?.Invoke("Applied pedal preset (vJoy Z/RX/RY/RZ from load sensors).");
-    }
-
-    public void ApplyKeyboardPreset()
-    {
-        ActionPresets.ApplyKeyboardMovement(_settings);
-        _vjoy.Shutdown();
-        Log?.Invoke("Applied hand-free desktop preset (WASD + Shift + Space).");
-    }
+    public void ApplyKeyboardPreset() =>
+        ApplyPreset(ActionPresets.ApplyKeyboardMovement, "Applied hand-free desktop preset (WASD + Shift + Space).");
 
     public void ApplyProfile(string profileName)
     {
         ActionPresets.Apply(_settings, profileName);
-        LoadSettings(_settings);
+        SyncVJoyFromSettings();
         Log?.Invoke($"Applied profile: {profileName}");
+    }
+
+    private void ApplyPreset(Action<AppSettings> apply, string logMessage)
+    {
+        apply(_settings);
+        SyncVJoyFromSettings();
+        Log?.Invoke(logMessage);
     }
 
     private void Poll()

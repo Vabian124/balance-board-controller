@@ -11,6 +11,7 @@
 - [docs/WORKFLOW.md](docs/WORKFLOW.md): Boot, connect, reconnect, shutdown
 - [docs/STORAGE.md](docs/STORAGE.md): settings.json, logs, profiles
 - [docs/PYTHON_PORTING.md](docs/PYTHON_PORTING.md): Guide for rewriting in Python
+- [docs/REFACTORING_FOR_PYTHON.md](docs/REFACTORING_FOR_PYTHON.md): Portable core layout and DRY module map
 - [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md): Build, run, test, CI, troubleshooting
 - [docs/TEST_PLAN.md](docs/TEST_PLAN.md): Edge-case test matrix
 - [docs/GLOSSARY.md](docs/GLOSSARY.md): Domain terms (tare, vJoy, triggers, etc.)

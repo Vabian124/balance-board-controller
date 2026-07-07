@@ -41,10 +41,7 @@ public static class ActionPresets
         settings.DisableKeyboardActions = true;
         settings.SendCenterOfGravityToAxes = true;
         settings.SendLoadSensorsToAxes = false;
-        settings.TriggerLeftRight = 8;
-        settings.TriggerForwardBackward = 9;
-        settings.TriggerModifierLeftRight = 15;
-        settings.TriggerModifierForwardBackward = 16;
+        TriggerDefaults.ApplyTo(settings);
     }
 
     public static void ApplyPedal(AppSettings settings)
@@ -63,27 +60,22 @@ public static class ActionPresets
         settings.DisableKeyboardActions = false;
         settings.SendCenterOfGravityToAxes = false;
         settings.SendLoadSensorsToAxes = false;
-        settings.TriggerLeftRight = 8;
-        settings.TriggerForwardBackward = 9;
-        settings.TriggerModifierLeftRight = 15;
-        settings.TriggerModifierForwardBackward = 16;
+        TriggerDefaults.ApplyTo(settings);
         settings.Actions = CreateLegacyKeyboardBindings();
     }
 
-    public static Dictionary<string, ActionBinding> CreateLegacyKeyboardBindings()
-    {
-        return new Dictionary<string, ActionBinding>
+    public static Dictionary<string, ActionBinding> CreateLegacyKeyboardBindings() =>
+        new()
         {
-            ["Left"] = BindKey("A"),
-            ["Right"] = BindKey("D"),
-            ["Forward"] = BindKey("W"),
-            ["Backward"] = BindKey("S"),
-            ["Modifier"] = BindKey("LShiftKey"),
-            ["Jump"] = BindKey("Space"),
-            ["DiagonalLeft"] = BindMouseMoveX(-15),
-            ["DiagonalRight"] = BindMouseMoveX(15),
+            [ActionSlots.Left] = BindKey("A"),
+            [ActionSlots.Right] = BindKey("D"),
+            [ActionSlots.Forward] = BindKey("W"),
+            [ActionSlots.Backward] = BindKey("S"),
+            [ActionSlots.Modifier] = BindKey("LShiftKey"),
+            [ActionSlots.Jump] = BindKey("Space"),
+            [ActionSlots.DiagonalLeft] = BindMouseMoveX(-15),
+            [ActionSlots.DiagonalRight] = BindMouseMoveX(15),
         };
-    }
 
     private static ActionBinding BindKey(string key) =>
         new() { Kind = ActionKind.Key, KeyName = key };

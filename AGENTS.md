@@ -30,11 +30,13 @@ Upstream inspiration: [WiiBalanceWalker v0.5](https://github.com/lshachar/WiiBal
 4. [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) — build, run, debug, CI
 5. [docs/TEST_PLAN.md](docs/TEST_PLAN.md) — edge-case matrix and smoke tests
 6. [docs/STORAGE.md](docs/STORAGE.md) — settings.json, logs, profiles, connection state
-7. [docs/GLOSSARY.md](docs/GLOSSARY.md) — domain terms
-8. [docs/ROADMAP.md](docs/ROADMAP.md) — planned work (safe to implement)
-9. [docs/updates/README.md](docs/updates/README.md) — **what past agents did** (timestamped, per commit)
+7. [docs/REFACTORING_FOR_PYTHON.md](docs/REFACTORING_FOR_PYTHON.md) — portable core layout and port order
+8. [docs/PYTHON_PORTING.md](docs/PYTHON_PORTING.md) — module map and behavior contract
+9. [docs/GLOSSARY.md](docs/GLOSSARY.md) — domain terms
+10. [docs/ROADMAP.md](docs/ROADMAP.md) — planned work (safe to implement)
+11. [docs/updates/README.md](docs/updates/README.md) — **what past agents did** (timestamped, per commit)
 
-**Python rewrite:** [docs/PYTHON_PORTING.md](docs/PYTHON_PORTING.md) — module map, behavior contract, settings compatibility.
+**Python rewrite:** start with `Processing/BalanceMath.cs` + `tests/BalanceBoard.Core.Tests/`.
 
 ## Architecture in 30 seconds
 

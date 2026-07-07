@@ -9,9 +9,9 @@ This document maps the **current .NET implementation** to portable concepts. Rea
 | Behavior | Source of truth |
 |----------|-----------------|
 | 50 ms poll loop | `BalanceBoardSession` |
-| Balance math (tare, center, deadzone, triggers) | `BalanceProcessor.cs` |
+| Balance math (tare, center, deadzone, triggers) | `Processing/BalanceMath.cs`, `BalanceProcessor.cs` |
 | vJoy axis mapping | `VJoyController.cs` + `ActionPresets.cs` |
-| Keyboard/mouse bindings | `InputSimulator.cs` |
+| Keyboard/mouse bindings | `Processing/ActionEngine.cs` + `Win32InputBackend.cs` |
 | Wii BT permanent PIN (reversed host MAC) | `WiiBluetoothPin.cs`, `BluetoothPairingService.cs` |
 | Quick reconnect vs full pairing | `ConnectionIntent`, `MainWindow.RunDeferredStartup` |
 | Settings file location & fields | `AppSettings.cs`, `STORAGE.md` |
@@ -25,9 +25,13 @@ This document maps the **current .NET implementation** to portable concepts. Rea
 |------|----------------|--------------|
 | `BalanceBoardConnection` | WiimoteLib HID read | No direct WiimoteLib port. Options: `pywiimote` (if maintained), ctypes to WiimoteLib.dll, or `hidapi` + reverse-engineered report parsing |
 | `BluetoothPairingService` | Win32 BT pairing + PIN | `bleak` does not cover classic BT pairing. Use `pywin32`, `windows-curses` BT APIs, or shell to `InTheHand`/custom ctypes. PIN logic is pure — copy from `WiiBluetoothPin.cs` |
-| `BalanceProcessor` | Pure math | **Straight port** — no platform deps |
+| `BalanceMath` | Pure math | **Straight port** — start here; golden tests in `tests/BalanceBoard.Core.Tests` |
+| `ActionEngine` | Slot → binding state machine | **Straight port** — inject `IInputBackend` |
+| `VirtualKeyCodes` | Key name → VK | Copy lookup table to Python |
+| `BalanceProcessor` | Stateful tare/center wrapper | Thin layer over `BalanceMath` |
 | `VJoyController` | vJoy driver | `pyvjoy` or ctypes to `vJoyInterface.dll` in `libs/x64/` |
-| `InputSimulator` | `SendInput` | `pyautogui`, `pynput`, or `ctypes` `user32.SendInput` |
+| `Win32InputBackend` | `SendInput` | `pynput`, `pyautogui`, or `ctypes` `user32.SendInput` |
+| `InputSimulator` | Facade | Optional — compose `ActionEngine` + backend |
 | `BalanceBoardSession` | Orchestrator | Threading: `threading.Timer` or async loop |
 | `SettingsStore` | JSON settings | `json` + same paths as `AppDataPaths` |
 | `FileLogService` | Daily logs | `logging` module, same filename pattern |
@@ -61,12 +65,12 @@ From `WiiBluetoothPin.cs` (WiiBalanceWalker method):
 
 ```
 BalanceReading (4 corners kg, weight, button A)
-  → BalanceProcessor.Process(settings)
+  → BalanceProcessor.Process(settings)  // delegates to BalanceMath
   → ProcessedBalance (MoveLeft, JoyX/Y, …)
-  → VJoyController.Update / InputSimulator.Apply
+  → IGameControllerOutput.Update / IActionSimulator.Apply
 ```
 
-Reference: `BalanceProcessor.cs` — port unit tests against the same numeric fixtures if possible.
+Reference: `Processing/BalanceMath.cs` — run `dotnet test tests/BalanceBoard.Core.Tests` and reproduce all 18 assertions in Python.
 
 ## Native DLLs (Windows x64)
 
@@ -85,21 +89,22 @@ Python can ctypes-call `vJoyInterface.dll` directly; WiimoteLib is harder — co
 
 ```
 balance_board/
-  core/
-    models.py          # AppSettings, BalanceReading, ProcessedBalance
-    processor.py       # BalanceProcessor port
-    session.py         # BalanceBoardSession port
-    vjoy.py            # VJoyController port
-    input_sim.py       # InputSimulator port
-    pairing.py         # Wii PIN + Windows BT
-    connection.py      # HID / Wiimote
-    settings.py        # SettingsStore
-    paths.py           # AppDataPaths
-  app/
-    main.py            # GUI entry
-  tools/
-    validate.py        # Port of tools/Validate
+  models.py              # AppSettings, BalanceReading, ProcessedBalance, ActionSlots, BalanceConstants
+  processing/
+    balance_math.py      # Port of Processing/BalanceMath.cs (pure)
+    movement_mapper.py
+  balance_processor.py   # Stateful wrapper (port of Services/BalanceProcessor.cs)
+  action_presets.py
+  ports.py               # IGameControllerOutput protocol
+  session.py             # BalanceBoardSession orchestration
+  adapters/
+    vjoy.py              # IGameControllerOutput
+    input_win32.py       # SendInput backend
+    wiimote.py           # HID connection
+    bluetooth_pairing.py
 ```
+
+**.NET source map (post-refactor):** see [REFACTORING_FOR_PYTHON.md](REFACTORING_FOR_PYTHON.md).
 
 ## CLI flags to mirror
 
@@ -118,6 +123,12 @@ See `StartupOptions.cs`.
 2. `scripts/test-flow.ps1` equivalent — start/stop/single-instance
 3. [TEST_PLAN.md](TEST_PLAN.md) matrix — especially first launch, quick reconnect, cancel
 4. Compare `ProcessedBalance` outputs against .NET for same synthetic `BalanceReading`
+
+Run the golden tests:
+
+```powershell
+dotnet test tests/BalanceBoard.Core.Tests/BalanceBoard.Core.Tests.csproj -c Release
+```
 
 ## Files to read in order
 
