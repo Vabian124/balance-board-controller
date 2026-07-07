@@ -29,7 +29,7 @@
 | 8 | 2026-07-07 14:00:00 | [`5256356`](https://github.com/Vabian124/balance-board-controller/commit/5256356) | [UI redesign](2026-07-07_140000_5256356_ui-redesign.md) | Cursor — system themes, scripts |
 | 9 | 2026-07-07 15:00:00 | [`4942277`](https://github.com/Vabian124/balance-board-controller/commit/4942277) | [Smart connect workflow](2026-07-07_150000_smart-connect-workflow.md) | Cursor — edge cases, test plan |
 | 10 | 2026-07-07 15:15:00 | [`a5360f4`](https://github.com/Vabian124/balance-board-controller/commit/a5360f4) | [Persistence and logs](2026-07-07_151500_persistence-and-logs.md) | Cursor — settings, connection state |
-| 11 | 2026-07-07 15:35:00 | [`2b21a2d`](https://github.com/Vabian124/balance-board-controller/commit/2b21a2d) | [Final lint and push](2026-07-07_153500_final-lint-and-push.md) | Cursor — format, Python porting doc |
+| 11 | 2026-07-07 15:35:00 | [`ef0021e`](https://github.com/Vabian124/balance-board-controller/commit/ef0021e) | [Final lint and push](2026-07-07_153500_final-lint-and-push.md) | Cursor — format, Python porting doc |
 
 ## Quick HEAD check
 
