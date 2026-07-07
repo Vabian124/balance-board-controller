@@ -35,6 +35,7 @@ Checks: build, start/stop lifecycle, second-instance activation, log file creati
 | 18 | **Settings persist** | Change deadzone | Restart | Value restored |
 | 19 | **Legacy settings** | `SetupWizardCompleted: true` only | Load | `HasConnectedBefore` migrated |
 | 20 | **Health check** | Any | Run health check | Report in log; copy works |
+| 21 | **Window opens** | Any | `start.bat` | Main window visible; no `CornerRadius` exception dialog |
 
 ## Manual test procedure
 

@@ -1,6 +1,5 @@
 <ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-                    xmlns:sys="clr-namespace:System;assembly=mscorlib">
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
 
     <!-- System-aware brushes — follow Windows light/dark/high-contrast -->
     <SolidColorBrush x:Key="Brush.Background" Color="{DynamicResource {x:Static SystemColors.WindowColorKey}}"/>
@@ -32,8 +31,8 @@
     <FontFamily x:Key="Font.UI">Segoe UI Variable Text, Segoe UI, sans-serif</FontFamily>
     <FontFamily x:Key="Font.Mono">Cascadia Mono, Consolas, monospace</FontFamily>
 
-    <sys:Double x:Key="Radius.Card">10</sys:Double>
-    <sys:Double x:Key="Radius.Button">6</sys:Double>
+    <CornerRadius x:Key="Radius.Card">10</CornerRadius>
+    <CornerRadius x:Key="Radius.Button">6</CornerRadius>
     <Thickness x:Key="Thickness.Page">20</Thickness>
     <Thickness x:Key="Thickness.Card">16</Thickness>
 
