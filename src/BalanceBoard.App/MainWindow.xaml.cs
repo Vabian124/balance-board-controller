@@ -404,7 +404,6 @@ public partial class MainWindow : Window
         StatusText.Text = intent switch
         {
             ConnectionIntent.QuickReconnect => "Reconnecting to your balance board…",
-            ConnectionIntent.PairAndConnect => throw new NotImplementedException(),
             _ => "Searching — press SYNC on the board (red button under batteries)",
         };
 
@@ -428,12 +427,6 @@ public partial class MainWindow : Window
                     ConnectStatus.NoDevices => intent == ConnectionIntent.QuickReconnect
                         ? "Board offline — turn it on or press SYNC, then click Connect."
                         : "Not found — press SYNC, then Connect again.",
-                    ConnectStatus.Success => throw new NotImplementedException(),
-                    ConnectStatus.PairingFailed => throw new NotImplementedException(),
-                    ConnectStatus.HidFailed => throw new NotImplementedException(),
-                    ConnectStatus.NotBalanceBoard => throw new NotImplementedException(),
-                    ConnectStatus.TimedOut => throw new NotImplementedException(),
-                    ConnectStatus.Error => throw new NotImplementedException(),
                     _ => result.Message ?? "Connection failed — see session log.",
                 };
                 if (!quiet)
