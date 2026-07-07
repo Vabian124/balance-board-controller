@@ -26,7 +26,7 @@
 - `tools/Validate/` — CLI health-check tool
 - `libs/x64/` — WiimoteLib + vJoy native DLLs
 - `start.bat` / `stop.bat` — double-click launch and stop
-- `WiiBalanceWalker/` — Legacy v0.5 reference (MS-PL, do not confuse with main app)
+- `reference/WiiBalanceWalker/` — Legacy v0.5 reference (MS-PL, do not confuse with main app)
 
 ## Quick commands
 

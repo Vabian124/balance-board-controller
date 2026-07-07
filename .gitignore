@@ -343,5 +343,14 @@ healthchecksdb
 logs/
 *.log
 baseline/
-reference/
+
+# reference/ — track legacy MS-PL source only; ignore loose local binaries
+reference/*
+!reference/README.md
+!reference/WiiBalanceWalker/
+reference/WiiBalanceWalker/bin/
+reference/WiiBalanceWalker/obj/
+reference/WiiBalanceWalker/publish/
+
+# Obsolete root-level legacy solution (use BalanceBoard.sln)
 WiiBalanceWalker.sln

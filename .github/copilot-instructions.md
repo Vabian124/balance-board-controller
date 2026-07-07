@@ -8,4 +8,4 @@ Key files: docs/CODEMAP.md, docs/ARCHITECTURE.md, docs/DEVELOPMENT.md, docs/upda
 
 Stack: .NET 8 WPF, Windows x64, vJoy, WiimoteLib. UI in BalanceBoard.App; logic in BalanceBoard.Core.
 
-License: MIT for new code — fork-friendly. Legacy WiiBalanceWalker/ is MS-PL.
+License: MIT for new code — fork-friendly. Legacy `reference/WiiBalanceWalker/` is MS-PL.

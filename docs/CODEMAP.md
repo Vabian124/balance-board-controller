@@ -10,7 +10,7 @@ Complete map of **maintained source** (ignore `bin/`, `obj/`, `.vs/`).
 | `Directory.Build.props` | Shared nullable, analyzers, code style |
 | `.editorconfig` | Formatting rules |
 | `.github/workflows/build.yml` | CI: restore, Release build, validate tool |
-| `.gitignore` | Excludes logs, baseline, reference, build output |
+| `.gitignore` | Excludes logs, baseline, loose reference binaries, build output |
 
 ## `src/BalanceBoard.App/` — WPF application
 
@@ -120,9 +120,9 @@ Complete map of **maintained source** (ignore `bin/`, `obj/`, `.vs/`).
 | `vJoyInterface.dll` | vJoy native driver API |
 | `vJoyInterfaceWrap.dll` | Managed wrapper used by `VJoyController` |
 
-## `WiiBalanceWalker/` (legacy reference)
+## `reference/WiiBalanceWalker/` (legacy MS-PL)
 
-Original MS-PL project. Use for behavioral reference only. **Do not** treat as the active app entry point.
+Original WiiBalanceWalker v0.5 WinForms project. Use for behavioral reference only — **do not** treat as the active app. See [reference/README.md](../reference/README.md).
 
 ## Runtime paths (not in repo)
 

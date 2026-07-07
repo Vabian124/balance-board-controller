@@ -27,7 +27,7 @@ Run through this list **at the start and end** of each turn where you touch the 
    - Only skip commit if the user explicitly says “do not commit” for that turn.
 
 4. **Never commit**
-   - Logs (`*.log`, `%AppData%` paths), `baseline/`, `reference/`
+   - Logs (`*.log`, `%AppData%` paths), `baseline/`, loose files in `reference/` (not `reference/WiiBalanceWalker/`)
    - Passwords, tokens, personal paths, or machine-specific secrets
    - Accidental `bin/`, `obj/`, `.vs/` (already gitignored)
 
@@ -60,7 +60,7 @@ On sessions where you implement features, fix bugs, or change docs structure, al
 
 4. **License & attribution**
    - New source files: MIT header not required (LICENSE covers repo), but do not remove [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)
-   - Do not relicense legacy `WiiBalanceWalker/` — keep MS-PL notice intact
+   - Do not relicense legacy `reference/WiiBalanceWalker/` — keep MS-PL notice intact
 
 ---
 
@@ -112,7 +112,7 @@ On sessions where you implement features, fix bugs, or change docs structure, al
 | Component | License | You may |
 |-----------|---------|---------|
 | **Balance Board Controller** (new code: `src/`, `tools/`, docs) | **MIT** | Use commercially, fork, modify, redistribute — include LICENSE copy |
-| **WiiBalanceWalker/** (legacy reference) | **MS-PL** | Per MS-PL terms; keep notices |
+| **WiiBalanceWalker/** (legacy reference) | **MS-PL** | Per MS-PL terms; keep notices; path `reference/WiiBalanceWalker/` |
 | **WiimoteLib.dll** | MIT | Per upstream |
 | **vJoy** | Upstream | Install separately; driver not shipped |
 
