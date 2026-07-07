@@ -24,22 +24,29 @@ Clean rewrite of [WiiBalanceWalker v0.5](https://github.com/lshachar/WiiBalanceW
 ## Requirements
 
 - Windows 10/11 (64-bit)
-- [.NET 8 SDK](https://dotnet.microsoft.com/download) (pinned in [`global.json`](global.json))
+- [.NET 8 Desktop Runtime](https://dotnet.microsoft.com/download/dotnet/8.0) — or SDK if building from source ([`global.json`](global.json))
 - [vJoy](https://github.com/shauleiz/vJoy) — reboot after install
 - Bluetooth adapter + Wii Fit Balance Board
+
+**Full install guide:** [docs/INSTALL.md](docs/INSTALL.md) (build steps, releases, antivirus notes).
 
 ## Quick start
 
 1. Install **vJoy**, reboot, enable **Device 1** (X/Y) in vJoyConf.
-2. **Double-click [`start.bat`](start.bat)** or run `.\scripts\dev\start.ps1`
-3. Click **Connect**, press **SYNC** on the board (first time).
-4. Stand on the board → **Tare** → verify in vJoy Monitor.
+2. Install **.NET 8 Desktop Runtime** (or SDK).
+3. Clone, build, run:
 
 ```powershell
 git clone https://github.com/Vabian124/balance-board-controller.git
 cd balance-board-controller
+.\build.bat
 .\start.bat
 ```
+
+Or double-click **`start.bat`** after a build — it auto-builds on first run.
+
+4. Click **Connect**, press **SYNC** on the board (first time).
+5. Stand on the board → **Tare** → verify in vJoy Monitor.
 
 ### Simulate (no hardware)
 
@@ -96,6 +103,10 @@ docs/                   Architecture, CODEMAP, testing guide
 | DLL mismatch | Copy `vJoyInterface*.dll` from your vJoy install into `libs/x64/` |
 
 Logs: `%AppData%\BalanceBoardApp\logs\session-YYYY-MM-DD.log`
+
+## Security & antivirus
+
+Open-source MIT project — no network calls at runtime, no admin elevation, no packing/obfuscation. vJoy and optional `SendInput` keyboard mode are standard for gaming/accessibility tools; unsigned builds may trigger SmartScreen. **Build from source** or verify [GitHub Release](https://github.com/Vabian124/balance-board-controller/releases) SHA256 checksums. Details: [docs/INSTALL.md](docs/INSTALL.md#antivirus-and-windows-smartscreen).
 
 ## License
 

@@ -4,6 +4,10 @@ All notable user-facing changes. For detailed agent work logs see [`docs/updates
 
 ## Unreleased
 
+## [1.0.0] - 2026-07-07
+
+First production-ready release for public use.
+
 ### Fixed
 - Connect button threw `NotImplementedException` (dotnet format switch stubs) — **5bfb026**
 - `ObjectDisposedException` on fresh board connect — **ConnectionWorker** STA thread — **aebfc01**
@@ -11,13 +15,15 @@ All notable user-facing changes. For detailed agent work logs see [`docs/updates
 ### Added
 - `ConnectionWorker` — single STA thread for WiimoteLib/Bluetooth (fixes connect crash)
 - Test pyramid: unit, integration, fuzz, automation (`--simulate-board`), hardware scripts
-- `scripts/ci/` quality gate with format, analyzers, and lifecycle smoke
+- `scripts/ci/` quality gate with format, analyzers, crash-safety grep, lifecycle smoke
 - `ConnectResult` structured connect outcomes; crash-hardened error paths
+- `build.bat`, `docs/INSTALL.md`, GitHub Release workflow, assembly metadata, `asInvoker` manifest
 
 ### Changed
 - Poll loop moved off thread pool onto `ConnectionWorker`
 - UI uses `Dispatcher.BeginInvoke` to avoid connect deadlocks
 - Professional repo layout: `scripts/dev/`, `scripts/ci/`, `docs/testing/`
+- `start.bat` runs production mode (single instance); use `scripts/dev/start.ps1` for `--dev`
 
 ### Removed
 - `StaThread` (superseded by `ConnectionWorker`)
