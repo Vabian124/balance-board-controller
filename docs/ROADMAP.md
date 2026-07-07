@@ -2,7 +2,7 @@
 
 Planned improvements. Safe for agents to implement incrementally.
 
-## Completed (v1.1.x)
+## Completed (through v1.2.0)
 
 - [x] **Tabbed UI** — Dashboard / Profiles / Advanced (`MainTabControl`)
 - [x] **UI detail levels** — Simple / Standard / Advanced (`UiDetailLevel`)

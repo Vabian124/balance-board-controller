@@ -122,7 +122,7 @@ Action slot keys: `Left`, `Right`, `Forward`, `Backward`, `Modifier`, `Jump`, `D
 | No devices | Windows Bluetooth pairing, SYNC button, `DiscoverDevices()` |
 | DLL mismatch warning | Replace `libs/x64/vJoyInterface*.dll` from vJoy install |
 | UI crash on startup | Settings loaded before `InitializeComponent()` in `MainWindow` ctor |
-| Disconnect crash / OnReadData after dispose | v1.1.1+ disconnect hardening; check `[DISCONNECT]` in session log |
+| Disconnect crash / OnReadData after dispose | v1.2.0+ disconnect hardening; check `[DISCONNECT]` in session log |
 | Minecraft preset brush error | Use `TryFindResource` pattern in profile styling (see `ActionPresets.ApplyMinecraft`) |
 
 Run **Debug Suite → Health Check** or the Validate CLI for a full report.

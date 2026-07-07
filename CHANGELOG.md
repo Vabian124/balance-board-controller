@@ -29,6 +29,17 @@ Stability and accessibility release: crash-proof disconnect, Minecraft preset, j
 
 ## Unreleased
 
+## [1.2.0] - 2026-07-07
+
+Production release: correct version metadata and release asset naming.
+
+### Fixed
+- **Release zip naming** — `Directory.Build.props` version now matches Git tags and published assets (`BalanceBoardController-1.2.0-win-x64.zip`); v1.1.1 shipped a misnamed `1.1.0` zip
+
+### Changed
+- Assembly and file version bumped to **1.2.0** across all projects
+- Dependency updates: `Microsoft.NET.Test.Sdk` 18.7.0, `xunit` 2.9.3, `xunit.runner.visualstudio` 3.1.5, `softprops/action-gh-release` v3, `Microsoft.CodeAnalysis.NetAnalyzers` 10.0.301
+
 ## [1.1.0] - 2026-07-07
 
 Feature release: accessibility, mouse mode, dark theme, and balance-visual fixes.
