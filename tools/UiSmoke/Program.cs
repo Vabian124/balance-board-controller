@@ -16,7 +16,7 @@ var thread = new Thread(() =>
     try
     {
         var app = new Application { ShutdownMode = ShutdownMode.OnExplicitShutdown };
-        app.Resources.MergedDictionaries.Add(LoadTheme("Themes/Colors.xaml"));
+        app.Resources.MergedDictionaries.Add(LoadTheme("Themes/Colors.Light.xaml"));
         app.Resources.MergedDictionaries.Add(LoadTheme("Themes/Controls.xaml"));
 
         app.Dispatcher.Invoke(() =>

@@ -15,7 +15,7 @@ Clean rewrite of [WiiBalanceWalker v0.5](https://github.com/lshachar/WiiBalanceW
 
 - **Live dashboard** — Wii Fit–style balance visual, direction text, connection status
 - **Game controller mode** — lean → vJoy X/Y (works with most joystick games)
-- **Presets** — game controller, pedals/rudder, hand-free WASD desktop, balance mouse
+- **Presets** — game controller, **Minecraft (Controlify)**, pedals/rudder, hand-free WASD desktop, balance mouse
 - **In-app control mapping** — key / mouse bindings for all 8 action slots
 - **Dark mode** — follows Windows or force light/dark
 - **Sensitivity presets** — Low through Highly sensitive for kids and accessibility
@@ -50,6 +50,13 @@ Or double-click **`start.bat`** after a build — it auto-builds on first run.
 
 4. Click **Connect**, press **SYNC** on the board (first time).
 5. Stand on the board → **Tare** → verify in vJoy Monitor.
+
+### Minecraft with Controlify (Modrinth / Fabric)
+
+1. Install [Controlify](https://modrinth.com/mod/controlify) in your Minecraft instance (launcher choice does not matter).
+2. In this app, select profile **Minecraft (Controlify)** — lean drives vJoy **left stick** (move), one-foot jump sends **vJoy button 1** (gamepad A).
+3. In Minecraft: **Options → Controls → Controlify** — bind **vJoy Device 1**; map left stick to walk/strafe and button A to jump. Use mouse or right stick for look.
+4. Disable Steam Input if it overrides Controlify on Steam Deck.
 
 <!-- Screenshots: add docs/images/dashboard.png and docs/images/connect.png when available -->
 

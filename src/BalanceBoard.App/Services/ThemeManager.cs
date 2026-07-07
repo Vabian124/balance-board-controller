@@ -10,8 +10,12 @@ namespace BalanceBoard.App.Services;
 /// </summary>
 public static class ThemeManager
 {
-    private static readonly Uri LightColors = new("Themes/Colors.Light.xaml", UriKind.Relative);
-    private static readonly Uri DarkColors = new("Themes/Colors.Dark.xaml", UriKind.Relative);
+    private const string AppAssembly = "BalanceBoardApp";
+    private static readonly Uri LightColors = ThemeUri("Colors.Light.xaml");
+    private static readonly Uri DarkColors = ThemeUri("Colors.Dark.xaml");
+
+    private static Uri ThemeUri(string fileName) =>
+        new($"pack://application:,,,/{AppAssembly};component/Themes/{fileName}", UriKind.Absolute);
 
     public static void Apply(ThemePreference preference)
     {

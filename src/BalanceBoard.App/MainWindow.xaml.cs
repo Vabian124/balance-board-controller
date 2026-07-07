@@ -272,10 +272,30 @@ public partial class MainWindow : Window
     private void UpdateProfileButtonStyles()
     {
         var profile = _settings.ActiveProfileName;
+        var minecraft = profile == ActionPresets.Minecraft;
         SetPresetButtonStyle(GamePresetButton, profile == ActionPresets.GameController);
+        SetPresetButtonStyle(MinecraftPresetButton, minecraft);
         SetPresetButtonStyle(DesktopPresetButton, profile == ActionPresets.KeyboardMovement);
         SetPresetButtonStyle(PedalPresetButton, profile == ActionPresets.Pedal);
         SetPresetButtonStyle(MousePresetButton, profile == ActionPresets.BalanceMouse);
+
+        var accent = minecraft ? (Brush)FindResource("Brush.Minecraft") : (Brush)FindResource("Brush.CardBorder");
+        ProfileCard.BorderBrush = accent;
+        ProfileCard.BorderThickness = minecraft ? new Thickness(2) : new Thickness(1);
+        BalancePanel.BorderBrush = minecraft ? accent : (Brush)FindResource("Brush.CardBorder");
+        BalancePanel.BorderThickness = minecraft ? new Thickness(2) : new Thickness(1);
+
+        if (minecraft)
+        {
+            ProfileHintText.Text =
+                "Minecraft + Controlify: in Options → Controls → Controlify, bind vJoy Device 1. " +
+                "Lean maps to the left stick (move); lift one foot to jump (vJoy A). Use mouse/right stick for look.";
+            ProfileHintText.Visibility = Visibility.Visible;
+        }
+        else
+        {
+            ProfileHintText.Visibility = Visibility.Collapsed;
+        }
     }
 
     private static void SetPresetButtonStyle(Button button, bool active)
@@ -706,6 +726,13 @@ public partial class MainWindow : Window
     private void MousePreset_Click(object sender, RoutedEventArgs e)
     {
         _session.ApplyMousePreset();
+        SyncUiFromSettings();
+        SaveSettingsFromUi();
+    }
+
+    private void MinecraftPreset_Click(object sender, RoutedEventArgs e)
+    {
+        _session.ApplyMinecraftPreset();
         SyncUiFromSettings();
         SaveSettingsFromUi();
     }

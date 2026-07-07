@@ -20,7 +20,8 @@
     <SolidColorBrush x:Key="Brush.Success" Color="{StaticResource Color.Success}"/>
     <SolidColorBrush x:Key="Brush.Warning" Color="{StaticResource Color.Warning}"/>
     <SolidColorBrush x:Key="Brush.Danger" Color="{StaticResource Color.Danger}"/>
-    <SolidColorBrush x:Key="Brush.Info" Color="{StaticResource Color.Info}"/>
+    <Color x:Key="Color.Minecraft">#22C55E</Color>
+    <SolidColorBrush x:Key="Brush.Minecraft" Color="{StaticResource Color.Minecraft}"/>
 
     <!-- Balance board visual -->
     <SolidColorBrush x:Key="Brush.BoardSurface" Color="{DynamicResource {x:Static SystemColors.ControlDarkColorKey}}"/>

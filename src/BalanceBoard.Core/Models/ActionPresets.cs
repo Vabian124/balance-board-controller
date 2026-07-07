@@ -6,12 +6,14 @@ public static class ActionPresets
     public const string Pedal = "Pedal / Rudder";
     public const string KeyboardMovement = "Hand-Free Desktop";
     public const string BalanceMouse = "Balance Mouse";
+    public const string Minecraft = "Minecraft (Controlify)";
     public const string Default = "Default";
 
     public static IReadOnlyList<string> All { get; } =
     [
         Default,
         GameController,
+        Minecraft,
         Pedal,
         KeyboardMovement,
         BalanceMouse,
@@ -23,6 +25,9 @@ public static class ActionPresets
         {
             case GameController:
                 ApplyGameController(settings);
+                break;
+            case Minecraft:
+                ApplyMinecraft(settings);
                 break;
             case Pedal:
                 ApplyPedal(settings);
@@ -46,6 +51,22 @@ public static class ActionPresets
         settings.DisableKeyboardActions = true;
         settings.SendCenterOfGravityToAxes = true;
         settings.SendLoadSensorsToAxes = false;
+        settings.MapJumpToVJoyButton = false;
+        TriggerDefaults.ApplyTo(settings);
+    }
+
+    /// <summary>
+    /// vJoy left stick = move (lean), button 1 = jump — bind vJoy Device 1 in Controlify for Minecraft.
+    /// </summary>
+    public static void ApplyMinecraft(AppSettings settings)
+    {
+        settings.ActiveProfileName = Minecraft;
+        settings.EnableVJoy = true;
+        settings.DisableKeyboardActions = true;
+        settings.SendCenterOfGravityToAxes = true;
+        settings.SendLoadSensorsToAxes = false;
+        settings.MapJumpToVJoyButton = true;
+        SensitivityPresets.Apply(settings, SensitivityLevel.Medium);
         TriggerDefaults.ApplyTo(settings);
     }
 

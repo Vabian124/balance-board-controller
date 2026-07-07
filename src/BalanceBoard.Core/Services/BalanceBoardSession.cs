@@ -384,6 +384,9 @@ public sealed class BalanceBoardSession : IDisposable
     public void ApplyMousePreset() =>
         ApplyPreset(ActionPresets.ApplyBalanceMouse, "Applied balance mouse preset (lean to move, jump to click).");
 
+    public void ApplyMinecraftPreset() =>
+        ApplyPreset(ActionPresets.ApplyMinecraft, "Applied Minecraft (Controlify) preset — lean = move, jump = vJoy A.");
+
     public void ApplyProfile(string profileName)
     {
         ActionPresets.Apply(Settings, profileName);
