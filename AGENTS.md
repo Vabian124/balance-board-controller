@@ -25,11 +25,13 @@ Upstream inspiration: [WiiBalanceWalker v0.5](https://github.com/lshachar/WiiBal
 ## Read order for new agents
 
 1. [docs/CODEMAP.md](docs/CODEMAP.md) — every source file and its job
-2. [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) — data flow, threading, extension points
-3. [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) — build, run, debug, CI
-4. [docs/GLOSSARY.md](docs/GLOSSARY.md) — domain terms
-5. [docs/ROADMAP.md](docs/ROADMAP.md) — planned work (safe to implement)
-6. [docs/updates/README.md](docs/updates/README.md) — **what past agents did** (timestamped, per commit)
+2. [docs/WORKFLOW.md](docs/WORKFLOW.md) — boot, connect, reconnect, shutdown behavior
+3. [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) — data flow, threading, extension points
+4. [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) — build, run, debug, CI
+5. [docs/TEST_PLAN.md](docs/TEST_PLAN.md) — edge-case matrix and smoke tests
+6. [docs/GLOSSARY.md](docs/GLOSSARY.md) — domain terms
+7. [docs/ROADMAP.md](docs/ROADMAP.md) — planned work (safe to implement)
+8. [docs/updates/README.md](docs/updates/README.md) — **what past agents did** (timestamped, per commit)
 
 ## Architecture in 30 seconds
 

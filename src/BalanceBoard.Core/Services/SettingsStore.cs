@@ -32,7 +32,9 @@ public sealed class SettingsStore
         try
         {
             var json = File.ReadAllText(_settingsPath);
-            return JsonSerializer.Deserialize<AppSettings>(json) ?? new AppSettings();
+            var settings = JsonSerializer.Deserialize<AppSettings>(json) ?? new AppSettings();
+            MigrateLegacyFlags(settings);
+            return settings;
         }
         catch
         {
@@ -44,6 +46,14 @@ public sealed class SettingsStore
     {
         var json = JsonSerializer.Serialize(settings, _jsonOptions);
         File.WriteAllText(_settingsPath, json);
+    }
+
+    private static void MigrateLegacyFlags(AppSettings settings)
+    {
+        if (!settings.HasConnectedBefore && settings.SetupWizardCompleted)
+        {
+            settings.HasConnectedBefore = true;
+        }
     }
 
     public string ProfilesDirectory

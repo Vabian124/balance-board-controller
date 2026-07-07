@@ -20,7 +20,7 @@ flowchart TB
 
     subgraph ui [BalanceBoard.App]
         MW[MainWindow]
-        SW[SetupWizardWindow]
+        SIS[SingleInstanceService]
         FLS[FileLogService]
     end
 
@@ -37,7 +37,7 @@ flowchart TB
     MW --> BBS
     MW --> SS
     MW --> FLS
-    SW --> BBS
+    App --> SIS
     VJ --> VJoyDrv
     IS --> OSIn
 ```
