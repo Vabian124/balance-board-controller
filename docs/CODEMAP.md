@@ -28,6 +28,7 @@ Complete map of **maintained source** (ignore `bin/`, `obj/`, `.vs/`).
 | `Controls/BalanceBoardVisual.xaml(.cs)` | Live 2D balance dot, jump banner |
 | `Controls/ActionBindingRow.xaml(.cs)` | Per-slot key/mouse binding editor row |
 | `Dialogs/NamePromptDialog.xaml(.cs)` | Modal single-line text prompt (naming/importing custom profiles) |
+| `Dialogs/DevicePickerDialog.xaml(.cs)` | Modal picker when multiple balance-board HID devices are visible |
 | `Themes/Colors.xaml` | Shared brush keys |
 | `Themes/Colors.Light.xaml` / `Colors.Dark.xaml` | Theme-specific palettes (dropdown contrast fix in v1.1.1) |
 | `Themes/Controls.xaml` | Shared control styles, tab styles |
@@ -91,7 +92,8 @@ Complete map of **maintained source** (ignore `bin/`, `obj/`, `.vs/`).
 | `Win32InputBackend.cs` | `SendInput` keyboard/mouse (Windows only) |
 | `BluetoothPairingService.cs` | Automatic Wii BT pairing (reversed host MAC PIN) |
 | `WiiBluetoothPin.cs` | Host MAC → Wii permanent pairing PIN |
-| `SettingsStore.cs` | JSON settings in `%AppData%\BalanceBoardApp\`; atomic save; connection state |
+| `SettingsStore.cs` | JSON settings in `%AppData%\BalanceBoardApp\`; atomic save; connection state; profile export/import |
+| `DeviceSelection.cs` | Multi-device index resolution (preferred id vs picker) |
 | `AppDataPaths.cs` | Canonical paths for settings, logs, profiles |
 | `FileLogService.cs` | Daily session log with SESSION header + structured tags |
 | `DiagnosticsReport.cs` | Structured health check for UI + clipboard |

@@ -977,6 +977,46 @@ public partial class MainWindow : Window
         }
     }
 
+    /// <summary>
+    /// When multiple HID boards are already visible and no preferred id matches, ask the user which to use.
+    /// Auto/quiet reconnects skip the picker and fall back to index 0.
+    /// </summary>
+    private int ResolveConnectDeviceIndex(ConnectionIntent intent, bool quiet)
+    {
+        try
+        {
+            var devices = _session.DiscoverDevices();
+            if (devices.Count <= 1)
+            {
+                return 0;
+            }
+
+            var preferred = _settings.LastConnectedDeviceId;
+            var allowDefault = quiet || intent == ConnectionIntent.QuickReconnect;
+            var resolved = DeviceSelection.ResolveDeviceIndex(devices, preferred, allowDefault);
+            if (resolved is not null)
+            {
+                Log($"[CONNECT] Multi-device: using index {resolved.Value} of {devices.Count} (preferred={preferred ?? "none"}).");
+                return resolved.Value;
+            }
+
+            var picker = new DevicePickerDialog(devices, preferred) { Owner = this };
+            if (picker.ShowDialog() == true && picker.SelectedIndex >= 0)
+            {
+                Log($"[CONNECT] Multi-device: user selected index {picker.SelectedIndex} ({picker.SelectedDeviceId}).");
+                return picker.SelectedIndex;
+            }
+
+            Log("[CONNECT] Multi-device picker cancelled — using first board.");
+            return 0;
+        }
+        catch (Exception ex)
+        {
+            _fileLog.WriteException(ex, "ResolveConnectDeviceIndex");
+            return 0;
+        }
+    }
+
     private async void BeginConnect(ConnectionIntent intent, bool quiet = false)
     {
         if (_shutdownCompleted
@@ -986,7 +1026,9 @@ public partial class MainWindow : Window
             return;
         }
 
-        Log($"[CONNECT] UI begin intent={intent} quiet={quiet}");
+        var deviceIndex = ResolveConnectDeviceIndex(intent, quiet);
+
+        Log($"[CONNECT] UI begin intent={intent} quiet={quiet} deviceIndex={deviceIndex}");
         _connectInProgress = true;
         _connectCts = new CancellationTokenSource();
         UpdateConnectUi(isBusy: true);
@@ -1003,7 +1045,7 @@ public partial class MainWindow : Window
         try
         {
             var token = _connectCts.Token;
-            _connectTask = _session.ConnectWithIntentAsync(intent, cancellationToken: token);
+            _connectTask = _session.ConnectWithIntentAsync(intent, deviceIndex, cancellationToken: token);
             var result = await _connectTask;
 
             if (_shutdownCompleted)
