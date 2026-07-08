@@ -12,6 +12,19 @@ public static class BalanceMath
             Math.Max(reading.TopLeftKg, reading.TopRightKg),
             Math.Max(reading.BottomLeftKg, reading.BottomRightKg));
 
+    /// <summary>
+    /// Reconstructs the ABSOLUTE gross weight on the board.
+    /// WiimoteLib applies a software zero-point (tare): once set, it subtracts the captured
+    /// baseline from every corner and therefore from <c>WeightKg</c>. That baseline is meant to
+    /// be the empty board, but a tare taken while someone is standing on the board (e.g. auto-tare
+    /// during startup auto-connect) captures their body weight — leaving the reported total weight
+    /// stuck near zero. Adding the zero-point total back yields the true weight on the board for
+    /// display, independent of when the tare happened. Lean/balance still use the relative
+    /// (zeroed) corner distribution, so tare keeps working for centering.
+    /// </summary>
+    public static float RestoreAbsoluteWeightKg(float taredWeightKg, bool zeroPointSet, float zeroPointTotalKg) =>
+        zeroPointSet ? taredWeightKg + zeroPointTotalKg : taredWeightKg;
+
     public static (float TopLeft, float TopRight, float BottomLeft, float BottomRight, float Weight) NormalizeCorners(
         BalanceReading reading,
         float minCorner,

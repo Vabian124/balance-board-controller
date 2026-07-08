@@ -6,6 +6,7 @@ Short index for AI assistants. User-facing history: [CHANGELOG.md](../../CHANGEL
 
 | Commit | Summary |
 |--------|---------|
+| *(pending)* | **User-reported fixes batch** — absolute weight after Wiimote tare, Forward=W keyboard regression, proportional Balance Mouse, startup auto-reconnect recovery, vJoy Configure button + `VJoyConfigLocator`, `docs/DEVELOPER_API.md`, expanded tests |
 | [`31cf32a`](https://github.com/Vabian124/balance-board-controller/commit/31cf32a) | **v1.4.1** — version bump; merged dependabot #9/#10 (`Microsoft.NET.Test.Sdk` 18.7.0, `xunit` 2.9.3); fix CI `dotnet format` gate (IDE0047/IDE0305 in test projects); CHANGELOG covering custom profiles, multi-device picker, a11y, and the concurrency/hardening pass; dropped superseded `wip-logging` / `wip-connect-fix` stashes |
 | [`8ed9872`](https://github.com/Vabian124/balance-board-controller/commit/8ed9872) | **Poll reentrancy + connect guard** — `_pollGate` skips overlapping `Poll()` (worker tick vs HID `ReadingAvailable`); engage `_connectInProgress` before device-picker `ShowDialog`; tests for concurrent poll |
 | [`59a0ae3`](https://github.com/Vabian124/balance-board-controller/commit/59a0ae3) | **Audit hardening** — ActionEngine sticky-key rebind release, BalanceMath axis clamp, DebugSessionTrace no-op (remove personal path), input sim E2E tests, recovery cancel / preempt regression |

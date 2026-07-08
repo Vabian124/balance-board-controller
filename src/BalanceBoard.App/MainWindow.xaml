@@ -390,6 +390,12 @@
                                     <TextBlock Text="vJoy device" VerticalAlignment="Center" Style="{DynamicResource Text.Subtitle}" Margin="0,0,8,0"/>
                                     <ComboBox x:Name="VJoyDeviceCombo" Width="64" SelectionChanged="SettingChanged"/>
                                 </StackPanel>
+                                <TextBlock Style="{DynamicResource Text.Subtitle}" TextWrapping="Wrap" Margin="0,10,0,0"
+                                           Text="Axes and buttons for the vJoy device are set up in vJoy's own Configure tool (installed with the driver). Enable at least axes X and Y for balance control, then Apply and pick the device number above."/>
+                                <WrapPanel Margin="0,8,0,0">
+                                    <Button x:Name="ConfigureVJoyButton" Content="Configure vJoy…" Style="{StaticResource Button.Secondary}" Click="ConfigureVJoyButton_Click"/>
+                                    <Button x:Name="GetVJoyButton" Content="Get vJoy driver" Style="{StaticResource Button.Secondary}" Click="GetVJoyButton_Click"/>
+                                </WrapPanel>
                             </StackPanel>
                         </Border>
 

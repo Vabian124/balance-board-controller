@@ -24,6 +24,16 @@ public class InputSimulationFlowTests
         IsBalanceBoard = true,
     };
 
+    private static readonly BalanceReading ForwardLean = new()
+    {
+        WeightKg = 60,
+        TopLeftKg = 25,
+        TopRightKg = 25,
+        BottomLeftKg = 5,
+        BottomRightKg = 5,
+        IsBalanceBoard = true,
+    };
+
     private static BalanceBoardSession CreateSession(
         RecordingInputBackend backend,
         FakeBalanceBoardConnection connection,
@@ -54,6 +64,32 @@ public class InputSimulationFlowTests
 
         var events = backend.Snapshot();
         Assert.Contains(events, e => e.Kind == "keydown" && e.VirtualKey == 0x41); // 'A' = Left binding
+    }
+
+    [Fact]
+    public async Task Forward_W_binding_sends_key_down_when_keyboard_actions_enabled()
+    {
+        // Regression: user sets Forward=W in Advanced but DisableKeyboardActions (from vJoy preset)
+        // prevented any key injection unless explicitly re-enabled.
+        var backend = new RecordingInputBackend();
+        var connection = new FakeBalanceBoardConnection { NextReading = ForwardLean };
+        var settings = new AppSettings
+        {
+            EnableVJoy = false,
+            DisableKeyboardActions = false,
+            AutoTareOnConnect = false,
+            Actions = AppSettings.CreateDefaultActions(),
+        };
+        settings.Actions[ActionSlots.Forward] = new() { Kind = ActionKind.Key, KeyName = "W" };
+
+        using var session = CreateSession(backend, connection, settings);
+        var result = await session.ConnectWithIntentAsync(ConnectionIntent.QuickReconnect);
+        Assert.True(result.IsSuccess);
+
+        await Task.Delay(300);
+
+        var events = backend.Snapshot();
+        Assert.Contains(events, e => e.Kind == "keydown" && e.VirtualKey == 0x57);
     }
 
     [Fact]

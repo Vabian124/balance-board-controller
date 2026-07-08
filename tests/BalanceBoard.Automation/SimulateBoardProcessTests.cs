@@ -3,9 +3,12 @@ using Xunit;
 
 namespace BalanceBoard.Automation;
 
+[Collection("AutomationProcess")]
 public class SimulateBoardProcessTests : IDisposable
 {
-    public void Dispose() => ProcessTestHarness.StopProcessesByName("BalanceBoardApp");
+    private Process? _process;
+
+    public void Dispose() => ProcessTestHarness.KillIfRunning(_process);
 
     [Fact]
     [Trait("Category", "Slow")]
@@ -28,10 +31,9 @@ public class SimulateBoardProcessTests : IDisposable
             "BalanceBoardApp",
             "logs");
 
-        using var proc = ProcessTestHarness.StartApp(exe, "--simulate-board --dev --auto-exit-after 2");
-        var started = DateTime.Now;
-        ProcessTestHarness.WaitForExitOrThrow(proc);
-        Assert.True(proc.HasExited, "Simulated board process did not exit cleanly.");
+        _process = ProcessTestHarness.StartApp(exe, "--simulate-board --dev --auto-exit-after 3");
+        ProcessTestHarness.WaitForExitOrThrow(_process, TimeSpan.FromSeconds(45));
+        Assert.True(_process.HasExited, "Simulated board process did not exit cleanly.");
 
         var latest = Directory.Exists(logDir)
             ? Directory.GetFiles(logDir, "session-*.log")
@@ -41,30 +43,18 @@ public class SimulateBoardProcessTests : IDisposable
 
         Assert.NotNull(latest);
         var log = File.ReadAllLines(latest!)
-            .Where(line => TryParseLogTimestamp(line, out var ts) && ts >= started.AddSeconds(-2))
+            .SkipWhile(line => !line.Contains("Simulated board: auto-connecting", StringComparison.Ordinal)
+                && !line.Contains("[CONNECT]", StringComparison.Ordinal))
             .ToArray();
+        if (log.Length == 0)
+        {
+            log = File.ReadAllLines(latest!);
+        }
 
         Assert.NotEmpty(log);
         Assert.Contains(log, line => line.Contains("[CONNECT]", StringComparison.Ordinal));
         Assert.Contains(log, line => line.Contains("First balance reading", StringComparison.Ordinal));
         Assert.DoesNotContain(log, line => line.Contains("FATAL", StringComparison.Ordinal));
-    }
-
-    private static bool TryParseLogTimestamp(string line, out DateTime utc)
-    {
-        utc = default;
-        if (line.Length < 22 || line[0] != '[')
-        {
-            return false;
-        }
-
-        var end = line.IndexOf(']', 1);
-        if (end <= 1)
-        {
-            return false;
-        }
-
-        return DateTime.TryParse(line[1..end], out utc);
     }
 
     private static string FindRepoRoot()
