@@ -41,18 +41,22 @@
 
                         <DockPanel LastChildFill="True" VerticalAlignment="Center">
                             <StackPanel Orientation="Horizontal" DockPanel.Dock="Right" VerticalAlignment="Center">
-                                <Border x:Name="ConnectionChip" Style="{StaticResource StatusChip}" Margin="8,0,8,0">
+                                <Border x:Name="ConnectionChip" Style="{StaticResource StatusChip}" Margin="8,0,8,0"
+                                        AutomationProperties.Name="Board connection status">
                                     <TextBlock x:Name="ConnectionChipText" Text="Board: offline" FontSize="11"
-                                               Foreground="{DynamicResource Brush.Foreground}"/>
+                                               Foreground="{DynamicResource Brush.Foreground}"
+                                               AutomationProperties.LiveSetting="Polite"/>
                                 </Border>
-                                <Border x:Name="VJoyChip" Style="{StaticResource StatusChip}">
+                                <Border x:Name="VJoyChip" Style="{StaticResource StatusChip}"
+                                        AutomationProperties.Name="vJoy driver status">
                                     <TextBlock x:Name="VJoyChipText" Text="vJoy: …" FontSize="11"
                                                Foreground="{DynamicResource Brush.Foreground}"/>
                                 </Border>
                             </StackPanel>
                             <TextBlock x:Name="StatusText" Style="{DynamicResource Text.Subtitle}" FontSize="13"
                                        TextTrimming="CharacterEllipsis"
-                                       Text="Ready — click Connect when you're set."/>
+                                       Text="Ready — click Connect when you're set."
+                                       AutomationProperties.LiveSetting="Polite"/>
                         </DockPanel>
 
                         <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
@@ -62,9 +66,12 @@
                             <Button x:Name="ConnectButton" Content="Connect" MinHeight="44" Style="{StaticResource Button.Primary}" Click="ConnectButton_Click"
                                     AutomationProperties.Name="Connect to balance board"
                                     AutomationProperties.HelpText="Pair and connect your Wii Balance Board over Bluetooth."/>
-                            <Button x:Name="CancelButton" Content="Cancel" MinHeight="44" Style="{StaticResource Button.Secondary}" Click="CancelButton_Click" Visibility="Collapsed"/>
-                            <Button x:Name="DisconnectButton" Content="Disconnect" MinHeight="44" Style="{StaticResource Button.Secondary}" Click="DisconnectButton_Click"/>
-                            <Button x:Name="ExitButton" Content="Exit" MinHeight="44" Style="{StaticResource Button.Ghost}" Click="ExitButton_Click"/>
+                            <Button x:Name="CancelButton" Content="Cancel" MinHeight="44" Style="{StaticResource Button.Secondary}" Click="CancelButton_Click" Visibility="Collapsed"
+                                    AutomationProperties.Name="Cancel connect"/>
+                            <Button x:Name="DisconnectButton" Content="Disconnect" MinHeight="44" Style="{StaticResource Button.Secondary}" Click="DisconnectButton_Click"
+                                    AutomationProperties.Name="Disconnect balance board"/>
+                            <Button x:Name="ExitButton" Content="Exit" MinHeight="44" Style="{StaticResource Button.Ghost}" Click="ExitButton_Click"
+                                    AutomationProperties.Name="Exit application"/>
                         </StackPanel>
                     </Grid>
 
@@ -113,16 +120,24 @@
                                                Text="Connect your board to begin"
                                                AutomationProperties.Name="Movement and jump feedback"
                                                AutomationProperties.LiveSetting="Assertive"/>
-                                    <TextBlock x:Name="ActiveActionsText" Style="{DynamicResource Text.Subtitle}" Margin="0,2,0,0"/>
+                                    <TextBlock x:Name="ActiveActionsText" Style="{DynamicResource Text.Subtitle}" Margin="0,2,0,0"
+                                               AutomationProperties.Name="Active profile actions"
+                                               AutomationProperties.LiveSetting="Polite"/>
                                 </StackPanel>
                                 <WrapPanel x:Name="CalibrationButtonsPanel" Grid.Column="1" VerticalAlignment="Center">
-                                    <Button x:Name="TareButton" Content="Tare" MinHeight="44" Style="{StaticResource Button.Primary}" Click="Tare_Click"/>
-                                    <Button x:Name="SetCenterButton" Content="Set center" MinHeight="44" Style="{StaticResource Button.Secondary}" Click="SetCenter_Click"/>
-                                    <Button x:Name="ResetCenterButton" Content="Reset center" MinHeight="44" Style="{StaticResource Button.Ghost}" Click="ResetCenter_Click"/>
+                                    <Button x:Name="TareButton" Content="Tare" MinHeight="44" Style="{StaticResource Button.Primary}" Click="Tare_Click"
+                                            AutomationProperties.Name="Tare board"
+                                            AutomationProperties.HelpText="Zero the board while you are standing off it."/>
+                                    <Button x:Name="SetCenterButton" Content="Set center" MinHeight="44" Style="{StaticResource Button.Secondary}" Click="SetCenter_Click"
+                                            AutomationProperties.Name="Set balance center"
+                                            AutomationProperties.HelpText="Capture your current stance as the neutral lean position."/>
+                                    <Button x:Name="ResetCenterButton" Content="Reset center" MinHeight="44" Style="{StaticResource Button.Ghost}" Click="ResetCenter_Click"
+                                            AutomationProperties.Name="Reset balance center"/>
                                 </WrapPanel>
                             </Grid>
 
-                            <controls:BalanceBoardVisual x:Name="BoardVisual" Grid.Row="1" Margin="0,4,0,4" MinHeight="360" VerticalAlignment="Stretch"/>
+                            <controls:BalanceBoardVisual x:Name="BoardVisual" Grid.Row="1" Margin="0,4,0,4" MinHeight="360" VerticalAlignment="Stretch"
+                                                         AutomationProperties.Name="Live balance board visualization"/>
 
                             <StackPanel Grid.Row="2" Margin="0,4,0,0">
                                 <Grid>
@@ -131,9 +146,11 @@
                                         <ColumnDefinition Width="*"/>
                                     </Grid.ColumnDefinitions>
                                     <TextBlock x:Name="WeightText" Style="{DynamicResource Text.Body}" FontWeight="SemiBold"
-                                               Text="Weight: — kg"/>
+                                               Text="Weight: — kg"
+                                               AutomationProperties.Name="Current weight"/>
                                     <TextBlock x:Name="BalanceText" Grid.Column="1" Style="{DynamicResource Text.Subtitle}"
-                                               Text="Balance: — / —"/>
+                                               Text="Balance: — / —"
+                                               AutomationProperties.Name="Current balance percentages"/>
                                 </Grid>
                                 <TextBlock x:Name="SensorText" Style="{DynamicResource Text.Mono}" Margin="0,4,0,0"
                                            Text="Sensors: connect to see corner loads"/>

@@ -25,7 +25,7 @@ Planned improvements. Safe for agents to implement incrementally.
 - [x] **Multi-device picker** — when `DiscoverDevices()` returns >1 with no preferred match, show `DevicePickerDialog` before connect (auto/quiet reconnect skips picker)
 - [ ] **Tray icon** — minimize to tray, quick connect/disconnect
 - [x] **Start minimized** — honor `AppSettings.StartMinimized` (toggle on Profiles → Appearance &amp; startup; window launches minimized)
-- [ ] **Accessibility pass** — `AutomationProperties`, live regions for direction text, optional large UI mode
+- [x] **Accessibility pass** — live regions on connection chip / status / direction / active actions; AutomationProperties.Name on connect, disconnect, tare, and balance readouts (optional large UI mode still deferred)
 
 ## Phase 3 — robustness
 
