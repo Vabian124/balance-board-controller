@@ -110,6 +110,7 @@ public sealed class VJoyController : IGameControllerOutput
             _axesInitialized = false;
             LastError = null;
             CacheAxisRanges(deviceId);
+            Center();
             Log?.Invoke($"[VJOY] Acquired device {deviceId}.");
             return true;
         }

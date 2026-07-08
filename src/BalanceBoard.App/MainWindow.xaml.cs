@@ -209,10 +209,11 @@ public partial class MainWindow : Window
         InvertYCheck.IsChecked = _settings.InvertY;
         LockLeftRightAxisCheck.IsChecked = _settings.LockLeftRightAxis;
         LockForwardBackwardAxisCheck.IsChecked = _settings.LockForwardBackwardAxis;
-        var splitSens = _settings.SensitivityLeftRight > 0 || _settings.SensitivityForwardBackward > 0;
+        var splitSens = _settings.SensitivityLeftRight is not null
+            || _settings.SensitivityForwardBackward is not null;
         SplitAxisSensitivityCheck.IsChecked = splitSens;
-        SensitivityLeftRightSlider.Value = _settings.SensitivityLeftRight;
-        SensitivityForwardBackwardSlider.Value = _settings.SensitivityForwardBackward;
+        SensitivityLeftRightSlider.Value = _settings.SensitivityLeftRight ?? 0;
+        SensitivityForwardBackwardSlider.Value = _settings.SensitivityForwardBackward ?? 0;
         var splitDz = _settings.DeadzoneLeftRightPercent is not null
             || _settings.DeadzoneForwardBackwardPercent is not null;
         SplitAxisDeadzoneCheck.IsChecked = splitDz;
@@ -804,10 +805,10 @@ public partial class MainWindow : Window
         _settings.LockForwardBackwardAxis = LockForwardBackwardAxisCheck.IsChecked == true;
         _settings.SensitivityLeftRight = SplitAxisSensitivityCheck.IsChecked == true
             ? SensitivityLeftRightSlider.Value
-            : 0;
+            : null;
         _settings.SensitivityForwardBackward = SplitAxisSensitivityCheck.IsChecked == true
             ? SensitivityForwardBackwardSlider.Value
-            : 0;
+            : null;
         _settings.DeadzoneLeftRightPercent = SplitAxisDeadzoneCheck.IsChecked == true
             ? DeadzoneLeftRightSlider.Value
             : null;
@@ -868,7 +869,8 @@ public partial class MainWindow : Window
 
     private async void BeginConnect(ConnectionIntent intent, bool quiet = false)
     {
-        if (_connectInProgress || _session.IsConnected)
+        if (_connectInProgress
+            || _session.ConnectionPhase is ConnectionPhase.Connected or ConnectionPhase.Connecting)
         {
             return;
         }
@@ -1060,10 +1062,10 @@ public partial class MainWindow : Window
         InvertYCheck.IsChecked = _settings.InvertY;
         LockLeftRightAxisCheck.IsChecked = _settings.LockLeftRightAxis;
         LockForwardBackwardAxisCheck.IsChecked = _settings.LockForwardBackwardAxis;
-        SplitAxisSensitivityCheck.IsChecked =
-            _settings.SensitivityLeftRight > 0 || _settings.SensitivityForwardBackward > 0;
-        SensitivityLeftRightSlider.Value = _settings.SensitivityLeftRight;
-        SensitivityForwardBackwardSlider.Value = _settings.SensitivityForwardBackward;
+        SplitAxisSensitivityCheck.IsChecked = _settings.SensitivityLeftRight is not null
+            || _settings.SensitivityForwardBackward is not null;
+        SensitivityLeftRightSlider.Value = _settings.SensitivityLeftRight ?? 0;
+        SensitivityForwardBackwardSlider.Value = _settings.SensitivityForwardBackward ?? 0;
         SplitAxisDeadzoneCheck.IsChecked = _settings.DeadzoneLeftRightPercent is not null
             || _settings.DeadzoneForwardBackwardPercent is not null;
         DeadzoneLeftRightSlider.Value = _settings.DeadzoneLeftRightPercent ?? _settings.DeadzonePercent;
@@ -1195,7 +1197,22 @@ public partial class MainWindow : Window
             return;
         }
 
-        if (SplitAxisSensitivityCheck.IsChecked != true)
+        if (SplitAxisSensitivityCheck.IsChecked == true)
+        {
+            _suppressSettingEvents = true;
+            if (_settings.SensitivityLeftRight is null)
+            {
+                SensitivityLeftRightSlider.Value = SensitivitySlider.Value;
+            }
+
+            if (_settings.SensitivityForwardBackward is null)
+            {
+                SensitivityForwardBackwardSlider.Value = SensitivitySlider.Value;
+            }
+
+            _suppressSettingEvents = false;
+        }
+        else
         {
             _suppressSettingEvents = true;
             SensitivityLeftRightSlider.Value = 0;

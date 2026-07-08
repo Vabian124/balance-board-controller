@@ -96,6 +96,29 @@ public class SettingsStoreTests
     }
 
     [Fact]
+    public void Save_and_Load_roundtrips_per_axis_sensitivity()
+    {
+        var dir = Path.Combine(Path.GetTempPath(), "bb-tests", Guid.NewGuid().ToString("N"));
+        var store = new SettingsStore(dir);
+
+        store.Save(new AppSettings { Sensitivity = 1.5 });
+        var loaded = store.Load();
+        Assert.Null(loaded.SensitivityLeftRight);
+        Assert.Null(loaded.SensitivityForwardBackward);
+
+        store.Save(new AppSettings
+        {
+            Sensitivity = 1.5,
+            SensitivityLeftRight = 3,
+            SensitivityForwardBackward = 12,
+        });
+        loaded = store.Load();
+
+        Assert.Equal(3, loaded.SensitivityLeftRight);
+        Assert.Equal(12, loaded.SensitivityForwardBackward);
+    }
+
+    [Fact]
     public void Save_and_Load_roundtrips_settings_fields()
     {
         var dir = Path.Combine(Path.GetTempPath(), "bb-tests", Guid.NewGuid().ToString("N"));

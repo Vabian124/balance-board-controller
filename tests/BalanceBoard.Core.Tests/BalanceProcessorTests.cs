@@ -270,6 +270,32 @@ public class BalanceMathTests
     }
 
     [Fact]
+    public void MapCenterOfGravityAxes_null_split_sensitivity_uses_main_gain()
+    {
+        var mainOnly = new AppSettings
+        {
+            SendCenterOfGravityToAxes = true,
+            DeadzonePercent = 0,
+            Sensitivity = 10.0,
+            ResponseCurve = ResponseCurve.Linear,
+        };
+        var explicitMain = new AppSettings
+        {
+            SendCenterOfGravityToAxes = true,
+            DeadzonePercent = 0,
+            Sensitivity = 10.0,
+            SensitivityLeftRight = null,
+            SensitivityForwardBackward = null,
+            ResponseCurve = ResponseCurve.Linear,
+        };
+
+        var mainResult = BalanceMath.MapCenterOfGravityAxes(52.5f, 52.5f, mainOnly);
+        var explicitResult = BalanceMath.MapCenterOfGravityAxes(52.5f, 52.5f, explicitMain);
+
+        Assert.Equal(mainResult, explicitResult);
+    }
+
+    [Fact]
     public void MapCenterOfGravityAxes_per_axis_deadzone_overrides_main()
     {
         var uniform = new AppSettings

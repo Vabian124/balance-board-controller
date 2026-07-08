@@ -26,9 +26,9 @@ public sealed class AppSettings
     public double? DeadzoneLeftRightPercent { get; set; }
     public double? DeadzoneForwardBackwardPercent { get; set; }
     public double Sensitivity { get; set; } = 1.0;
-    /// <summary>Per-axis stick gain; 0 = use <see cref="Sensitivity"/>.</summary>
-    public double SensitivityLeftRight { get; set; }
-    public double SensitivityForwardBackward { get; set; }
+    /// <summary>Per-axis stick gain; null = split mode off or use <see cref="Sensitivity"/>.</summary>
+    public double? SensitivityLeftRight { get; set; }
+    public double? SensitivityForwardBackward { get; set; }
     public SensitivityLevel SensitivityLevel { get; set; } = SensitivityLevel.Medium;
     public bool UseSimpleSensitivity { get; set; } = true;
     public ResponseCurve ResponseCurve { get; set; } = ResponseCurve.Linear;

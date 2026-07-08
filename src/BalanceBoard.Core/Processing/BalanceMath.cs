@@ -231,8 +231,8 @@ public static class BalanceMath
     public static double ResolveDeadzonePercent(double? axisValue, double fallback) =>
         axisValue ?? fallback;
 
-    public static double ResolveSensitivity(double axisValue, double fallback) =>
-        axisValue > 0 ? axisValue : fallback;
+    public static double ResolveSensitivity(double? axisValue, double fallback) =>
+        axisValue is > 0 ? axisValue.Value : fallback;
 
     /// <summary>
     /// Maps balance percent (0–100, center 50) to a vJoy axis.
