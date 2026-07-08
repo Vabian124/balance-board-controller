@@ -24,7 +24,7 @@ Planned improvements. Safe for agents to implement incrementally.
 - [x] **Custom game profiles UI** — "My Profiles" card on the Profiles tab: save-as, load, update, delete, export, and import named snapshots (`SettingsStore` profile APIs + `NamePromptDialog`); profiles are portable (connection identity stripped)
 - [ ] **Multi-device picker** — when `DiscoverDevices()` returns >1, show selection dialog before `Connect(index)`
 - [ ] **Tray icon** — minimize to tray, quick connect/disconnect
-- [ ] **Start minimized** — honor `AppSettings.StartMinimized`
+- [x] **Start minimized** — honor `AppSettings.StartMinimized` (toggle on Profiles → Appearance &amp; startup; window launches minimized)
 - [ ] **Accessibility pass** — `AutomationProperties`, live regions for direction text, optional large UI mode
 
 ## Phase 3 — robustness

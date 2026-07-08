@@ -232,6 +232,9 @@
                                 <TextBlock Text="APPEARANCE &amp; STARTUP" Style="{DynamicResource Text.Section}"/>
                                 <CheckBox x:Name="AutoConnectCheck" Content="Connect automatically on launch" Margin="0,4,0,0"
                                           Checked="SettingChanged" Unchecked="SettingChanged"/>
+                                <CheckBox x:Name="StartMinimizedCheck" Content="Start minimized" Margin="0,4,0,0"
+                                          ToolTip="Launch minimized to the taskbar (takes effect next launch)."
+                                          Checked="SettingChanged" Unchecked="SettingChanged"/>
                                 <StackPanel x:Name="ThemeRow" Orientation="Horizontal" Margin="0,8,0,0">
                                     <TextBlock Text="Theme" VerticalAlignment="Center" Style="{DynamicResource Text.Subtitle}" Margin="0,0,8,0"/>
                                     <ComboBox x:Name="ThemeCombo" Width="140" SelectionChanged="ThemeCombo_SelectionChanged"/>

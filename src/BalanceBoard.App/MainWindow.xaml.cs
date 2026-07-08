@@ -82,6 +82,12 @@ public partial class MainWindow : Window
         }
 
         UpdateConnectionChip(ConnectionPhase.Offline);
+
+        if (_settings.StartMinimized && _physicalTestRunner is null)
+        {
+            WindowState = WindowState.Minimized;
+            Log("Starting minimized (Start minimized is on).");
+        }
     }
 
     public void RunDeferredStartup(bool connectOnLaunch, int competingProcessesStopped = 0)
@@ -292,6 +298,7 @@ public partial class MainWindow : Window
         SendSensorsCheck.IsChecked = _settings.SendLoadSensorsToAxes;
         DisableActionsCheck.IsChecked = _settings.DisableKeyboardActions;
         AutoConnectCheck.IsChecked = _settings.AutoConnectOnStartup;
+        StartMinimizedCheck.IsChecked = _settings.StartMinimized;
         AutoTareCheck.IsChecked = _settings.AutoTareOnConnect;
         TriggerLeftRightSlider.Value = _settings.TriggerLeftRight;
         TriggerForwardBackwardSlider.Value = _settings.TriggerForwardBackward;
@@ -868,6 +875,7 @@ public partial class MainWindow : Window
         _settings.SendLoadSensorsToAxes = SendSensorsCheck.IsChecked == true;
         _settings.DisableKeyboardActions = DisableActionsCheck.IsChecked == true;
         _settings.AutoConnectOnStartup = AutoConnectCheck.IsChecked == true;
+        _settings.StartMinimized = StartMinimizedCheck.IsChecked == true;
         _settings.AutoTareOnConnect = AutoTareCheck.IsChecked == true;
         _settings.TriggerLeftRight = (int)TriggerLeftRightSlider.Value;
         _settings.TriggerForwardBackward = (int)TriggerForwardBackwardSlider.Value;
@@ -1437,6 +1445,7 @@ public partial class MainWindow : Window
         SendSensorsCheck.IsChecked = _settings.SendLoadSensorsToAxes;
         DisableActionsCheck.IsChecked = _settings.DisableKeyboardActions;
         AutoConnectCheck.IsChecked = _settings.AutoConnectOnStartup;
+        StartMinimizedCheck.IsChecked = _settings.StartMinimized;
         AutoTareCheck.IsChecked = _settings.AutoTareOnConnect;
         TriggerLeftRightSlider.Value = _settings.TriggerLeftRight;
         TriggerForwardBackwardSlider.Value = _settings.TriggerForwardBackward;
@@ -1826,6 +1835,8 @@ public partial class MainWindow : Window
     internal Slider TestDeadzoneSlider => DeadzoneSlider;
 
     internal CheckBox TestAutoConnectCheck => AutoConnectCheck;
+
+    internal CheckBox TestStartMinimizedCheck => StartMinimizedCheck;
 
     internal CheckBox TestEnableVJoyCheck => EnableVJoyCheck;
 
