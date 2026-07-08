@@ -6,7 +6,7 @@ Short index for AI assistants. User-facing history: [CHANGELOG.md](../../CHANGEL
 
 | Commit | Summary |
 |--------|---------|
-| _pending_ | **Refactor master plan v2** — v1.5.0 shipped, Pass 1/Core/UI phases, all 7 specs complete |
+| [`e910c3d`](https://github.com/Vabian124/balance-board-controller/commit/e910c3d) | **Refactor master plan v2** — v1.5.0 shipped, Pass 1/Core/UI phases, all 7 specs complete |
 | [`de834b7`](https://github.com/Vabian124/balance-board-controller/commit/de834b7) | **CI P0** — NuGet cache, job summary, doc sync, `verify-version.ps1`, `GITHUB_MANAGER_REPORT.md` |
 | [`cda54d0`](https://github.com/Vabian124/balance-board-controller/commit/cda54d0) | **Refactor master plan** — synthesize worker specs into `docs/REFACTOR_MASTER_PLAN.md` |
 | [`8aafbc0`](https://github.com/Vabian124/balance-board-controller/commit/8aafbc0) | **v1.5.0** — version bump, CHANGELOG, fix corrupted agent update log |
