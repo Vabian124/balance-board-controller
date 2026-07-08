@@ -45,6 +45,11 @@ jobs:
         with:
           global-json-file: global.json
 
+      - name: Verify version consistency
+        if: hashFiles('scripts/ci/verify-version.ps1') != ''
+        shell: pwsh
+        run: ./scripts/ci/verify-version.ps1 -Tag ${{ steps.ref.outputs.ref }}
+
       - name: Verify CI passed on tagged commit
         if: github.event_name != 'workflow_dispatch' || inputs.skip_ci_check != true
         uses: actions/github-script@v7
