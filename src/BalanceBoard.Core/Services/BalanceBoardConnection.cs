@@ -138,11 +138,6 @@ public sealed class BalanceBoardConnection : IBalanceBoardConnection
     private bool TryConnectDevice(Wiimote device, int index)
     {
         var deviceId = DeviceIdRules.ExtractFromHidPath(device.HIDDevicePath);
-        DebugSessionTrace.Write(
-            "BalanceBoardConnection.cs:TryConnectDevice",
-            "hid path parse",
-            "H1",
-            new { hidPath = device.HIDDevicePath, extractedId = deviceId });
         ConnectionFlowLogger.LogHidAttempt(ConnectLog, index, deviceId);
 
         try
@@ -165,12 +160,6 @@ public sealed class BalanceBoardConnection : IBalanceBoardConnection
 
             if (!isBalanceBoard)
             {
-                DebugSessionTrace.Write(
-                    "BalanceBoardConnection.cs:TryConnectDevice",
-                    "not balance board",
-                    "H3",
-                    new { deviceId, extensionType = extensionType.ToString() },
-                    "post-fix");
                 StatusChanged?.Invoke($"Connected device {ConnectedDeviceId} is not a balance board.");
                 return false;
             }
@@ -182,12 +171,6 @@ public sealed class BalanceBoardConnection : IBalanceBoardConnection
         catch (Exception ex)
         {
             ConnectionFlowLogger.LogHidFailure(ConnectLog, index, ex.Message);
-            DebugSessionTrace.Write(
-                "BalanceBoardConnection.cs:TryConnectDevice",
-                "hid connect failed",
-                "H3",
-                new { deviceId, extensionType = _device?.WiimoteState.ExtensionType.ToString(), error = ex.Message },
-                "post-fix");
             ReportError(ex);
             return false;
         }

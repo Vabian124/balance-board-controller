@@ -2111,8 +2111,6 @@ public partial class MainWindow : Window
 
     internal CheckBox TestStartMinimizedCheck => StartMinimizedCheck;
 
-    internal CheckBox TestEnableVJoyCheck => EnableVJoyCheck;
-
     internal TextBlock TestConnectionChipText => ConnectionChipText;
 
     internal TextBox TestLogBox => LogBox;

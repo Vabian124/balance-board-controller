@@ -24,17 +24,6 @@ public sealed class SettingsStore
 
     public string SettingsPath { get; }
 
-    public bool HasPersistedSettings
-    {
-        get
-        {
-            lock (_ioLock)
-            {
-                return File.Exists(SettingsPath);
-            }
-        }
-    }
-
     public AppSettings Load()
     {
         lock (_ioLock)

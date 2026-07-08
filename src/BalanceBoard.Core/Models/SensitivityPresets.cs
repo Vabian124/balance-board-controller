@@ -67,7 +67,4 @@ public static class SensitivityPresets
                 break;
         }
     }
-
-    public static SensitivityLevel DetectFromSettings(AppSettings settings) =>
-        settings.SensitivityLevel;
 }

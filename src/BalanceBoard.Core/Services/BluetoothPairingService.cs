@@ -40,12 +40,6 @@ public sealed class BluetoothPairingService : IBluetoothPairingService
                 log?.Invoke(
                     $"[CONNECT] Adapter {WiiBluetoothPin.FormatMacForDisplay(mac)} readable — " +
                     $"continuing despite stale radio mode ({modeName}).");
-                DebugSessionTrace.Write(
-                    "BluetoothPairingService.cs:EnsureBluetoothReady",
-                    "trust mac over poweroff",
-                    "H7",
-                    new { mac, mode = modeName },
-                    "post-fix");
             }
 
             return true;
@@ -63,30 +57,8 @@ public sealed class BluetoothPairingService : IBluetoothPairingService
                         log?.Invoke($"[CONNECT] Bluetooth radio ready after recovery (mode={mode}, attempt={attempt}).");
                     }
 
-                    DebugSessionTrace.Write(
-                        "BluetoothPairingService.cs:EnsureBluetoothReady",
-                        "radio ready",
-                        "H7",
-                        new { mode = modeName, attempt },
-                        "post-fix");
                     return true;
                 }
-
-                DebugSessionTrace.Write(
-                    "BluetoothPairingService.cs:EnsureBluetoothReady",
-                    "radio in power-off mode",
-                    "H7",
-                    new { mode = modeName, attempt },
-                    "post-fix");
-            }
-            else
-            {
-                DebugSessionTrace.Write(
-                    "BluetoothPairingService.cs:EnsureBluetoothReady",
-                    "primary radio probe failed",
-                    "H7",
-                    new { attempt },
-                    "post-fix");
             }
 
             if (attempt < 3)

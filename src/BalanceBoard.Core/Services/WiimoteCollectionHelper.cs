@@ -95,14 +95,6 @@ internal static class WiimoteCollectionHelper
         finally
         {
             ReleaseAll(collection, extendedDrain: false);
-            // #region agent log
-            DebugSessionTrace.Write(
-                "WiimoteCollectionHelper.cs:WakeDevicesCore",
-                "wake teardown complete",
-                "H4",
-                new { woke = wokeCount },
-                "post-fix");
-            // #endregion
         }
     }
 

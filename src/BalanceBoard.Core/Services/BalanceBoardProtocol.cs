@@ -38,14 +38,6 @@ public static class BalanceBoardProtocol
         device.Connect();
         device.SetLEDs(true, false, false, false);
         Thread.Sleep(BalanceConstants.WakeProbeMinimalHoldMs);
-        // #region agent log
-        DebugSessionTrace.Write(
-            "BalanceBoardProtocol.cs:WakeDeviceSession",
-            "wake session complete",
-            "H4",
-            new { extensionType = device.WiimoteState.ExtensionType.ToString() },
-            "post-fix");
-        // #endregion
     }
 
     public static string FormatExtensionDiagnostic(ExtensionType type)

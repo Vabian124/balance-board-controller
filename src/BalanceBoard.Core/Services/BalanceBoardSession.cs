@@ -133,20 +133,6 @@ public sealed class BalanceBoardSession : IDisposable
         return ids ?? Array.Empty<string>();
     }
 
-    public bool Connect(int deviceIndex = 0, string? preferredDeviceId = null) =>
-        _worker.TryInvoke(() =>
-        {
-            if (!_connection.Connect(deviceIndex, preferredDeviceId))
-            {
-                return false;
-            }
-
-            OnConnected();
-            return true;
-        }, out var ok, false) && ok;
-
-    public bool IsBoardVisible() => DiscoverDevices().Count > 0;
-
     public async Task<ConnectResult> ConnectWithIntentAsync(
         ConnectionIntent intent,
         int deviceIndex = 0,
@@ -179,38 +165,6 @@ public sealed class BalanceBoardSession : IDisposable
             Interlocked.Exchange(ref _connectActive, 0);
         }
     }
-
-    /// <summary>
-    /// QuickReconnect: HID only (boot / second-instance). PairAndConnect: pairing when user asks or --connect.
-    /// </summary>
-    public ConnectResult ConnectWithIntent(
-        ConnectionIntent intent,
-        int deviceIndex = 0,
-        int discoveryRounds = 4,
-        CancellationToken cancellationToken = default)
-    {
-        if (Interlocked.CompareExchange(ref _connectActive, 1, 0) != 0)
-        {
-            Log?.Invoke("[CONNECT] Connect already in progress — ignoring duplicate request.");
-            return ConnectResult.Fail(ConnectStatus.AlreadyInProgress);
-        }
-
-        try
-        {
-            CancelInFlightRecoveryHandoff();
-            return _worker.InvokeStrict(() => ConnectWithIntentCore(intent, deviceIndex, discoveryRounds, cancellationToken));
-        }
-        finally
-        {
-            Interlocked.Exchange(ref _connectActive, 0);
-        }
-    }
-
-    /// <summary>
-    /// Legacy entry point — full pairing flow.
-    /// </summary>
-    public bool ConnectOrPair(int deviceIndex = 0, int discoveryRounds = 4, CancellationToken cancellationToken = default) =>
-        ConnectWithIntent(ConnectionIntent.PairAndConnect, deviceIndex, discoveryRounds, cancellationToken).IsSuccess;
 
     /// <summary>
     /// Signals cancellation to any in-flight background Bluetooth recovery attempt before
@@ -416,11 +370,6 @@ public sealed class BalanceBoardSession : IDisposable
         }
 
         StatusChanged?.Invoke("Board not found — trying again soon.");
-        DebugSessionTrace.Write(
-            "BalanceBoardSession.cs:TryQuickReconnect",
-            "quick reconnect failed",
-            "H2",
-            new { preferredDeviceId, hidVisible = _connection.DiscoverDeviceIds().Count });
         return ConnectResult.Fail(ConnectStatus.NoDevices);
     }
 
@@ -450,11 +399,6 @@ public sealed class BalanceBoardSession : IDisposable
             }
         }
 
-        DebugSessionTrace.Write(
-            "BalanceBoardSession.cs:TryConnectWithHidRetries",
-            "hid retries exhausted",
-            "H3",
-            new { preferredDeviceId, hidVisible = _connection.DiscoverDeviceIds().Count });
         return ConnectResult.Fail(ConnectStatus.HidFailed, "Paired but HID connect failed.");
     }
 
@@ -1198,11 +1142,6 @@ public sealed class BalanceBoardSession : IDisposable
             {
                 Log?.Invoke("[CONNECT] Bluetooth radio unavailable — waiting to turn on.");
                 StatusChanged?.Invoke("Waiting for Bluetooth… Turn Bluetooth on in Windows settings.");
-                DebugSessionTrace.Write(
-                    "BalanceBoardSession.cs:WaitForBluetooth",
-                    "radio unavailable",
-                    "H7",
-                    new { adapterMacConfirmed = _adapterMacConfirmedAtConnectStart });
             }
 
             radioWasOffline = true;
