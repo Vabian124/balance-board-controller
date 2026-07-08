@@ -16,6 +16,9 @@ public sealed class FakeBalanceBoardConnection : IBalanceBoardConnection
     public int ConnectAttempts { get; private set; }
     public int DisconnectCount { get; private set; }
 
+    /// <summary>When set, <see cref="GetCurrentReading"/> returns this instead of the default centered reading.</summary>
+    public BalanceReading? NextReading { get; set; }
+
     public event Action<string>? StatusChanged;
 #pragma warning disable CS0067
     public event Action<string>? Error;
@@ -101,6 +104,11 @@ public sealed class FakeBalanceBoardConnection : IBalanceBoardConnection
             if (!IsConnected || BlockReadings)
             {
                 return null;
+            }
+
+            if (NextReading is { } custom)
+            {
+                return custom;
             }
 
             return new BalanceReading
