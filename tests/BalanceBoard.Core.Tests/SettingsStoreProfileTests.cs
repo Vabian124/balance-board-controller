@@ -29,6 +29,56 @@ public class SettingsStoreProfileTests : IDisposable
     }
 
     [Fact]
+    public async Task Concurrent_Save_and_Load_do_not_throw_or_corrupt()
+    {
+        var settings = new AppSettings { Sensitivity = 2.5 };
+        _store.Save(settings);
+
+        Exception? writeError = null;
+        Exception? readError = null;
+        var barrier = new Barrier(2);
+
+        var writer = Task.Run(() =>
+        {
+            barrier.SignalAndWait();
+            try
+            {
+                for (var i = 0; i < 40; i++)
+                {
+                    settings.Sensitivity = 1.0 + (i % 5) * 0.1;
+                    _store.Save(settings);
+                }
+            }
+            catch (Exception ex)
+            {
+                writeError = ex;
+            }
+        });
+
+        var reader = Task.Run(() =>
+        {
+            barrier.SignalAndWait();
+            try
+            {
+                for (var i = 0; i < 40; i++)
+                {
+                    _ = _store.Load();
+                }
+            }
+            catch (Exception ex)
+            {
+                readError = ex;
+            }
+        });
+
+        await Task.WhenAll(writer, reader);
+        Assert.Null(writeError);
+        Assert.Null(readError);
+        Assert.True(File.Exists(_store.SettingsPath));
+        Assert.NotNull(_store.Load());
+    }
+
+    [Fact]
     public void SaveProfile_then_LoadProfile_round_trips_tuning()
     {
         var settings = new AppSettings { Sensitivity = 7.5, DeadzonePercent = 12, InvertX = true };
