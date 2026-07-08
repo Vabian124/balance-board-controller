@@ -330,6 +330,29 @@ public class BalanceMathTests
     {
         Assert.Equal(expected, SensitivityCurve.Map(input, curve), precision: 3);
     }
+
+    [Fact]
+    public void MapLoadSensorAxes_clamps_instead_of_overflow_wrapping()
+    {
+        // A glitched/noisy HID reading (or a corner briefly overloaded) can exceed the
+        // +-327.67 kg range that the x100 multiplier can represent as a short. Without a
+        // clamp this silently wraps to a wildly wrong, possibly opposite-sign axis value.
+        var settings = new AppSettings { SendLoadSensorsToAxes = true };
+        var reading = new BalanceReading
+        {
+            TopLeftKg = 1000f,
+            TopRightKg = -1000f,
+            BottomLeftKg = 0f,
+            BottomRightKg = float.NaN,
+        };
+
+        var (z, rx, ry, rz) = BalanceMath.MapLoadSensorAxes(reading, settings);
+
+        Assert.Equal(short.MaxValue, z);
+        Assert.Equal(short.MinValue, rx);
+        Assert.Equal(0, ry);
+        Assert.Equal(0, rz);
+    }
 }
 
 public class OneFootPresetsTests
@@ -920,6 +943,55 @@ public class ActionEngineTests
         engine.ReleaseAll();
 
         Assert.Contains(backend.Events, e => e.Kind == "keyup" && e.Vk == 0x57);
+    }
+
+    [Fact]
+    public void Apply_rebinding_active_slot_releases_old_key_before_pressing_new_key()
+    {
+        // Regression: changing a slot's binding (profile switch, rebinding UI) while the slot is
+        // actively held must not leave the previous physical key stuck down forever, nor silently
+        // drop the new binding until the next activation edge.
+        var backend = new RecordingInputBackend();
+        var engine = new ActionEngine(backend);
+        var settings = new AppSettings { Actions = AppSettings.CreateDefaultActions() };
+        settings.Actions[ActionSlots.Left] = new() { Kind = ActionKind.Key, KeyName = "A" };
+
+        engine.Apply(new ProcessedBalance { MoveLeft = true }, settings);
+        Assert.Single(backend.Events, e => e.Kind == "keydown" && e.Vk == 0x41);
+
+        // Still leaning left when the binding changes underneath the active action.
+        settings.Actions[ActionSlots.Left] = new() { Kind = ActionKind.Key, KeyName = "B" };
+        engine.Apply(new ProcessedBalance { MoveLeft = true }, settings);
+
+        Assert.Single(backend.Events, e => e.Kind == "keyup" && e.Vk == 0x41);
+        Assert.Single(backend.Events, e => e.Kind == "keydown" && e.Vk == 0x42);
+
+        engine.ReleaseAll();
+
+        // 0x41 (old key) must have been released exactly once — never stuck down, never
+        // released a second time — while 0x42 (current key) is released exactly once on stop.
+        Assert.Single(backend.Events, e => e.Kind == "keyup" && e.Vk == 0x41);
+        Assert.Single(backend.Events, e => e.Kind == "keyup" && e.Vk == 0x42);
+    }
+
+    [Fact]
+    public void Apply_rebinding_amount_only_does_not_toggle_mouse_move_timer()
+    {
+        // Amount-only changes for MouseMoveX/Y are read live each tick — no held key/button to
+        // release, so this must not be treated as a rebind requiring release+re-engage.
+        var backend = new RecordingInputBackend();
+        var engine = new ActionEngine(backend);
+        var settings = new AppSettings { Actions = AppSettings.CreateDefaultActions() };
+        settings.Actions[ActionSlots.DiagonalLeft] = new() { Kind = ActionKind.MouseMoveX, Amount = 10 };
+
+        engine.Apply(new ProcessedBalance { DiagonalLeft = true }, settings);
+        settings.Actions[ActionSlots.DiagonalLeft] = new() { Kind = ActionKind.MouseMoveX, Amount = 20 };
+        engine.Apply(new ProcessedBalance { DiagonalLeft = true }, settings);
+
+        // No key/mouse-button events at all — only the timer (not exercised synchronously here).
+        Assert.DoesNotContain(backend.Events, e => e.Kind is "keydown" or "keyup" or "mousedown" or "mouseup");
+
+        engine.ReleaseAll();
     }
 
     private sealed class RecordingInputBackend : IInputBackend

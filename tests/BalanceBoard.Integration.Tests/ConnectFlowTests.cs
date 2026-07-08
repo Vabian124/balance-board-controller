@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using BalanceBoard.Core.Models;
 using BalanceBoard.Core.Services;
 using BalanceBoard.Testing;
@@ -204,6 +205,39 @@ public class ConnectFlowTests
         Assert.Contains(
             lines,
             line => line.Contains("[CONNECT] First balance reading", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void Settings_reload_syncs_vjoy_on_worker_thread_not_ui_thread()
+    {
+        // LoadSettings()/ApplyProfile() are called directly from the UI thread on every
+        // settings save. VJoyController.Update()/Center() are called inline from Poll() on
+        // the ConnectionWorker thread. Initialize()/Shutdown() must be marshalled onto the
+        // same worker thread so a settings save can never race a live Update() call.
+        var vjoy = new ThreadTrackingGameControllerOutput();
+        using var worker = new ConnectionWorker();
+        var session = new BalanceBoardSession(
+            gameController: vjoy,
+            actionSimulator: new NullActionSimulator(),
+            connection: new SimulatedBalanceBoardConnection(),
+            pairing: new FakeBluetoothPairingService(),
+            worker: worker);
+        try
+        {
+            var workerThreadId = worker.InvokeStrict(() => Environment.CurrentManagedThreadId);
+
+            session.LoadSettings(new AppSettings { EnableVJoy = true }, initializeVJoy: true);
+
+            Assert.Contains(vjoy.Calls, call => call.Call == "Initialize" && call.ThreadId == workerThreadId);
+            Assert.DoesNotContain(vjoy.Calls, call => call.ThreadId == Environment.CurrentManagedThreadId);
+
+            session.ApplyControllerPreset();
+            Assert.All(vjoy.Calls, call => Assert.Equal(workerThreadId, call.ThreadId));
+        }
+        finally
+        {
+            session.Dispose();
+        }
     }
 
     [Fact]
@@ -590,6 +624,94 @@ public class ConnectFlowTests
         var result = await session.ConnectWithIntentAsync(ConnectionIntent.QuickReconnect);
         Assert.True(result.IsSuccess);
         Assert.Equal(boardId, session.ConnectedDeviceId);
+    }
+
+    [Fact]
+    [Trait("Category", "Slow")]
+    public async Task Manual_connect_preempts_slow_in_flight_bluetooth_recovery_attempt()
+    {
+        // Regression test: BluetoothRecoveryLoop runs a full pairing attempt as a single,
+        // long _worker.InvokeStrict call on the (single-threaded) ConnectionWorker — a real
+        // pairing round with Bluetooth inquiries/SYNC waits can take many seconds. Before
+        // the fix, a manual/quick Connect issued while that attempt was still running had no
+        // way to interrupt it: ConnectWithIntentCore's StopRecovery() only cancels the
+        // recovery token once the manual connect's own action reaches the worker thread —
+        // but it can't reach the worker thread until the in-flight recovery attempt finishes
+        // on its own, so the user's Connect click would silently queue behind it for the
+        // full duration of that attempt. The fix cancels any in-flight recovery attempt
+        // up front (before queueing the manual connect), so it unwinds at its next
+        // cancellation checkpoint instead of always running to completion first.
+        const string boardId = "FAKE-BOARD-001";
+        var connection = new FakeBalanceBoardConnection { DiscoveredDevices = [boardId] };
+        var pairing = new FakeBluetoothPairingService();
+        var settings = new AppSettings
+        {
+            AutoConnectOnStartup = true,
+            HasConnectedBefore = true,
+            LastConnectedDeviceId = boardId,
+        };
+        using var session = CreateSession(connection, pairing, settings);
+        var lines = new List<string>();
+        session.Log += lines.Add;
+
+        var initial = await session.ConnectWithIntentAsync(ConnectionIntent.QuickReconnect);
+        Assert.True(initial.IsSuccess);
+
+        // Mismatched adapter MAC forces the next recovery attempt to escalate straight to a
+        // full (slow) pairing round instead of a plain HID reconnect.
+        pairing.AdapterMac = "AABBCCDDEEFF";
+        pairing.PairDelayMs = 4000;
+        connection.SimulateDrop();
+
+        // Give the recovery loop time to notice the drop and block inside the slow pairing call.
+        await WaitUntilAsync(() => pairing.PairCallCount >= 1, TimeSpan.FromSeconds(2));
+
+        // Drop the artificial delay and queue a successful pair for the *manual* connect that
+        // follows. The recovery attempt must still be cancelled mid-delay (via the handoff);
+        // the manual path should not also inherit a 4s x N-round stall that exceeds InvokeTimeout.
+        pairing.PairDelayMs = 0;
+        pairing.EnqueuePairResult(new BluetoothPairingResult
+        {
+            Success = true,
+            Message = "Paired 1 Nintendo device(s).",
+            DevicesPaired = 1,
+        });
+
+        var sw = Stopwatch.StartNew();
+        ConnectResult manual;
+        try
+        {
+            manual = await session.ConnectWithIntentAsync(ConnectionIntent.QuickReconnect);
+        }
+        catch (Exception ex)
+        {
+            throw new Exception($"Manual connect threw {ex}. Log:\n" + string.Join("\n", lines), ex);
+        }
+
+        sw.Stop();
+
+        Assert.True(
+            sw.Elapsed < TimeSpan.FromSeconds(2),
+            $"Manual connect took {sw.Elapsed} while a slow recovery pairing round was in flight " +
+            "— it should have pre-empted the stale attempt instead of queueing behind it. Log:\n" +
+            string.Join("\n", lines));
+        Assert.True(manual.IsSuccess);
+    }
+
+    private static async Task WaitUntilAsync(Func<bool> condition, TimeSpan timeout)
+    {
+        var deadline = DateTime.UtcNow + timeout;
+        while (DateTime.UtcNow < deadline)
+        {
+            if (condition())
+            {
+                return;
+            }
+
+            await Task.Delay(20);
+        }
+
+        Assert.True(condition(), "Condition was not met within the timeout.");
     }
 
     [Fact]

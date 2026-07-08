@@ -56,6 +56,69 @@ public sealed class MainWindowSettingsTests : UiTestBase
     }
 
     [Fact]
+    public void Start_minimized_setting_minimizes_window_on_launch()
+    {
+        var window = Ctx.CreateWindow(seedSettings: new AppSettings { StartMinimized = true });
+        try
+        {
+            WpfTestHost.Invoke(() => Assert.Equal(System.Windows.WindowState.Minimized, window.WindowState));
+        }
+        finally
+        {
+            Ctx.CloseAll();
+        }
+    }
+
+    [Fact]
+    public void Start_minimized_toggle_persists_to_settings_file()
+    {
+        var window = Ctx.CreateWindow(seedSettings: new AppSettings { StartMinimized = false });
+        try
+        {
+            WpfTestHost.Invoke(() =>
+            {
+                window.TestSelectTab(1);
+                window.TestStartMinimizedCheck.IsChecked = true;
+                window.TestPumpDispatcher();
+            });
+
+            var saved = Ctx.ReadPersistedSettings();
+            Assert.True(saved.StartMinimized);
+        }
+        finally
+        {
+            Ctx.CloseAll();
+        }
+    }
+
+    [Fact]
+    public void Poll_interval_slider_persists_and_applies_to_session()
+    {
+        var window = Ctx.CreateWindow(seedSettings: new AppSettings
+        {
+            UiDetailLevel = UiDetailLevel.Advanced,
+            PollIntervalMs = 50,
+        });
+
+        try
+        {
+            WpfTestHost.Invoke(() =>
+            {
+                window.TestSelectTab(3);
+                window.TestPollIntervalSlider.Value = 20;
+                window.TestPumpDispatcher();
+            });
+
+            var saved = Ctx.ReadPersistedSettings();
+            Assert.Equal(20, saved.PollIntervalMs);
+        }
+        finally
+        {
+            Ctx.CloseAll();
+        }
+    }
+
+    [Fact]
     public void Theme_change_persists_to_settings_file()
     {
         var window = Ctx.CreateWindow(seedSettings: new AppSettings

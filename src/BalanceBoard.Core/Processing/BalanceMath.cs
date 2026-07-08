@@ -268,10 +268,25 @@ public static class BalanceMath
 
         var mul = BalanceConstants.SensorKgToAxisMultiplier;
         return (
-            (short)(reading.TopLeftKg * mul),
-            (short)(reading.TopRightKg * mul),
-            (short)(reading.BottomLeftKg * mul),
-            (short)(reading.BottomRightKg * mul));
+            ClampToAxis(reading.TopLeftKg * mul),
+            ClampToAxis(reading.TopRightKg * mul),
+            ClampToAxis(reading.BottomLeftKg * mul),
+            ClampToAxis(reading.BottomRightKg * mul));
+    }
+
+    /// <summary>
+    /// Clamps before the narrowing cast to <see cref="short"/> — a noisy/glitched HID reading
+    /// (or an unusually heavy corner load) can exceed +-327.67 kg * multiplier, which would
+    /// otherwise silently wrap around to a wildly wrong (possibly opposite-sign) axis value.
+    /// </summary>
+    private static short ClampToAxis(float value)
+    {
+        if (float.IsNaN(value))
+        {
+            return 0;
+        }
+
+        return (short)Math.Clamp(value, short.MinValue, short.MaxValue);
     }
 
     public static float ApplyDeadzone(float percent, double deadzone)

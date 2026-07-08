@@ -1,3 +1,5 @@
+using System.Reflection;
+
 namespace BalanceBoard.Core.Models;
 
 public sealed class AppSettings
@@ -21,6 +23,8 @@ public sealed class AppSettings
     public string? LastBluetoothAdapterMac { get; set; }
     public bool AutoTareOnConnect { get; set; } = true;
     public bool StartMinimized { get; set; }
+    /// <summary>Board poll cadence in milliseconds. Clamped to [<see cref="BalanceConstants.MinPollIntervalMs"/>, <see cref="BalanceConstants.MaxPollIntervalMs"/>].</summary>
+    public int PollIntervalMs { get; set; } = BalanceConstants.SessionPollIntervalMs;
     public double DeadzonePercent { get; set; } = 5;
     /// <summary>Per-axis deadzone; null = use <see cref="DeadzonePercent"/>.</summary>
     public double? DeadzoneLeftRightPercent { get; set; }
@@ -52,6 +56,78 @@ public sealed class AppSettings
 
     public static Dictionary<string, ActionBinding> CreateDefaultActions() =>
         ActionSlots.All.ToDictionary(name => name, _ => new ActionBinding());
+
+    /// <summary>
+    /// Machine/connection identity fields that must never travel with an exported or shared profile.
+    /// </summary>
+    private static readonly HashSet<string> ConnectionStateProperties = new(StringComparer.Ordinal)
+    {
+        nameof(HasConnectedBefore),
+        nameof(SetupWizardCompleted),
+        nameof(LastConnectedDeviceId),
+        nameof(LastConnectedAtUtc),
+        nameof(LastBluetoothAdapterMac),
+    };
+
+    /// <summary>Reset connection identity so a snapshot can be shared between machines/users.</summary>
+    public void ClearConnectionState()
+    {
+        HasConnectedBefore = false;
+        SetupWizardCompleted = false;
+        LastConnectedDeviceId = null;
+        LastConnectedAtUtc = null;
+        LastBluetoothAdapterMac = null;
+    }
+
+    /// <summary>
+    /// Copy every user-tunable setting from <paramref name="source"/> onto this instance. Uses reflection so
+    /// new settings are picked up automatically. Connection identity is preserved unless
+    /// <paramref name="includeConnectionState"/> is true. <see cref="Actions"/> is always deep-copied so the two
+    /// instances never share <see cref="ActionBinding"/> references.
+    /// </summary>
+    public void CopyFrom(AppSettings source, bool includeConnectionState = false)
+    {
+        ArgumentNullException.ThrowIfNull(source);
+
+        foreach (var prop in typeof(AppSettings).GetProperties(BindingFlags.Public | BindingFlags.Instance))
+        {
+            if (!prop.CanRead || !prop.CanWrite || prop.GetIndexParameters().Length > 0)
+            {
+                continue;
+            }
+
+            if (prop.Name == nameof(Actions))
+            {
+                continue;
+            }
+
+            if (!includeConnectionState && ConnectionStateProperties.Contains(prop.Name))
+            {
+                continue;
+            }
+
+            prop.SetValue(this, prop.GetValue(source));
+        }
+
+        Actions = source.Actions.ToDictionary(
+            kv => kv.Key,
+            kv => new ActionBinding
+            {
+                Kind = kv.Value.Kind,
+                KeyName = kv.Value.KeyName,
+                MouseButton = kv.Value.MouseButton,
+                Amount = kv.Value.Amount,
+            },
+            StringComparer.Ordinal);
+    }
+
+    /// <summary>Create a full deep copy, including connection identity.</summary>
+    public AppSettings Clone()
+    {
+        var copy = new AppSettings();
+        copy.CopyFrom(this, includeConnectionState: true);
+        return copy;
+    }
 }
 
 public enum ActionKind

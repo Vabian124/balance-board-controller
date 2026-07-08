@@ -5,9 +5,11 @@ using System.Windows.Controls;
 using System.Windows.Media;
 using System.Windows.Threading;
 using BalanceBoard.App.Controls;
+using BalanceBoard.App.Dialogs;
 using BalanceBoard.App.Services;
 using BalanceBoard.Core.Models;
 using BalanceBoard.Core.Services;
+using Microsoft.Win32;
 namespace BalanceBoard.App;
 
 public partial class MainWindow : Window
@@ -80,6 +82,12 @@ public partial class MainWindow : Window
         }
 
         UpdateConnectionChip(ConnectionPhase.Offline);
+
+        if (_settings.StartMinimized && _physicalTestRunner is null)
+        {
+            WindowState = WindowState.Minimized;
+            Log("Starting minimized (Start minimized is on).");
+        }
     }
 
     public void RunDeferredStartup(bool connectOnLaunch, int competingProcessesStopped = 0)
@@ -290,7 +298,9 @@ public partial class MainWindow : Window
         SendSensorsCheck.IsChecked = _settings.SendLoadSensorsToAxes;
         DisableActionsCheck.IsChecked = _settings.DisableKeyboardActions;
         AutoConnectCheck.IsChecked = _settings.AutoConnectOnStartup;
+        StartMinimizedCheck.IsChecked = _settings.StartMinimized;
         AutoTareCheck.IsChecked = _settings.AutoTareOnConnect;
+        PollIntervalSlider.Value = _settings.PollIntervalMs;
         TriggerLeftRightSlider.Value = _settings.TriggerLeftRight;
         TriggerForwardBackwardSlider.Value = _settings.TriggerForwardBackward;
         DeadzoneSlider.Value = _settings.DeadzonePercent;
@@ -328,6 +338,7 @@ public partial class MainWindow : Window
 
         VJoyDeviceCombo.SelectedItem = _settings.VJoyDeviceId;
         LoadActionBindingsFromSettings();
+        RefreshCustomProfiles();
         _suppressSettingEvents = true;
         SessionLogExpander.IsExpanded = _settings.SessionLogExpanded;
         UpdateSessionLogUi();
@@ -399,6 +410,8 @@ public partial class MainWindow : Window
         DeadzoneForwardBackwardLabel.Text = splitDz
             ? $"Forward / back deadzone: {DeadzoneForwardBackwardSlider.Value:0}%"
             : $"Forward / back deadzone: {mainDz:0}% (main)";
+        var pollMs = PollIntervalSlider.Value;
+        PollIntervalLabel.Text = $"Update rate: {pollMs:0} ms (~{(pollMs > 0 ? 1000.0 / pollMs : 0):0} Hz)";
         TriggerLeftRightLabel.Text = $"Left/right trigger: {TriggerLeftRightSlider.Value:0}%";
         TriggerForwardBackwardLabel.Text = $"Forward/back trigger: {TriggerForwardBackwardSlider.Value:0}%";
         JumpThresholdLabel.Text = _settings.UiDetailLevel == UiDetailLevel.Simple
@@ -865,7 +878,9 @@ public partial class MainWindow : Window
         _settings.SendLoadSensorsToAxes = SendSensorsCheck.IsChecked == true;
         _settings.DisableKeyboardActions = DisableActionsCheck.IsChecked == true;
         _settings.AutoConnectOnStartup = AutoConnectCheck.IsChecked == true;
+        _settings.StartMinimized = StartMinimizedCheck.IsChecked == true;
         _settings.AutoTareOnConnect = AutoTareCheck.IsChecked == true;
+        _settings.PollIntervalMs = (int)PollIntervalSlider.Value;
         _settings.TriggerLeftRight = (int)TriggerLeftRightSlider.Value;
         _settings.TriggerForwardBackward = (int)TriggerForwardBackwardSlider.Value;
         _settings.DeadzonePercent = DeadzoneSlider.Value;
@@ -962,6 +977,46 @@ public partial class MainWindow : Window
         }
     }
 
+    /// <summary>
+    /// When multiple HID boards are already visible and no preferred id matches, ask the user which to use.
+    /// Auto/quiet reconnects skip the picker and fall back to index 0.
+    /// </summary>
+    private int ResolveConnectDeviceIndex(ConnectionIntent intent, bool quiet)
+    {
+        try
+        {
+            var devices = _session.DiscoverDevices();
+            if (devices.Count <= 1)
+            {
+                return 0;
+            }
+
+            var preferred = _settings.LastConnectedDeviceId;
+            var allowDefault = quiet || intent == ConnectionIntent.QuickReconnect;
+            var resolved = DeviceSelection.ResolveDeviceIndex(devices, preferred, allowDefault);
+            if (resolved is not null)
+            {
+                Log($"[CONNECT] Multi-device: using index {resolved.Value} of {devices.Count} (preferred={preferred ?? "none"}).");
+                return resolved.Value;
+            }
+
+            var picker = new DevicePickerDialog(devices, preferred) { Owner = this };
+            if (picker.ShowDialog() == true && picker.SelectedIndex >= 0)
+            {
+                Log($"[CONNECT] Multi-device: user selected index {picker.SelectedIndex} ({picker.SelectedDeviceId}).");
+                return picker.SelectedIndex;
+            }
+
+            Log("[CONNECT] Multi-device picker cancelled — using first board.");
+            return 0;
+        }
+        catch (Exception ex)
+        {
+            _fileLog.WriteException(ex, "ResolveConnectDeviceIndex");
+            return 0;
+        }
+    }
+
     private async void BeginConnect(ConnectionIntent intent, bool quiet = false)
     {
         if (_shutdownCompleted
@@ -971,7 +1026,9 @@ public partial class MainWindow : Window
             return;
         }
 
-        Log($"[CONNECT] UI begin intent={intent} quiet={quiet}");
+        var deviceIndex = ResolveConnectDeviceIndex(intent, quiet);
+
+        Log($"[CONNECT] UI begin intent={intent} quiet={quiet} deviceIndex={deviceIndex}");
         _connectInProgress = true;
         _connectCts = new CancellationTokenSource();
         UpdateConnectUi(isBusy: true);
@@ -988,7 +1045,7 @@ public partial class MainWindow : Window
         try
         {
             var token = _connectCts.Token;
-            _connectTask = _session.ConnectWithIntentAsync(intent, cancellationToken: token);
+            _connectTask = _session.ConnectWithIntentAsync(intent, deviceIndex, cancellationToken: token);
             var result = await _connectTask;
 
             if (_shutdownCompleted)
@@ -1185,6 +1242,272 @@ public partial class MainWindow : Window
         SaveSettingsFromUi();
     }
 
+    private void RefreshCustomProfiles(string? selectName = null)
+    {
+        try
+        {
+            var previous = selectName ?? CustomProfileCombo.SelectedItem as string;
+            var profiles = _settingsStore.ListProfiles();
+            var wasSuppressed = _suppressSettingEvents;
+            _suppressSettingEvents = true;
+            CustomProfileCombo.ItemsSource = profiles;
+            if (previous is not null && profiles.Contains(previous))
+            {
+                CustomProfileCombo.SelectedItem = previous;
+            }
+            else if (profiles.Count > 0)
+            {
+                CustomProfileCombo.SelectedIndex = 0;
+            }
+
+            _suppressSettingEvents = wasSuppressed;
+
+            var hasSelection = CustomProfileCombo.SelectedItem is string;
+            LoadProfileButton.IsEnabled = hasSelection;
+            DeleteProfileButton.IsEnabled = hasSelection;
+            UpdateProfileButton.IsEnabled = hasSelection;
+        }
+        catch (Exception ex)
+        {
+            _fileLog.WriteException(ex, "RefreshCustomProfiles");
+        }
+    }
+
+    private void ShowCustomProfileStatus(string message)
+    {
+        CustomProfileStatusText.Text = message;
+        CustomProfileStatusText.Visibility = Visibility.Visible;
+        Log(message);
+    }
+
+    private void ApplyLoadedProfile(AppSettings loaded, string sourceLabel)
+    {
+        // Keep this machine's connection identity; only adopt the profile's tuning/bindings/output.
+        _settings.CopyFrom(loaded, includeConnectionState: false);
+        SyncUiFromSettings();
+        SaveSettingsFromUi();
+        ShowCustomProfileStatus($"Loaded profile: {sourceLabel}");
+    }
+
+    private void ResetDefaultsButton_Click(object sender, RoutedEventArgs e)
+    {
+        var confirm = MessageBox.Show(
+            this,
+            "Reset all sliders, bindings, and output settings to their defaults? Your paired board and saved profiles are kept.",
+            "Reset to defaults",
+            MessageBoxButton.YesNo,
+            MessageBoxImage.Warning);
+        if (confirm != MessageBoxResult.Yes)
+        {
+            return;
+        }
+
+        try
+        {
+            // Adopt a fresh default settings snapshot while keeping this machine's connection identity.
+            ApplyLoadedProfile(new AppSettings(), "defaults");
+        }
+        catch (Exception ex)
+        {
+            _fileLog.WriteException(ex, "ResetDefaults");
+            ShowCustomProfileStatus($"Could not reset: {ex.Message}");
+        }
+    }
+
+    private void SaveProfileButton_Click(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            SaveSettingsFromUi();
+            var dialog = new NamePromptDialog(
+                "Save profile",
+                "Name this profile:",
+                confirmLabel: "Save",
+                validate: name => _settingsStore.ProfileExists(name)
+                    ? "A profile with that name already exists — use Update to overwrite it, or pick another name."
+                    : null)
+            {
+                Owner = this,
+            };
+
+            if (dialog.ShowDialog() != true)
+            {
+                return;
+            }
+
+            var name = dialog.ResponseText;
+            _settingsStore.SaveProfile(name, _settings);
+            RefreshCustomProfiles(SettingsStore.SanitizeProfileName(name));
+            ShowCustomProfileStatus($"Saved profile: {name}");
+        }
+        catch (Exception ex)
+        {
+            _fileLog.WriteException(ex, "SaveProfile");
+            ShowCustomProfileStatus($"Could not save profile: {ex.Message}");
+        }
+    }
+
+    private void UpdateProfileButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (CustomProfileCombo.SelectedItem is not string name)
+        {
+            ShowCustomProfileStatus("Select a profile to update.");
+            return;
+        }
+
+        try
+        {
+            SaveSettingsFromUi();
+            _settingsStore.SaveProfile(name, _settings);
+            ShowCustomProfileStatus($"Updated profile: {name}");
+        }
+        catch (Exception ex)
+        {
+            _fileLog.WriteException(ex, "UpdateProfile");
+            ShowCustomProfileStatus($"Could not update profile: {ex.Message}");
+        }
+    }
+
+    private void LoadProfileButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (CustomProfileCombo.SelectedItem is not string name)
+        {
+            ShowCustomProfileStatus("Select a profile to load.");
+            return;
+        }
+
+        try
+        {
+            var loaded = _settingsStore.LoadProfile(name);
+            if (loaded is null)
+            {
+                ShowCustomProfileStatus($"Could not read profile: {name}");
+                RefreshCustomProfiles();
+                return;
+            }
+
+            ApplyLoadedProfile(loaded, name);
+        }
+        catch (Exception ex)
+        {
+            _fileLog.WriteException(ex, "LoadProfile");
+            ShowCustomProfileStatus($"Could not load profile: {ex.Message}");
+        }
+    }
+
+    private void DeleteProfileButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (CustomProfileCombo.SelectedItem is not string name)
+        {
+            ShowCustomProfileStatus("Select a profile to delete.");
+            return;
+        }
+
+        var confirm = MessageBox.Show(
+            this,
+            $"Delete the profile \"{name}\"? This cannot be undone.",
+            "Delete profile",
+            MessageBoxButton.YesNo,
+            MessageBoxImage.Warning);
+        if (confirm != MessageBoxResult.Yes)
+        {
+            return;
+        }
+
+        try
+        {
+            _settingsStore.DeleteProfile(name);
+            RefreshCustomProfiles();
+            ShowCustomProfileStatus($"Deleted profile: {name}");
+        }
+        catch (Exception ex)
+        {
+            _fileLog.WriteException(ex, "DeleteProfile");
+            ShowCustomProfileStatus($"Could not delete profile: {ex.Message}");
+        }
+    }
+
+    private void ExportProfileButton_Click(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            SaveSettingsFromUi();
+            var suggested = CustomProfileCombo.SelectedItem as string ?? _settings.ActiveProfileName;
+            var dialog = new SaveFileDialog
+            {
+                Title = "Export settings",
+                Filter = "Balance Board profile (*.json)|*.json|All files (*.*)|*.*",
+                FileName = $"{SettingsStore.SanitizeProfileName(suggested)}.bbprofile.json",
+                DefaultExt = ".json",
+                AddExtension = true,
+            };
+
+            if (dialog.ShowDialog(this) != true)
+            {
+                return;
+            }
+
+            _settingsStore.ExportSettings(_settings, dialog.FileName);
+            ShowCustomProfileStatus($"Exported settings to {dialog.FileName}");
+        }
+        catch (Exception ex)
+        {
+            _fileLog.WriteException(ex, "ExportProfile");
+            ShowCustomProfileStatus($"Could not export: {ex.Message}");
+        }
+    }
+
+    private void ImportProfileButton_Click(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            var dialog = new OpenFileDialog
+            {
+                Title = "Import settings",
+                Filter = "Balance Board profile (*.json)|*.json|All files (*.*)|*.*",
+                CheckFileExists = true,
+            };
+
+            if (dialog.ShowDialog(this) != true)
+            {
+                return;
+            }
+
+            var imported = _settingsStore.ImportSettings(dialog.FileName);
+            if (imported is null)
+            {
+                ShowCustomProfileStatus("That file is not a valid settings profile.");
+                return;
+            }
+
+            var suggestedName = Path.GetFileNameWithoutExtension(dialog.FileName)
+                .Replace(".bbprofile", string.Empty, StringComparison.OrdinalIgnoreCase);
+            var namePrompt = new NamePromptDialog(
+                "Import profile",
+                "Save the imported settings under this profile name:",
+                initialValue: suggestedName,
+                confirmLabel: "Import")
+            {
+                Owner = this,
+            };
+
+            var label = string.IsNullOrWhiteSpace(suggestedName) ? "imported file" : suggestedName;
+            if (namePrompt.ShowDialog() == true)
+            {
+                _settingsStore.SaveProfile(namePrompt.ResponseText, imported);
+                RefreshCustomProfiles(SettingsStore.SanitizeProfileName(namePrompt.ResponseText));
+                label = namePrompt.ResponseText;
+            }
+
+            ApplyLoadedProfile(imported, label);
+        }
+        catch (Exception ex)
+        {
+            _fileLog.WriteException(ex, "ImportProfile");
+            ShowCustomProfileStatus($"Could not import: {ex.Message}");
+        }
+    }
+
     private void SyncUiFromSettings()
     {
         _suppressSettingEvents = true;
@@ -1193,7 +1516,9 @@ public partial class MainWindow : Window
         SendSensorsCheck.IsChecked = _settings.SendLoadSensorsToAxes;
         DisableActionsCheck.IsChecked = _settings.DisableKeyboardActions;
         AutoConnectCheck.IsChecked = _settings.AutoConnectOnStartup;
+        StartMinimizedCheck.IsChecked = _settings.StartMinimized;
         AutoTareCheck.IsChecked = _settings.AutoTareOnConnect;
+        PollIntervalSlider.Value = _settings.PollIntervalMs;
         TriggerLeftRightSlider.Value = _settings.TriggerLeftRight;
         TriggerForwardBackwardSlider.Value = _settings.TriggerForwardBackward;
         DeadzoneSlider.Value = _settings.DeadzonePercent;
@@ -1581,7 +1906,11 @@ public partial class MainWindow : Window
 
     internal Slider TestDeadzoneSlider => DeadzoneSlider;
 
+    internal Slider TestPollIntervalSlider => PollIntervalSlider;
+
     internal CheckBox TestAutoConnectCheck => AutoConnectCheck;
+
+    internal CheckBox TestStartMinimizedCheck => StartMinimizedCheck;
 
     internal CheckBox TestEnableVJoyCheck => EnableVJoyCheck;
 
@@ -1604,6 +1933,29 @@ public partial class MainWindow : Window
     internal void TestClickDesktopPreset() => KeyboardPreset_Click(DesktopPresetButton, new RoutedEventArgs());
 
     internal void TestRunHealthCheck() => RunHealthCheckButton_Click(RunHealthCheckButton, new RoutedEventArgs());
+
+    internal ComboBox TestCustomProfileCombo => CustomProfileCombo;
+
+    internal void TestSaveCustomProfile(string name)
+    {
+        SaveSettingsFromUi();
+        _settingsStore.SaveProfile(name, _settings);
+        RefreshCustomProfiles(SettingsStore.SanitizeProfileName(name));
+    }
+
+    internal void TestResetDefaults() => ApplyLoadedProfile(new AppSettings(), "defaults");
+
+    internal bool TestLoadCustomProfile(string name)
+    {
+        var loaded = _settingsStore.LoadProfile(name);
+        if (loaded is null)
+        {
+            return false;
+        }
+
+        ApplyLoadedProfile(loaded, name);
+        return true;
+    }
 
     internal void TestPumpDispatcher(TimeSpan? timeout = null)
     {
