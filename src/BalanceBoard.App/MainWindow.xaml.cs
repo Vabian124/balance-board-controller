@@ -1026,12 +1026,19 @@ public partial class MainWindow : Window
             return;
         }
 
+        // Engage the in-progress guard and disable Connect *before* ResolveConnectDeviceIndex,
+        // which can pump a nested Dispatcher loop via the multi-device picker's modal
+        // ShowDialog(). Without this ordering, a concurrent BeginConnect (startup auto-connect,
+        // second-instance activation) could slip past the guard above while this call is still
+        // synchronously blocked waiting on the picker, launching two overlapping connects that
+        // stomp each other's _connectCts/_connectTask/UI state.
+        _connectInProgress = true;
+        UpdateConnectUi(isBusy: true);
+
         var deviceIndex = ResolveConnectDeviceIndex(intent, quiet);
 
         Log($"[CONNECT] UI begin intent={intent} quiet={quiet} deviceIndex={deviceIndex}");
-        _connectInProgress = true;
         _connectCts = new CancellationTokenSource();
-        UpdateConnectUi(isBusy: true);
         StatusText.Text = intent switch
         {
             ConnectionIntent.QuickReconnect => _settings.UiDetailLevel == UiDetailLevel.Simple
