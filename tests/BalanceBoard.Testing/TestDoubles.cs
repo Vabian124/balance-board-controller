@@ -142,7 +142,7 @@ public sealed class RecordingInputBackend : IInputBackend
     {
         lock (_sync)
         {
-            return Events.ToList();
+            return [.. Events];
         }
     }
 }

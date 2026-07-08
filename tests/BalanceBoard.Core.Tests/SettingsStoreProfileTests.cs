@@ -45,7 +45,7 @@ public class SettingsStoreProfileTests : IDisposable
             {
                 for (var i = 0; i < 40; i++)
                 {
-                    settings.Sensitivity = 1.0 + (i % 5) * 0.1;
+                    settings.Sensitivity = 1.0 + i % 5 * 0.1;
                     _store.Save(settings);
                 }
             }

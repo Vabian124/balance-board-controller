@@ -2,6 +2,32 @@
 
 All notable user-facing changes. For detailed agent work logs see [`docs/updates/`](docs/updates/).
 
+## [1.4.1] - 2026-07-08
+
+Custom profiles, multi-device picker, accessibility, and a broad hardening + concurrency pass.
+
+### Added
+- **Custom named profiles** — save / load / update / delete plus export / import via `NamePromptDialog`
+- **Multi-device picker** — choose among several paired balance boards at connect time
+- **Configurable poll rate** — `ConnectionWorker.PollIntervalMs` exposed in settings
+- **Reset to defaults** and honor **Start minimized** on launch
+- **Accessibility** — live regions for connection/status announcements
+- Input-simulation end-to-end tests and concurrent-poll regression tests
+
+### Fixed
+- **Poll reentrancy** — `_pollGate` skips overlapping `Poll()` between the worker tick and HID `ReadingAvailable`
+- **Connect vs. device-picker race** — engage `_connectInProgress` before the picker `ShowDialog`
+- **Sticky keys** — `ActionEngine` releases held keys on rebind; `KEYEVENTF_EXTENDEDKEY` set for extended keys
+- **Binding erase** — clearing an action slot no longer leaves a stale key held
+- **BalanceMath axis clamp** — joystick axis values clamped to valid vJoy range
+- **Thread safety** — `SettingsStore` IO lock and `VJoyController` sync lock; feeder path existence check before acquire
+- **DebugSessionTrace** made a no-op that no longer embeds a personal filesystem path
+- **CI format gate** — resolve `IDE0047` / `IDE0305` style violations in test projects so the quality gate stays green
+
+### Changed
+- Dependency updates: `Microsoft.NET.Test.Sdk` 18.7.0, `xunit` 2.9.3 (#9, #10)
+- Assembly and file version bumped to **1.4.1**
+
 ## [1.4.0] - 2026-07-08
 
 Unified automated test pipeline, hang hardening, and opt-in physical hardware validation.
