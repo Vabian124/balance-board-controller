@@ -19,6 +19,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\BalanceBoard.Core\BalanceBoard.Core.csproj" />
+    <ProjectReference Include="..\BalanceBoard.Testing\BalanceBoard.Testing.csproj" />
   </ItemGroup>
 
 </Project>

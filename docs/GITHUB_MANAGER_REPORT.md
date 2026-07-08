@@ -1,74 +1,102 @@
 # GitHub Manager Report
 
-**Updated:** 2026-07-08 (verification pass — triple-checked with live `gh` commands)
+**Updated:** 2026-07-09 00:51 UTC+2 (Phase 2 complete — PR #15 open, CI failed at format gate)
 
-## Verification checklist
-
-| # | Check | Result | Details |
-|---|-------|--------|---------|
-| 1 | `git fetch && git status` | **PASS** | `main` synced with `origin/main` at `5cfde5b` (pre-verify-version commit) |
-| 2 | `gh pr list --state all --limit 5` | **PASS** | Latest merged: [#14](https://github.com/Vabian124/balance-board-controller/pull/14) (v1.5.0 refactor) |
-| 3 | `gh release list --limit 5` | **PASS** | Latest: **v1.5.0** (2026-07-08T21:45:56Z) |
-| 4 | `gh release view v1.5.0` | **PASS** | Published, not draft/prerelease; both assets present |
-| 5 | Release zip asset | **PASS** | `BalanceBoardController-1.5.0-win-x64.zip` — 561,475 bytes, state `uploaded` |
-| 6 | Release sha256 asset | **PASS** | `BalanceBoardController-1.5.0-win-x64.zip.sha256` — 106 bytes, state `uploaded` |
-| 7 | CI on `5cfde5b` (main HEAD) | **PASS** | Run [28978343001](https://github.com/Vabian124/balance-board-controller/actions/runs/28978343001) — success, 3m18s |
-| 8 | Local vs remote sync | **PASS** | No unpushed commits before verify-version wiring commit |
-| 9 | `verify-version` in `release.yml` | **PENDING** | Local change committed this pass; see below |
-| 10 | Re-dispatch v1.5.0 release | **N/A** | Release already published via dispatch run [28977875731](https://github.com/Vabian124/balance-board-controller/actions/runs/28977875731) |
-
-## Current repo state
+## Phase 2 summary
 
 | Item | Value |
 |------|-------|
-| Branch | `main` |
-| HEAD (after this pass) | verify-version wiring commit on top of `5cfde5b` |
-| Remote | `origin` → `https://github.com/Vabian124/balance-board-controller.git` |
-| Version | **1.5.0** (`Directory.Build.props`) |
-| Latest git tag | `v1.5.0` → `89d9ba7` |
-| Latest GitHub Release | **v1.5.0** |
+| Branch | `refactor/phase2-full` |
+| Base | `main` (`9e3f9d4`) |
+| HEAD | `cb4782f` |
+| PR commit | Single squashed commit on PR |
+| PR | [#15](https://github.com/Vabian124/balance-board-controller/pull/15) — **OPEN** |
+| Merge | **NOT merged** (awaiting user) |
+| Release / tag | **NONE** (latest remains **v1.5.0**) |
 
-## Release
+## Triple-check verification
+
+| # | Command | Result |
+|---|---------|--------|
+| 1 | `gh pr view 15 --json state,statusCheckRollup,url` | **OPEN** — Quality gate **FAILURE** |
+| 2 | `gh run list --branch refactor/phase2-full --limit 3` | Latest run `28981156681` → **failure** |
+| 3 | `gh run watch 28981156681` | Completed with **failure** (1m18s) |
+| 4 | `gh release list` | No new release — still **v1.5.0** |
+| 5 | Local `dotnet test` (reported) | **293 passed**, 0 failed |
+
+## Pull request
 
 | Field | Value |
 |-------|-------|
-| URL | https://github.com/Vabian124/balance-board-controller/releases/tag/v1.5.0 |
-| Published | 2026-07-08T21:45:56Z |
-| Draft | false |
-| Prerelease | false |
-| Zip download | https://github.com/Vabian124/balance-board-controller/releases/download/v1.5.0/BalanceBoardController-1.5.0-win-x64.zip |
-| SHA256 download | https://github.com/Vabian124/balance-board-controller/releases/download/v1.5.0/BalanceBoardController-1.5.0-win-x64.zip.sha256 |
+| **URL** | https://github.com/Vabian124/balance-board-controller/pull/15 |
+| Title | refactor(phase2): Core output pipeline, SettingsSync, and test split |
+| State | **OPEN** (not merged) |
+| Head SHA | `cb4782f57588f1fdcaacc4316d722b338beb0b94` |
 
-**Note:** Initial tag-push release run [28977824679](https://github.com/Vabian124/balance-board-controller/actions/runs/28977824679) failed (CI race). Successful re-dispatch via [28977875731](https://github.com/Vabian124/balance-board-controller/actions/runs/28977875731).
+### Phase 2 changes (`cb4782f`)
 
-## CI on main (recent)
+**Core restructuring**
+- Reorganize `BalanceBoard.Core/Services/` into `Connection/`, `Diagnostics/`, `Output/`, `Session/`, `Settings/`
+- Move `BalanceProcessor` under `Processing/`; add `FrameOutput`, `OutputRoutingPolicy`, `BalanceReadoutText`, `ConnectionStatusText`
+- Extract `ProfileCoordinator` from `BalanceBoardSession`
 
-| Run | Commit | Result | URL |
-|-----|--------|--------|-----|
-| 28978343001 | `5cfde5b` cleanup | **success** | https://github.com/Vabian124/balance-board-controller/actions/runs/28978343001 |
-| 28978142307 | `d91b937` docs | cancelled (concurrency) | https://github.com/Vabian124/balance-board-controller/actions/runs/28978142307 |
-| 28978012031 | `de834b7` P0 CI | cancelled (concurrency) | https://github.com/Vabian124/balance-board-controller/actions/runs/28978012031 |
-| 28977800468 | `89d9ba7` PR #14 merge | **success** | https://github.com/Vabian124/balance-board-controller/actions/runs/28977800468 |
+**UI shell decomposition**
+- Split tab views: `DashboardView`, `ProfilesView`, `FineTuningView`, `AdvancedView`
+- Shared controls: `ConnectionToolbar`, `SessionLogPanel`
+- Extract `SettingsSync` (debounced saves) and `MainWindow.ViewRefs`
+- Slim `MainWindow.xaml` / `MainWindow.xaml.cs`
 
-Cancelled runs are expected: `ci.yml` concurrency group cancels superseded runs when newer pushes land on `main`.
+**Tests**
+- Split monolithic `BalanceProcessorTests.cs` into focused suites under `Models/` and `Processing/`
+- Add `OutputMode`, `FrameOutput`, `ConnectionStatusText` coverage
 
-## P0 automation (complete)
+Zero behavior change claimed; 293 tests pass locally.
 
-| Item | Status |
-|------|--------|
-| Docs sync (CONTRIBUTING, AGENTS, PR template) | Done (`de834b7`) |
-| NuGet cache in `ci.yml` | Done (`de834b7`) |
-| `fail_on_unmatched_files: true` in release | Done (`de834b7`) |
-| CI job summary from `summary.json` | Done (`de834b7`) |
-| `scripts/ci/verify-version.ps1` | Done (`de834b7`) |
-| Wire `verify-version` into `release.yml` | Done (this pass) |
+## CI status
+
+| Run | Commit | Result | Duration | URL |
+|-----|--------|--------|----------|-----|
+| **28981156681** | `cb4782f` | **FAIL** | 1m18s | https://github.com/Vabian124/balance-board-controller/actions/runs/28981156681 |
+| 28981075025 | (prior push) | failure | 1m21s | https://github.com/Vabian124/balance-board-controller/actions/runs/28981075025 |
+| 28980713873 | (prior push) | failure | 1m26s | https://github.com/Vabian124/balance-board-controller/actions/runs/28980713873 |
+
+### Failed step (run 28981156681)
+
+| Job | Step | Result |
+|-----|------|--------|
+| Quality gate | **Quality gate (format, analyzers, tests, smoke)** | **FAIL** |
+| ↳ sub-step | `dotnet format` | exit code 1 |
+
+Pipeline never reached the test stage. Crash-safety grep passed; format gate blocked.
+
+### Root cause
+
+**IDE0130** — Namespace `BalanceBoard.Core.Services` (and `BalanceBoard.Core.Tests`) does not match new folder structure after Phase 2 file moves:
+
+- Core: `Services/Connection/`, `Diagnostics/`, `Output/`, `Session/`, `Settings/` (~24 files)
+- Tests: `Models/`, `Processing/` (~10 files)
+
+Additional analyzer warnings also flagged:
+
+- **IDE0011** — Missing braces on `if` in `MainWindow.xaml.cs`
+- **IDE0290** — Primary constructor suggestions (`ProfileCoordinator`, `SettingsSync`)
+- **JSON002** — Probable JSON strings in `SettingsMigrationsOutputModeTests.cs`
+
+### Fix required (orchestrator / workers)
+
+Run `dotnet format` on branch and commit fixes, **or** add `.editorconfig` / suppressions for intentional flat `BalanceBoard.Core.Services` namespace during folder migration.
 
 ## Blockers
 
-None. v1.5.0 release is live with both assets. No manual GitHub action required.
+| Blocker | Status |
+|---------|--------|
+| CI format gate red | **BLOCKING merge** |
+| PR ready for human review | Yes — code + local tests green; CI format only |
+| Release / tag / version bump | None requested or created |
 
-## User verification URLs (optional)
+## URLs
 
-- Release page: https://github.com/Vabian124/balance-board-controller/releases/tag/v1.5.0
-- Latest CI: https://github.com/Vabian124/balance-board-controller/actions/workflows/ci.yml
-- Release workflow: https://github.com/Vabian124/balance-board-controller/actions/workflows/release.yml
+- **PR (ready for review, CI red):** https://github.com/Vabian124/balance-board-controller/pull/15
+- **CI (latest, failed):** https://github.com/Vabian124/balance-board-controller/actions/runs/28981156681
+- **Failed job:** https://github.com/Vabian124/balance-board-controller/actions/runs/28981156681/job/86000000282
+- **Compare:** https://github.com/Vabian124/balance-board-controller/compare/main...refactor/phase2-full

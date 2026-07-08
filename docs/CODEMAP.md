@@ -6,7 +6,7 @@ Complete map of **maintained source** (ignore `bin/`, `obj/`, `.vs/`).
 
 | Path | Purpose |
 |------|---------|
-| `BalanceBoard.sln` | App + Core + Validate + UiSmoke + Tests |
+| `BalanceBoard.sln` | App + Core + Validate + Tests |
 | `Directory.Build.props` | Shared nullable, analyzers, code style |
 | `.editorconfig` | Formatting rules |
 | `.github/workflows/ci.yml` | CI quality gate (`scripts/ci/lint.ps1`) |
@@ -68,6 +68,7 @@ Complete map of **maintained source** (ignore `bin/`, `obj/`, `.vs/`).
 | `BalanceDisplay.cs` | Balance dot position / direction text (shared with unit tests) |
 | `MovementMapper.cs` | `ProcessedBalance` flags → `ActionSlots` |
 | `ActionEngine.cs` | Portable action-slot state machine |
+| `BalanceProcessor.cs` | Stateful tare/center; delegates math to `BalanceMath` |
 
 ### Abstractions (`Abstractions/`)
 
@@ -79,24 +80,54 @@ Complete map of **maintained source** (ignore `bin/`, `obj/`, `.vs/`).
 
 ### Services (`Services/`)
 
+Physical subfolders; all types remain in `BalanceBoard.Core.Services` unless noted.
+
+#### Session (`Services/Session/`)
+
 | Path | Purpose |
 |------|---------|
 | `BalanceBoardSession.cs` | **Orchestrator**: `ConnectWithIntent`, poll on `ConnectionWorker` (50 ms), route to vJoy + input |
-| `ConnectionWorker.cs` | Dedicated STA thread for WiimoteLib / BT / poll timer |
 | `ConnectionIntent.cs` | `QuickReconnect` vs `PairAndConnect` |
+| `SafeCallbacks.cs` | Thread-safe event raise helper |
+
+#### Connection (`Services/Connection/`)
+
+| Path | Purpose |
+|------|---------|
+| `ConnectionWorker.cs` | Dedicated STA thread for WiimoteLib / BT / poll timer |
 | `BalanceBoardConnection.cs` | WiimoteLib wrapper: discover, connect, tare, read corners; disconnect hardening |
-| `BalanceProcessor.cs` | Stateful tare/center; delegates math to `BalanceMath` |
-| `VJoyController.cs` | `IGameControllerOutput` — acquire vJoy, coalesced `WriteAxes` |
-| `VJoyDiagnostics.cs` | Read driver status, axis capabilities, DLL version match |
-| `InputSimulator.cs` | Facade: `ActionEngine` + `Win32InputBackend` |
-| `Win32InputBackend.cs` | `SendInput` keyboard/mouse (Windows only) |
+| `SimulatedBalanceBoardConnection.cs` | Test/dev simulated board |
 | `BluetoothPairingService.cs` | Automatic Wii BT pairing (reversed host MAC PIN) |
 | `WiiBluetoothPin.cs` | Host MAC → Wii permanent pairing PIN |
-| `SettingsStore.cs` | JSON settings in `%AppData%\BalanceBoardApp\`; atomic save; connection state; profile export/import |
+| `WiimoteCollectionHelper.cs` | WiimoteLib collection utilities |
+| `BalanceBoardProtocol.cs` | HID/protocol helpers |
 | `DeviceSelection.cs` | Multi-device index resolution (preferred id vs picker) |
+| `ConnectionFlowLogger.cs` | Structured connect-flow log lines |
+
+#### Output (`Services/Output/`)
+
+| Path | Purpose |
+|------|---------|
+| `VJoyController.cs` | `IGameControllerOutput` — acquire vJoy, coalesced `WriteAxes` |
+| `VJoyAxisMapping.cs` | Axis index mapping for vJoy device |
+| `InputSimulator.cs` | Facade: `ActionEngine` + `Win32InputBackend` |
+| `Win32InputBackend.cs` | `SendInput` keyboard/mouse (Windows only) |
+| `FeederProcessCleanup.cs` | Stop stale vJoy feeder processes before acquire |
+
+#### Settings (`Services/Settings/`)
+
+| Path | Purpose |
+|------|---------|
+| `SettingsStore.cs` | JSON settings in `%AppData%\BalanceBoardApp\`; atomic save; connection state; profile export/import |
 | `AppDataPaths.cs` | Canonical paths for settings, logs, profiles |
-| `FileLogService.cs` | Daily session log with SESSION header + structured tags |
+
+#### Diagnostics (`Services/Diagnostics/`)
+
+| Path | Purpose |
+|------|---------|
+| `VJoyDiagnostics.cs` | Read driver status, axis capabilities, DLL version match |
 | `DiagnosticsReport.cs` | Structured health check for UI + clipboard |
+| `FileLogService.cs` | Daily session log with SESSION header + structured tags |
 | `VJoyConfigLocator.cs` | Locates `vJoyConf.exe` for in-app Configure vJoy button |
 
 ## `tools/Validate/`
@@ -105,13 +136,6 @@ Complete map of **maintained source** (ignore `bin/`, `obj/`, `.vs/`).
 |------|---------|
 | `Program.cs` | CLI: feeder cleanup, vJoy diag, HID discovery, axis sweep test |
 | `BalanceBoard.Validate.csproj` | Console app referencing Core |
-
-## `tools/UiSmoke/`
-
-| Path | Purpose |
-|------|---------|
-| `Program.cs` | STA-thread `MainWindow` load + Minecraft preset — catches XAML/theme errors |
-| `BalanceBoard.UiSmoke.csproj` | Console app referencing App |
 
 ## `scripts/`
 
@@ -125,7 +149,6 @@ Complete map of **maintained source** (ignore `bin/`, `obj/`, `.vs/`).
 | `ci/check-crash-safety.ps1` | Grep guard for unsafe patterns |
 | `ci/publish-release.ps1` | Package win-x64 zip for GitHub Releases |
 | `dev/start.ps1` / `stop.ps1` / `restart.ps1` / `connect.ps1` | Dev launch helpers |
-| `dev/test-flow.ps1` | Deprecated wrapper → `scripts/ci/test.ps1 -Quick` |
 | `dev/sync-vjoy-dlls.ps1` | Copy vJoy DLLs from install into `libs/x64/` |
 
 ## `tests/`

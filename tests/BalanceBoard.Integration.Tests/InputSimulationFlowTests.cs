@@ -93,6 +93,38 @@ public class InputSimulationFlowTests
     }
 
     [Fact]
+    public async Task Board_button_key_works_when_keyboard_actions_disabled()
+    {
+        var backend = new RecordingInputBackend();
+        var connection = new FakeBalanceBoardConnection
+        {
+            NextReading = new BalanceReading
+            {
+                WeightKg = 60,
+                TopLeftKg = 25,
+                TopRightKg = 5,
+                BottomLeftKg = 25,
+                BottomRightKg = 5,
+                IsBalanceBoard = true,
+                ButtonA = true,
+            },
+        };
+        var settings = new AppSettings { AutoTareOnConnect = false };
+        ActionPresets.ApplyGameController(settings);
+        settings.Actions[ActionSlots.BoardButton] = new() { Kind = ActionKind.Key, KeyName = "Escape" };
+
+        using var session = CreateSession(backend, connection, settings);
+        var result = await session.ConnectWithIntentAsync(ConnectionIntent.QuickReconnect);
+        Assert.True(result.IsSuccess);
+
+        await Task.Delay(300);
+
+        var events = backend.Snapshot();
+        Assert.Contains(events, e => e.Kind == "keydown" && e.VirtualKey == 0x1B);
+        Assert.DoesNotContain(events, e => e.Kind == "keydown" && e.VirtualKey == 0x41);
+    }
+
+    [Fact]
     public async Task Disable_keyboard_actions_suppresses_all_backend_calls()
     {
         var backend = new RecordingInputBackend();

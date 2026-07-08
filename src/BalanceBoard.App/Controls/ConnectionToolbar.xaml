@@ -1,0 +1,39 @@
+<UserControl x:Class="BalanceBoard.App.Controls.ConnectionToolbar" xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"><Grid><Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+
+                        <DockPanel LastChildFill="True" VerticalAlignment="Center">
+                            <StackPanel Orientation="Horizontal" DockPanel.Dock="Right" VerticalAlignment="Center">
+                                <Border x:Name="ConnectionChip" Style="{StaticResource StatusChip}" Margin="8,0,8,0"
+                                        AutomationProperties.Name="Board connection status">
+                                    <TextBlock x:Name="ConnectionChipText" Text="Board: offline" FontSize="11"
+                                               Foreground="{DynamicResource Brush.Foreground}"
+                                               AutomationProperties.LiveSetting="Polite"/>
+                                </Border>
+                                <Border x:Name="VJoyChip" Style="{StaticResource StatusChip}"
+                                        AutomationProperties.Name="vJoy driver status">
+                                    <TextBlock x:Name="VJoyChipText" Text="vJoy: …" FontSize="11"
+                                               Foreground="{DynamicResource Brush.Foreground}"/>
+                                </Border>
+                            </StackPanel>
+                            <TextBlock x:Name="StatusText" Style="{DynamicResource Text.Subtitle}" FontSize="13"
+                                       TextTrimming="CharacterEllipsis"
+                                       Text="Ready — click Connect when you're set."
+                                       AutomationProperties.LiveSetting="Polite"/>
+                        </DockPanel>
+
+                        <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                            <Button x:Name="ShowLogButton" Content="Show log" MinHeight="32" Style="{StaticResource Button.Ghost}" Visibility="Collapsed"
+                                    AutomationProperties.Name="Toggle session log"/>
+                            <Button x:Name="ConnectButton" Content="Connect" MinHeight="44" Style="{StaticResource Button.Primary}"
+                                    AutomationProperties.Name="Connect to balance board"
+                                    AutomationProperties.HelpText="Pair and connect your Wii Balance Board over Bluetooth."/>
+                            <Button x:Name="CancelButton" Content="Cancel" MinHeight="44" Style="{StaticResource Button.Secondary}" Visibility="Collapsed"
+                                    AutomationProperties.Name="Cancel connect"/>
+                            <Button x:Name="DisconnectButton" Content="Disconnect" MinHeight="44" Style="{StaticResource Button.Secondary}"
+                                    AutomationProperties.Name="Disconnect balance board"/>
+                            <Button x:Name="ExitButton" Content="Exit" MinHeight="44" Style="{StaticResource Button.Ghost}"
+                                    AutomationProperties.Name="Exit application"/>
+                        </StackPanel>
+                    </Grid></UserControl>

@@ -117,10 +117,9 @@ tests/
   hardware/             Optional board scripts
 tools/
   Validate/             CLI health check
-  UiSmoke/              Legacy minimal loader (superseded by App.Ui.Tests)
 scripts/
   ci/                   lint.ps1, test.ps1, verify-tests.ps1
-  dev/                  start, stop, restart, connect, test-flow, sync-vjoy-dlls
+  dev/                  start, stop, restart, connect, sync-vjoy-dlls
   test/                 run-all.ps1 (alias for ci/test.ps1)
 reference/              Legacy WiiBalanceWalker (MS-PL, not in solution)
 libs/x64/               WiimoteLib + vJoy native DLLs

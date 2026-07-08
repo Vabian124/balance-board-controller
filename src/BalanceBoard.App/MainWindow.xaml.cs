@@ -8,6 +8,7 @@ using BalanceBoard.App.Controls;
 using BalanceBoard.App.Dialogs;
 using BalanceBoard.App.Services;
 using BalanceBoard.Core.Models;
+using BalanceBoard.Core.Processing;
 using BalanceBoard.Core.Services;
 using Microsoft.Win32;
 namespace BalanceBoard.App;
@@ -21,6 +22,7 @@ public partial class MainWindow : Window
     private readonly AppSettings _settings;
     private readonly PhysicalTestRunner? _physicalTestRunner;
     private readonly bool _uiReady;
+    private readonly SettingsSync _settingsSync;
     private bool _shutdownCompleted;
     private bool _connectInProgress;
     private CancellationTokenSource? _connectCts;
@@ -53,6 +55,8 @@ public partial class MainWindow : Window
         }
 
         InitializeComponent();
+        WireViewEvents();
+        _settingsSync = CreateSettingsSync();
         ThemeManager.Apply(_settings.ThemePreference);
         _uiReady = true;
         HookSession();
@@ -188,7 +192,7 @@ public partial class MainWindow : Window
             try
             {
                 SafeLog(status);
-                StatusText.Text = FormatStatusForUser(status);
+                StatusText.Text = ConnectionStatusText.FormatStatusForUser(status, _settings.UiDetailLevel);
                 UpdatePhysicalTestObservation();
                 // Do not read ConnectionPhase here — connect runs on ConnectionWorker and
                 // TryInvoke from the UI thread would deadlock while StatusChanged fires mid-connect.
@@ -289,71 +293,58 @@ public partial class MainWindow : Window
         CancelConnect();
     }
 
+    private SettingsSync CreateSettingsSync() =>
+        new(_settings, new SettingsControls
+        {
+            ProfileCombo = ProfileCombo,
+            DetailLevelCombo = DetailLevelCombo,
+            ThemeCombo = ThemeCombo,
+            OutputModeCombo = OutputModeCombo,
+            JumpVJoyButtonCombo = JumpVJoyButtonCombo,
+            VJoyDeviceCombo = VJoyDeviceCombo,
+            ResponseCurveCombo = ResponseCurveCombo,
+            SendCgCheck = SendCgCheck,
+            SendSensorsCheck = SendSensorsCheck,
+            MapJumpVJoyCheck = MapJumpVJoyCheck,
+            AutoConnectCheck = AutoConnectCheck,
+            StartMinimizedCheck = StartMinimizedCheck,
+            AutoTareCheck = AutoTareCheck,
+            SimpleSensitivityCheck = SimpleSensitivityCheck,
+            OneFootModeCheck = OneFootModeCheck,
+            InvertXCheck = InvertXCheck,
+            InvertYCheck = InvertYCheck,
+            LockLeftRightAxisCheck = LockLeftRightAxisCheck,
+            LockForwardBackwardAxisCheck = LockForwardBackwardAxisCheck,
+            SplitAxisSensitivityCheck = SplitAxisSensitivityCheck,
+            SplitAxisDeadzoneCheck = SplitAxisDeadzoneCheck,
+            PollIntervalSlider = PollIntervalSlider,
+            TriggerLeftRightSlider = TriggerLeftRightSlider,
+            TriggerForwardBackwardSlider = TriggerForwardBackwardSlider,
+            DeadzoneSlider = DeadzoneSlider,
+            SensitivitySlider = SensitivitySlider,
+            JumpThresholdSlider = JumpThresholdSlider,
+            JumpHoldSlider = JumpHoldSlider,
+            SensitivityLeftRightSlider = SensitivityLeftRightSlider,
+            SensitivityForwardBackwardSlider = SensitivityForwardBackwardSlider,
+            DeadzoneLeftRightSlider = DeadzoneLeftRightSlider,
+            DeadzoneForwardBackwardSlider = DeadzoneForwardBackwardSlider,
+            SessionLogExpander = SessionLogExpander,
+            JumpVJoyPanel = JumpVJoyPanel,
+        });
+
     private void PopulateUi()
     {
         _suppressSettingEvents = true;
-        ProfileCombo.ItemsSource = ActionPresets.All;
-        ProfileCombo.SelectedItem = ActionPresets.All.Contains(_settings.ActiveProfileName)
-            ? _settings.ActiveProfileName
-            : ActionPresets.Default;
-
-        DetailLevelCombo.Items.Clear();
-        DetailLevelCombo.Items.Add("Simple");
-        DetailLevelCombo.Items.Add("Standard");
-        DetailLevelCombo.Items.Add("Advanced");
-        DetailLevelCombo.SelectedIndex = (int)_settings.UiDetailLevel;
-
-        ThemeCombo.ItemsSource = new[] { ThemePreference.System, ThemePreference.Light, ThemePreference.Dark };
-        ThemeCombo.SelectedItem = _settings.ThemePreference;
-
-        EnableVJoyCheck.IsChecked = _settings.EnableVJoy;
-        SendCgCheck.IsChecked = _settings.SendCenterOfGravityToAxes;
-        SendSensorsCheck.IsChecked = _settings.SendLoadSensorsToAxes;
-        DisableActionsCheck.IsChecked = _settings.DisableKeyboardActions;
-        MapJumpVJoyCheck.IsChecked = _settings.MapJumpToVJoyButton;
-        PopulateOutputModeCombo();
-        PopulateJumpVJoyButtonCombo();
-        JumpVJoyButtonCombo.SelectedItem = Math.Clamp(_settings.JumpVJoyButton, 1, 32);
-        UpdateJumpVJoyPanelVisibility();
-        AutoConnectCheck.IsChecked = _settings.AutoConnectOnStartup;
-        StartMinimizedCheck.IsChecked = _settings.StartMinimized;
-        AutoTareCheck.IsChecked = _settings.AutoTareOnConnect;
-        PollIntervalSlider.Value = _settings.PollIntervalMs;
-        TriggerLeftRightSlider.Value = _settings.TriggerLeftRight;
-        TriggerForwardBackwardSlider.Value = _settings.TriggerForwardBackward;
-        DeadzoneSlider.Value = _settings.DeadzonePercent;
-        SensitivitySlider.Value = _settings.Sensitivity;
-        JumpThresholdSlider.Value = _settings.JumpWeightThresholdKg;
-        JumpHoldSlider.Value = _settings.JumpHoldSeconds;
-        SimpleSensitivityCheck.IsChecked = _settings.UseSimpleSensitivity;
-        OneFootModeCheck.IsChecked = _settings.OneFootMode;
-        InvertXCheck.IsChecked = _settings.InvertX;
-        InvertYCheck.IsChecked = _settings.InvertY;
-        LockLeftRightAxisCheck.IsChecked = _settings.LockLeftRightAxis;
-        LockForwardBackwardAxisCheck.IsChecked = _settings.LockForwardBackwardAxis;
-        var splitSens = _settings.SensitivityLeftRight is not null
-            || _settings.SensitivityForwardBackward is not null;
-        SplitAxisSensitivityCheck.IsChecked = splitSens;
-        SensitivityLeftRightSlider.Value = _settings.SensitivityLeftRight ?? 0;
-        SensitivityForwardBackwardSlider.Value = _settings.SensitivityForwardBackward ?? 0;
-        var splitDz = _settings.DeadzoneLeftRightPercent is not null
-            || _settings.DeadzoneForwardBackwardPercent is not null;
-        SplitAxisDeadzoneCheck.IsChecked = splitDz;
-        DeadzoneLeftRightSlider.Value = _settings.DeadzoneLeftRightPercent ?? _settings.DeadzonePercent;
-        DeadzoneForwardBackwardSlider.Value = _settings.DeadzoneForwardBackwardPercent ?? _settings.DeadzonePercent;
-
+        _settingsSync.InitializeComboItems();
+        _settingsSync.ApplyToUi();
         UpdateSensitivityModeUi();
-        PopulateResponseCurveCombo();
         UpdateJumpPresetButtons();
         UpdateProfileButtonStyles();
         ApplyDetailLevel();
-
         RefreshVJoyDeviceCombo();
         BindBoardButton.IncludeVJoyButton = true;
         LoadActionBindingsFromSettings();
         RefreshCustomProfiles();
-        _suppressSettingEvents = true;
-        SessionLogExpander.IsExpanded = _settings.SessionLogExpanded;
         UpdateSessionLogUi();
         _suppressSettingEvents = false;
     }
@@ -411,9 +402,7 @@ public partial class MainWindow : Window
         {
             _suppressSettingEvents = true;
             _settings.SetOutputMode(OutputMode.Keyboard);
-            PopulateOutputModeCombo();
-            EnableVJoyCheck.IsChecked = _settings.EnableVJoy;
-            DisableActionsCheck.IsChecked = _settings.DisableKeyboardActions;
+            _settingsSync.PopulateOutputModeCombo();
             _suppressSettingEvents = false;
             Log("Switched movement output to keyboard because a movement binding was set.");
         }
@@ -474,21 +463,6 @@ public partial class MainWindow : Window
         SplitAxisSensitivityPanel.Visibility =
             showTuning && SplitAxisSensitivityCheck.IsChecked == true ? Visibility.Visible : Visibility.Collapsed;
         UpdateSensitivityPresetButtons();
-    }
-
-    private void PopulateResponseCurveCombo()
-    {
-        if (ResponseCurveCombo.Items.Count == 0)
-        {
-            foreach (ResponseCurve curve in Enum.GetValues<ResponseCurve>())
-            {
-                ResponseCurveCombo.Items.Add(SensitivityCurve.DisplayName(curve));
-            }
-        }
-
-        _suppressSettingEvents = true;
-        ResponseCurveCombo.SelectedIndex = (int)_settings.ResponseCurve;
-        _suppressSettingEvents = false;
     }
 
     private void UpdateSensitivityPresetButtons()
@@ -688,7 +662,7 @@ public partial class MainWindow : Window
                 }
                 else
                 {
-                    DirectionText.Text = DescribeDirection(data);
+                    DirectionText.Text = BalanceReadoutText.DescribeDirection(data);
                     DirectionText.FontSize = 20;
                     DirectionText.SetResourceReference(TextBlock.ForegroundProperty, "Brush.Foreground");
                     var minecraft = _settings.ActiveProfileName == ActionPresets.Minecraft;
@@ -699,11 +673,11 @@ public partial class MainWindow : Window
                     BalancePanel.BorderThickness = minecraft ? new Thickness(2) : new Thickness(1);
                 }
 
-                ActiveActionsText.Text = DescribeActiveInputs(data);
+                ActiveActionsText.Text = BalanceReadoutText.DescribeActiveInputs(data, _settings);
                 SensorText.Text =
                     $"TL {data.TopLeftKg:0.0} kg  TR {data.TopRightKg:0.0} kg  BL {data.BottomLeftKg:0.0} kg  BR {data.BottomRightKg:0.0} kg";
                 VJoyAxesText.Text = $"vJoy  X={data.JoyX,6}  Y={data.JoyY,6}  Z={data.JoyZ,6}  RX={data.JoyRx,6}";
-                BoardButtonText.Text = DescribeBoardButton(data);
+                BoardButtonText.Text = BalanceReadoutText.DescribeBoardButton(data, _settings);
                 UpdatePhysicalTestObservation(data);
             }
             catch (Exception ex)
@@ -711,116 +685,6 @@ public partial class MainWindow : Window
                 _fileLog.WriteException(ex, "OnProcessed UI");
             }
         }, DispatcherPriority.DataBind);
-    }
-
-    private string DescribeBoardButton(ProcessedBalance data)
-    {
-        if (!_settings.Actions.TryGetValue(ActionSlots.BoardButton, out var binding))
-        {
-            return data.ButtonA ? "Board button: pressed (A)" : "Board button: up";
-        }
-
-        if (data.ButtonA)
-        {
-            return binding.Kind switch
-            {
-                ActionKind.Key => $"Board button → {binding.KeyName}",
-                ActionKind.VJoyButton => $"Board button → vJoy #{binding.VJoyButtonNumber}",
-                _ => "Board button: pressed (A)",
-            };
-        }
-
-        if (data.Jump && _settings.MapJumpToVJoyButton)
-        {
-            return $"Jump → vJoy #{_settings.JumpVJoyButton}";
-        }
-
-        return "Board button: up";
-    }
-
-    private static string DescribeDirection(ProcessedBalance data)
-    {
-        if (data.Jump)
-        {
-            return data.WeightKg < BalanceConstants.WeightOnBoardThresholdKg
-                ? "Jump!"
-                : "Jump! · " + DescribeLean(data);
-        }
-
-        if (data.WeightKg < BalanceConstants.WeightOnBoardThresholdKg)
-        {
-            return "Step on the board";
-        }
-
-        var lean = DescribeLean(data);
-        return string.IsNullOrEmpty(lean) ? "Centered" : lean;
-    }
-
-    private static string DescribeLean(ProcessedBalance data)
-    {
-        var parts = new List<string>();
-        if (data.MoveForward)
-        {
-            parts.Add("forward");
-        }
-
-        if (data.MoveBackward)
-        {
-            parts.Add("backward");
-        }
-
-        if (data.MoveLeft)
-        {
-            parts.Add("left");
-        }
-
-        if (data.MoveRight)
-        {
-            parts.Add("right");
-        }
-
-        return string.Join(" · ", parts);
-    }
-
-    private string DescribeActiveInputs(ProcessedBalance data)
-    {
-        if (data.Jump && data.WeightKg < BalanceConstants.WeightOnBoardThresholdKg)
-        {
-            return "Active: Jump";
-        }
-
-        if (data.WeightKg < BalanceConstants.WeightOnBoardThresholdKg)
-        {
-            return $"Profile: {_settings.ActiveProfileName}";
-        }
-
-        var active = new List<string>();
-        if (data.MoveForward)
-        {
-            active.Add("Forward");
-        }
-
-        if (data.MoveBackward)
-        {
-            active.Add("Backward");
-        }
-
-        if (data.MoveLeft)
-        {
-            active.Add("Left");
-        }
-
-        if (data.MoveRight)
-        {
-            active.Add("Right");
-        }
-
-        if (data.Jump)
-        {
-            active.Add("Jump");
-        }
-
-        return active.Count == 0 ? "Centered" : $"Active: {string.Join(", ", active)}";
     }
 
     private void RefreshVJoyStatus()
@@ -957,6 +821,42 @@ public partial class MainWindow : Window
     }
 
     private bool _suppressSettingEvents;
+    private DispatcherTimer? _settingsSaveDebounceTimer;
+    private const int SettingsSaveDebounceMs = 200;
+
+    private void RequestSaveSettingsFromUi(bool immediate = false)
+    {
+        if (!_uiReady || _suppressSettingEvents)
+        {
+            return;
+        }
+
+        if (immediate)
+        {
+            CancelPendingSettingsSave();
+            SaveSettingsFromUi();
+            return;
+        }
+
+        _settingsSaveDebounceTimer ??= new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(SettingsSaveDebounceMs) };
+        _settingsSaveDebounceTimer.Stop();
+        _settingsSaveDebounceTimer.Tick -= OnDebouncedSettingsSave;
+        _settingsSaveDebounceTimer.Tick += OnDebouncedSettingsSave;
+        _settingsSaveDebounceTimer.Start();
+    }
+
+    private void OnDebouncedSettingsSave(object? sender, EventArgs e) { CancelPendingSettingsSave(); SaveSettingsFromUi(); }
+
+    private void CancelPendingSettingsSave()
+    {
+        if (_settingsSaveDebounceTimer is null)
+        {
+            return;
+        }
+
+        _settingsSaveDebounceTimer.Stop();
+        _settingsSaveDebounceTimer.Tick -= OnDebouncedSettingsSave;
+    }
 
     private void SaveSettingsFromUi()
     {
@@ -965,89 +865,9 @@ public partial class MainWindow : Window
             return;
         }
 
-        if (OutputModeCombo.SelectedIndex == 1)
-        {
-            _settings.SetOutputMode(OutputMode.VJoy);
-        }
-        else if (OutputModeCombo.SelectedIndex == 0)
-        {
-            _settings.SetOutputMode(OutputMode.Keyboard);
-        }
-
-        EnableVJoyCheck.IsChecked = _settings.EnableVJoy;
-        SendCgCheck.IsChecked = _settings.SendCenterOfGravityToAxes;
-        SendSensorsCheck.IsChecked = _settings.SendLoadSensorsToAxes;
-        DisableActionsCheck.IsChecked = _settings.DisableKeyboardActions;
-        _settings.MapJumpToVJoyButton = MapJumpVJoyCheck.IsChecked == true;
-        if (JumpVJoyButtonCombo.SelectedItem is int jumpButton)
-        {
-            _settings.JumpVJoyButton = jumpButton;
-        }
-        _settings.AutoConnectOnStartup = AutoConnectCheck.IsChecked == true;
-        _settings.StartMinimized = StartMinimizedCheck.IsChecked == true;
-        _settings.AutoTareOnConnect = AutoTareCheck.IsChecked == true;
-        _settings.PollIntervalMs = (int)PollIntervalSlider.Value;
-        _settings.TriggerLeftRight = (int)TriggerLeftRightSlider.Value;
-        _settings.TriggerForwardBackward = (int)TriggerForwardBackwardSlider.Value;
-        _settings.DeadzonePercent = DeadzoneSlider.Value;
-        _settings.Sensitivity = SensitivitySlider.Value;
-        _settings.JumpWeightThresholdKg = (float)JumpThresholdSlider.Value;
-        _settings.JumpHoldSeconds = JumpHoldSlider.Value;
-        _settings.UseSimpleSensitivity = SimpleSensitivityCheck.IsChecked == true;
-        _settings.OneFootMode = OneFootModeCheck.IsChecked == true;
-        if (ResponseCurveCombo.SelectedIndex is >= 0 and <= (int)ResponseCurve.MinecraftSnappy)
-        {
-            _settings.ResponseCurve = (ResponseCurve)ResponseCurveCombo.SelectedIndex;
-        }
-        if (ProfileCombo.SelectedItem is string profile)
-        {
-            _settings.ActiveProfileName = profile;
-        }
-        if (ThemeCombo.SelectedItem is ThemePreference theme)
-        {
-            _settings.ThemePreference = theme;
-        }
-
-        if (DetailLevelCombo.SelectedIndex is >= 0 and <= 2)
-        {
-            _settings.UiDetailLevel = (UiDetailLevel)DetailLevelCombo.SelectedIndex;
-        }
-
-        _settings.SessionLogExpanded = SessionLogExpander.IsExpanded;
-
-        _settings.InvertX = InvertXCheck.IsChecked == true;
-        _settings.InvertY = InvertYCheck.IsChecked == true;
-        _settings.LockLeftRightAxis = LockLeftRightAxisCheck.IsChecked == true;
-        _settings.LockForwardBackwardAxis = LockForwardBackwardAxisCheck.IsChecked == true;
-        _settings.SensitivityLeftRight = SplitAxisSensitivityCheck.IsChecked == true
-            ? SensitivityLeftRightSlider.Value
-            : null;
-        _settings.SensitivityForwardBackward = SplitAxisSensitivityCheck.IsChecked == true
-            ? SensitivityForwardBackwardSlider.Value
-            : null;
-        _settings.DeadzoneLeftRightPercent = SplitAxisDeadzoneCheck.IsChecked == true
-            ? DeadzoneLeftRightSlider.Value
-            : null;
-        _settings.DeadzoneForwardBackwardPercent = SplitAxisDeadzoneCheck.IsChecked == true
-            ? DeadzoneForwardBackwardSlider.Value
-            : null;
-        if (VJoyDeviceCombo.SelectedItem is VJoyDeviceInfo deviceInfo)
-        {
-            _settings.VJoyDeviceId = deviceInfo.DeviceId;
-        }
-        else if (VJoyDeviceCombo.SelectedItem is uint id)
-        {
-            _settings.VJoyDeviceId = id;
-        }
-        else if (VJoyDeviceCombo.SelectedItem is int intId)
-        {
-            _settings.VJoyDeviceId = (uint)intId;
-        }
-
-        UpdateJumpVJoyPanelVisibility();
-
+        CancelPendingSettingsSave();
+        _settingsSync.ReadFromUi();
         SaveActionBindingsToSettings();
-
         UpdateSliderLabels();
         UpdateSensitivityModeUi();
         ApplyDetailLevel();
@@ -1058,28 +878,6 @@ public partial class MainWindow : Window
         RefreshVJoyStatus();
         UpdateVJoyDeviceDetails(VJoyDeviceCombo.SelectedItem as VJoyDeviceInfo);
     }
-
-    private void PopulateOutputModeCombo()
-    {
-        OutputModeCombo.ItemsSource = new[]
-        {
-            "Keyboard & mouse (WASD, Space, etc.)",
-            "Virtual controller (vJoy)",
-        };
-        OutputModeCombo.SelectedIndex = _settings.OutputMode == OutputMode.VJoy ? 1 : 0;
-    }
-
-    private static void PopulateJumpVJoyButtonCombo(ComboBox combo)
-    {
-        combo.ItemsSource = Enumerable.Range(1, 32).ToList();
-    }
-
-    private void PopulateJumpVJoyButtonCombo() => PopulateJumpVJoyButtonCombo(JumpVJoyButtonCombo);
-
-    private void UpdateJumpVJoyPanelVisibility() =>
-        JumpVJoyPanel.Visibility = MapJumpVJoyCheck.IsChecked == true && _settings.OutputMode == OutputMode.VJoy
-            ? Visibility.Visible
-            : Visibility.Collapsed;
 
     private void RefreshVJoyDeviceCombo()
     {
@@ -1120,7 +918,7 @@ public partial class MainWindow : Window
             return;
         }
 
-        SaveSettingsFromUi();
+        RequestSaveSettingsFromUi(immediate: true);
     }
 
     private void VJoyDeviceCombo_SelectionChanged(object sender, SelectionChangedEventArgs e)
@@ -1131,12 +929,13 @@ public partial class MainWindow : Window
         }
 
         UpdateVJoyDeviceDetails(VJoyDeviceCombo.SelectedItem as VJoyDeviceInfo);
-        SaveSettingsFromUi();
+        RequestSaveSettingsFromUi(immediate: true);
         RefreshVJoyStatus();
     }
 
-    private void SettingChanged(object sender, RoutedEventArgs e) => SaveSettingsFromUi();
-    private void SettingChanged(object sender, SelectionChangedEventArgs e) => SaveSettingsFromUi();
+    private void SettingChanged(object sender, RoutedEventArgs e) => RequestSaveSettingsFromUi(immediate: true);
+    private void SettingChanged(object sender, SelectionChangedEventArgs e) => RequestSaveSettingsFromUi(immediate: true);
+    private void SliderValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e) => RequestSaveSettingsFromUi();
 
     private void ConnectButton_Click(object sender, RoutedEventArgs e)
     {
@@ -1268,7 +1067,7 @@ public partial class MainWindow : Window
             }
             else if (!token.IsCancellationRequested)
             {
-                StatusText.Text = FormatConnectFailure(intent, result);
+                StatusText.Text = ConnectionStatusText.FormatConnectFailure(intent, result, _settings.UiDetailLevel);
                 if (!quiet)
                 {
                     Log(result.Message ?? StatusText.Text);
@@ -1299,55 +1098,6 @@ public partial class MainWindow : Window
             }
         }
     }
-
-    private string FormatStatusForUser(string status)
-    {
-        if (_settings.UiDetailLevel != UiDetailLevel.Simple)
-        {
-            return status;
-        }
-
-        if (status.Contains("Connected", StringComparison.OrdinalIgnoreCase))
-        {
-            return "Connected!";
-        }
-
-        if (status.Contains("SYNC", StringComparison.OrdinalIgnoreCase)
-            || status.Contains("pair", StringComparison.OrdinalIgnoreCase))
-        {
-            return "Need help pairing — ask a grown-up to press SYNC under the battery cover.";
-        }
-
-        if (status.Contains("Bluetooth", StringComparison.OrdinalIgnoreCase))
-        {
-            return "Waiting for Bluetooth…";
-        }
-
-        if (status.Contains("again", StringComparison.OrdinalIgnoreCase)
-            || status.Contains("Finding", StringComparison.OrdinalIgnoreCase))
-        {
-            return status;
-        }
-
-        return "Working on it…";
-    }
-
-    private string FormatConnectFailure(ConnectionIntent intent, ConnectResult result) =>
-        result.Status switch
-        {
-            ConnectStatus.Cancelled => "Cancelled.",
-            ConnectStatus.NoDevices => _settings.UiDetailLevel == UiDetailLevel.Simple
-                ? "Board not found — we'll keep trying if auto-connect is on."
-                : intent == ConnectionIntent.QuickReconnect
-                    ? "Board offline — turn it on or press SYNC, then click Connect."
-                    : "Not found — press SYNC, then Connect again.",
-            ConnectStatus.PairingFailed => _settings.UiDetailLevel == UiDetailLevel.Simple
-                ? "Could not find the board — ask a grown-up to press SYNC, then Connect."
-                : "Press SYNC on the board, then click Connect.",
-            _ => _settings.UiDetailLevel == UiDetailLevel.Simple
-                ? "Something went wrong — see the log for details."
-                : result.Message ?? "Connection failed — see session log.",
-        };
 
     private void MarkConnectedSuccessfully()
     {
@@ -1708,53 +1458,13 @@ public partial class MainWindow : Window
     private void SyncUiFromSettings()
     {
         _suppressSettingEvents = true;
-        EnableVJoyCheck.IsChecked = _settings.EnableVJoy;
-        SendCgCheck.IsChecked = _settings.SendCenterOfGravityToAxes;
-        SendSensorsCheck.IsChecked = _settings.SendLoadSensorsToAxes;
-        DisableActionsCheck.IsChecked = _settings.DisableKeyboardActions;
-        MapJumpVJoyCheck.IsChecked = _settings.MapJumpToVJoyButton;
-        PopulateOutputModeCombo();
-        PopulateJumpVJoyButtonCombo();
-        JumpVJoyButtonCombo.SelectedItem = Math.Clamp(_settings.JumpVJoyButton, 1, 32);
-        UpdateJumpVJoyPanelVisibility();
-        AutoConnectCheck.IsChecked = _settings.AutoConnectOnStartup;
-        StartMinimizedCheck.IsChecked = _settings.StartMinimized;
-        AutoTareCheck.IsChecked = _settings.AutoTareOnConnect;
-        PollIntervalSlider.Value = _settings.PollIntervalMs;
-        TriggerLeftRightSlider.Value = _settings.TriggerLeftRight;
-        TriggerForwardBackwardSlider.Value = _settings.TriggerForwardBackward;
-        DeadzoneSlider.Value = _settings.DeadzonePercent;
-        SensitivitySlider.Value = _settings.Sensitivity;
-        JumpThresholdSlider.Value = _settings.JumpWeightThresholdKg;
-        JumpHoldSlider.Value = _settings.JumpHoldSeconds;
-        SimpleSensitivityCheck.IsChecked = _settings.UseSimpleSensitivity;
-        OneFootModeCheck.IsChecked = _settings.OneFootMode;
-        InvertXCheck.IsChecked = _settings.InvertX;
-        InvertYCheck.IsChecked = _settings.InvertY;
-        LockLeftRightAxisCheck.IsChecked = _settings.LockLeftRightAxis;
-        LockForwardBackwardAxisCheck.IsChecked = _settings.LockForwardBackwardAxis;
-        SplitAxisSensitivityCheck.IsChecked = _settings.SensitivityLeftRight is not null
-            || _settings.SensitivityForwardBackward is not null;
-        SensitivityLeftRightSlider.Value = _settings.SensitivityLeftRight ?? 0;
-        SensitivityForwardBackwardSlider.Value = _settings.SensitivityForwardBackward ?? 0;
-        SplitAxisDeadzoneCheck.IsChecked = _settings.DeadzoneLeftRightPercent is not null
-            || _settings.DeadzoneForwardBackwardPercent is not null;
-        DeadzoneLeftRightSlider.Value = _settings.DeadzoneLeftRightPercent ?? _settings.DeadzonePercent;
-        DeadzoneForwardBackwardSlider.Value = _settings.DeadzoneForwardBackwardPercent ?? _settings.DeadzonePercent;
-        ThemeCombo.SelectedItem = _settings.ThemePreference;
-        DetailLevelCombo.SelectedIndex = (int)_settings.UiDetailLevel;
-        if (ActionPresets.All.Contains(_settings.ActiveProfileName))
-        {
-            ProfileCombo.SelectedItem = _settings.ActiveProfileName;
-        }
-
+        _settingsSync.ApplyToUi();
         RefreshVJoyDeviceCombo();
         BindBoardButton.IncludeVJoyButton = true;
         LoadActionBindingsFromSettings();
         UpdateProfileButtonStyles();
         UpdateJumpPresetButtons();
         UpdateSensitivityModeUi();
-        PopulateResponseCurveCombo();
         ApplyDetailLevel();
         _suppressSettingEvents = false;
         UpdateSliderLabels();
@@ -1812,7 +1522,8 @@ public partial class MainWindow : Window
         SaveSettingsFromUi();
     }
 
-    private void ThemeCombo_SelectionChanged(object sender, SelectionChangedEventArgs e) => SaveSettingsFromUi();
+    private void ThemeCombo_SelectionChanged(object sender, SelectionChangedEventArgs e) =>
+        RequestSaveSettingsFromUi(immediate: true);
 
     private void ApplySensitivityPreset(SensitivityLevel level)
     {
@@ -1921,9 +1632,11 @@ public partial class MainWindow : Window
         SaveSettingsFromUi();
     }
 
-    private void DetailLevelCombo_SelectionChanged(object sender, SelectionChangedEventArgs e) => SaveSettingsFromUi();
+    private void DetailLevelCombo_SelectionChanged(object sender, SelectionChangedEventArgs e) =>
+        RequestSaveSettingsFromUi(immediate: true);
 
-    private void ResponseCurveCombo_SelectionChanged(object sender, SelectionChangedEventArgs e) => SaveSettingsFromUi();
+    private void ResponseCurveCombo_SelectionChanged(object sender, SelectionChangedEventArgs e) =>
+        RequestSaveSettingsFromUi(immediate: true);
 
     private void OneFootMode_Changed(object sender, RoutedEventArgs e)
     {
@@ -2159,5 +1872,12 @@ public partial class MainWindow : Window
         var frame = new DispatcherFrame();
         _ = Dispatcher.BeginInvoke(DispatcherPriority.Background, new Action(() => frame.Continue = false));
         Dispatcher.PushFrame(frame);
+        var debounceDeadline = DateTime.UtcNow + TimeSpan.FromMilliseconds(SettingsSaveDebounceMs + 50);
+        while (DateTime.UtcNow < debounceDeadline)
+        {
+            var debounceFrame = new DispatcherFrame();
+            _ = Dispatcher.BeginInvoke(DispatcherPriority.Background, new Action(() => debounceFrame.Continue = false));
+            Dispatcher.PushFrame(debounceFrame);
+        }
     }
 }

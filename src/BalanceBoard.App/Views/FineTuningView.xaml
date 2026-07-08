@@ -1,0 +1,84 @@
+<UserControl x:Class="BalanceBoard.App.Views.FineTuningView" xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"><ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled"><StackPanel>
+
+                        <Border x:Name="SensitivityCard" Style="{StaticResource Card}">
+                            <StackPanel>
+                                <TextBlock Text="PRESETS" Style="{DynamicResource Text.Section}"/>
+                                <CheckBox x:Name="SimpleSensitivityCheck" Content="Simple presets (kids / accessibility)"
+                                          IsChecked="True"/>
+                                <WrapPanel x:Name="SimpleSensitivityPanel" Margin="0,8,0,0">
+                                    <Button x:Name="SensitivityLowButton" Content="Low" MinHeight="44" Style="{StaticResource Button.Secondary}"/>
+                                    <Button x:Name="SensitivityMediumButton" Content="Medium" MinHeight="44" Style="{StaticResource Button.Secondary}"/>
+                                    <Button x:Name="SensitivityHighButton" Content="High" MinHeight="44" Style="{StaticResource Button.Secondary}"/>
+                                    <Button x:Name="SensitivityHighlyButton" Content="Highly sensitive" MinHeight="44" Style="{StaticResource Button.Secondary}"/>
+                                    <Button x:Name="SensitivityHairTriggerButton" Content="Hair trigger" MinHeight="44" Style="{StaticResource Button.Secondary}"
+                                            ToolTip="Tiny lean sends the stick to full throw — best for micro-adjustments in games."/>
+                                </WrapPanel>
+                                <StackPanel x:Name="SimpleJumpPanel" Margin="0,12,0,0">
+                                    <TextBlock x:Name="SimpleJumpLabel" Text="Jump difficulty" Style="{DynamicResource Text.Subtitle}"/>
+                                    <WrapPanel x:Name="SimpleJumpButtonsPanel" Margin="0,6,0,0">
+                                        <Button x:Name="JumpEasyButton" Content="Easy to jump" MinHeight="44" Style="{StaticResource Button.Secondary}"/>
+                                        <Button x:Name="JumpNormalButton" Content="Normal jump" MinHeight="44" Style="{StaticResource Button.Secondary}"/>
+                                        <Button x:Name="JumpHardButton" Content="Hard to jump" MinHeight="44" Style="{StaticResource Button.Secondary}"/>
+                                    </WrapPanel>
+                                </StackPanel>
+
+                                <Border x:Name="FineTuneSection" Margin="0,16,0,0" Padding="0,16,0,0"
+                                        BorderBrush="{DynamicResource Brush.CardBorder}" BorderThickness="0,1,0,0">
+                                    <StackPanel>
+                                        <TextBlock Text="SLIDERS" Style="{DynamicResource Text.Section}"/>
+                                        <TextBlock x:Name="FineTuneHintText" Style="{DynamicResource Text.Subtitle}" TextWrapping="Wrap" Margin="0,0,0,8"
+                                                   Text="Uncheck “Simple presets” above to show deadzone, sensitivity, triggers, and response curve sliders."/>
+                                        <StackPanel x:Name="StandardSensitivityPanel" Visibility="Collapsed" Margin="0,0,0,0">
+                                            <CheckBox x:Name="OneFootModeCheck" Content="One-foot mode (high sensitivity + easy jump)"
+                                                      Margin="0,0,0,8"/>
+                                            <TextBlock x:Name="DeadzoneLabel" Style="{DynamicResource Text.Subtitle}"/>
+                                            <Slider x:Name="DeadzoneSlider" Minimum="0" Maximum="20" Value="5" TickFrequency="1" IsSnapToTickEnabled="True"/>
+                                            <CheckBox x:Name="SplitAxisDeadzoneCheck" Content="Custom deadzone per axis"
+                                                      Margin="0,8,0,0"/>
+                                            <StackPanel x:Name="SplitAxisDeadzonePanel" Visibility="Collapsed" Margin="0,4,0,0">
+                                                <TextBlock x:Name="DeadzoneLeftRightLabel" Style="{DynamicResource Text.Subtitle}"/>
+                                                <Slider x:Name="DeadzoneLeftRightSlider" Minimum="0" Maximum="20" Value="0" TickFrequency="1" IsSnapToTickEnabled="True"/>
+                                                <TextBlock x:Name="DeadzoneForwardBackwardLabel" Style="{DynamicResource Text.Subtitle}" Margin="0,8,0,0"/>
+                                                <Slider x:Name="DeadzoneForwardBackwardSlider" Minimum="0" Maximum="20" Value="0" TickFrequency="1" IsSnapToTickEnabled="True"/>
+                                                <TextBlock Style="{DynamicResource Text.Subtitle}" Margin="0,4,0,0" TextWrapping="Wrap"
+                                                           Text="Elliptical deadzone keeps diagonals reachable when axes differ."/>
+                                            </StackPanel>
+                                            <TextBlock x:Name="SensitivityLabel" Style="{DynamicResource Text.Subtitle}" Margin="0,8,0,0"/>
+                                            <Slider x:Name="SensitivitySlider" Minimum="0.5" Maximum="25" Value="1" TickFrequency="0.5"/>
+                                            <CheckBox x:Name="LockLeftRightAxisCheck" Content="Forward / backward only (lock left–right stick)"
+                                                      Margin="0,10,0,0"/>
+                                            <CheckBox x:Name="LockForwardBackwardAxisCheck" Content="Left / right only (lock forward–back stick)"
+                                                      Margin="0,4,0,0"/>
+                                            <CheckBox x:Name="SplitAxisSensitivityCheck" Content="Split axis sensitivity"
+                                                      Margin="0,10,0,0"/>
+                                            <StackPanel x:Name="SplitAxisSensitivityPanel" Visibility="Collapsed" Margin="0,4,0,0">
+                                                <TextBlock x:Name="SensitivityLeftRightLabel" Style="{DynamicResource Text.Subtitle}"/>
+                                                <Slider x:Name="SensitivityLeftRightSlider" Minimum="0" Maximum="25" Value="0" TickFrequency="0.5"/>
+                                                <TextBlock x:Name="SensitivityForwardBackwardLabel" Style="{DynamicResource Text.Subtitle}" Margin="0,8,0,0"/>
+                                                <Slider x:Name="SensitivityForwardBackwardSlider" Minimum="0" Maximum="25" Value="0" TickFrequency="0.5"/>
+                                            </StackPanel>
+                                            <TextBlock x:Name="JumpThresholdLabel" Style="{DynamicResource Text.Subtitle}" Margin="0,8,0,0"/>
+                                            <Slider x:Name="JumpThresholdSlider" Minimum="0.2" Maximum="80" Value="1" TickFrequency="0.5"/>
+                                            <StackPanel x:Name="InvertPanel" Margin="0,8,0,0">
+                                                <CheckBox x:Name="InvertXCheck" Content="Invert X"/>
+                                                <CheckBox x:Name="InvertYCheck" Content="Invert Y"/>
+                                            </StackPanel>
+                                        </StackPanel>
+                                        <StackPanel x:Name="AdvancedSensitivityPanel" Visibility="Collapsed" Margin="0,12,0,0">
+                                            <TextBlock x:Name="TriggerLeftRightLabel" Style="{DynamicResource Text.Subtitle}"/>
+                                            <Slider x:Name="TriggerLeftRightSlider" Minimum="1" Maximum="30" Value="8" TickFrequency="1" IsSnapToTickEnabled="True"/>
+                                            <TextBlock x:Name="TriggerForwardBackwardLabel" Style="{DynamicResource Text.Subtitle}"/>
+                                            <Slider x:Name="TriggerForwardBackwardSlider" Minimum="1" Maximum="30" Value="9" TickFrequency="1" IsSnapToTickEnabled="True"/>
+                                            <TextBlock x:Name="JumpHoldLabel" Style="{DynamicResource Text.Subtitle}" Margin="0,8,0,0"/>
+                                            <Slider x:Name="JumpHoldSlider" Minimum="0.5" Maximum="4" Value="2" TickFrequency="0.1"/>
+                                            <StackPanel Orientation="Horizontal" Margin="0,12,0,0">
+                                                <TextBlock Text="Response curve" VerticalAlignment="Center" Style="{DynamicResource Text.Subtitle}" Margin="0,0,8,0"/>
+                                                <ComboBox x:Name="ResponseCurveCombo" Width="180"/>
+                                            </StackPanel>
+                                        </StackPanel>
+                                    </StackPanel>
+                                </Border>
+                            </StackPanel>
+                        </Border>
+
+                    </StackPanel></ScrollViewer></UserControl>

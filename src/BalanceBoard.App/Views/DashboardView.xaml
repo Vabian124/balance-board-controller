@@ -1,0 +1,87 @@
+<UserControl x:Class="BalanceBoard.App.Views.DashboardView" xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:controls="clr-namespace:BalanceBoard.App.Controls"><Grid><Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions><controls:ConnectionToolbar x:Name="ConnectionToolbar" Grid.Row="0" Margin="0,0,0,8"/>
+
+                    <Border x:Name="PhysicalTestPanel" Grid.Row="1" Style="{StaticResource Card}" Margin="0,0,0,8" Visibility="Collapsed">
+                        <StackPanel>
+                            <TextBlock Text="PHYSICAL TEST MODE" Style="{DynamicResource Text.Section}"/>
+                            <TextBlock x:Name="PhysicalTestScenarioText" Style="{DynamicResource Text.Subtitle}" Margin="0,4,0,0" TextWrapping="Wrap"/>
+                            <TextBlock x:Name="PhysicalTestArtifactsText" Style="{DynamicResource Text.Mono}" Margin="0,6,0,0" TextWrapping="Wrap"/>
+                            <Border Margin="0,10,0,0" Padding="12" CornerRadius="12"
+                                    Background="{DynamicResource Brush.Card}"
+                                    BorderBrush="{DynamicResource Brush.CardBorder}"
+                                    BorderThickness="1">
+                                <StackPanel>
+                                    <TextBlock x:Name="PhysicalTestStepTitleText" FontSize="18" FontWeight="SemiBold"
+                                               Foreground="{DynamicResource Brush.Foreground}"/>
+                                    <TextBlock x:Name="PhysicalTestStepInstructionsText" Style="{DynamicResource Text.Body}" Margin="0,6,0,0" TextWrapping="Wrap"/>
+                                    <TextBlock x:Name="PhysicalTestExpectedSignalText" Style="{DynamicResource Text.Subtitle}" Margin="0,6,0,0" TextWrapping="Wrap"/>
+                                    <TextBlock x:Name="PhysicalTestProgressText" Style="{DynamicResource Text.Mono}" Margin="0,8,0,0"/>
+                                    <WrapPanel Margin="0,10,0,0">
+                                        <Button x:Name="PhysicalTestPassButton" Content="Pass step" MinHeight="36" Style="{StaticResource Button.Primary}"/>
+                                        <Button x:Name="PhysicalTestFailButton" Content="Fail step" MinHeight="36" Style="{StaticResource Button.Secondary}"/>
+                                        <Button x:Name="PhysicalTestSkipButton" Content="Skip step" MinHeight="36" Style="{StaticResource Button.Ghost}"/>
+                                    </WrapPanel>
+                                </StackPanel>
+                            </Border>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- Live balance (visual-first) -->
+                    <Border x:Name="BalancePanel" Grid.Row="2" Style="{StaticResource Card}" Margin="0">
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="*"/>
+                                <RowDefinition Height="Auto"/>
+                            </Grid.RowDefinitions>
+
+                            <Grid Grid.Row="0" Margin="0,0,0,4">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <StackPanel VerticalAlignment="Center">
+                                    <TextBlock x:Name="DirectionText" FontSize="22" FontWeight="SemiBold"
+                                               Foreground="{DynamicResource Brush.Foreground}"
+                                               Text="Connect your board to begin"
+                                               AutomationProperties.Name="Movement and jump feedback"
+                                               AutomationProperties.LiveSetting="Assertive"/>
+                                    <TextBlock x:Name="ActiveActionsText" Style="{DynamicResource Text.Subtitle}" Margin="0,2,0,0"
+                                               AutomationProperties.Name="Active profile actions"
+                                               AutomationProperties.LiveSetting="Polite"/>
+                                </StackPanel>
+                                <WrapPanel x:Name="CalibrationButtonsPanel" Grid.Column="1" VerticalAlignment="Center">
+                                    <Button x:Name="TareButton" Content="Tare" MinHeight="44" Style="{StaticResource Button.Primary}"
+                                            AutomationProperties.Name="Tare board"
+                                            AutomationProperties.HelpText="Zero the board while you are standing off it."/>
+                                    <Button x:Name="SetCenterButton" Content="Set center" MinHeight="44" Style="{StaticResource Button.Secondary}"
+                                            AutomationProperties.Name="Set balance center"
+                                            AutomationProperties.HelpText="Capture your current stance as the neutral lean position."/>
+                                    <Button x:Name="ResetCenterButton" Content="Reset center" MinHeight="44" Style="{StaticResource Button.Ghost}"
+                                            AutomationProperties.Name="Reset balance center"/>
+                                </WrapPanel>
+                            </Grid>
+
+                            <controls:BalanceBoardVisual x:Name="BoardVisual" Grid.Row="1" Margin="0,4,0,4" MinHeight="360" VerticalAlignment="Stretch"
+                                                         AutomationProperties.Name="Live balance board visualization"/>
+
+                            <StackPanel Grid.Row="2" Margin="0,4,0,0">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock x:Name="WeightText" Style="{DynamicResource Text.Body}" FontWeight="SemiBold"
+                                               Text="Weight: — kg"
+                                               AutomationProperties.Name="Current weight"/>
+                                    <TextBlock x:Name="BalanceText" Grid.Column="1" Style="{DynamicResource Text.Subtitle}"
+                                               Text="Balance: — / —"
+                                               AutomationProperties.Name="Current balance percentages"/>
+                                </Grid>
+                                <TextBlock x:Name="SensorText" Style="{DynamicResource Text.Mono}" Margin="0,4,0,0"
+                                           Text="Sensors: connect to see corner loads"/>
+                                <TextBlock x:Name="BoardButtonText" Style="{DynamicResource Text.Subtitle}" Margin="0,4,0,0"
+                                           Text="Board button: —"/>
+                                <TextBlock x:Name="VJoyAxesText" Style="{DynamicResource Text.Mono}" Margin="0,4,0,0"/>
+                            </StackPanel>
+                        </Grid>
+                    </Border></Grid></UserControl>
