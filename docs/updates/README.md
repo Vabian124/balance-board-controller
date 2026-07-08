@@ -6,6 +6,8 @@ Short index for AI assistants. User-facing history: [CHANGELOG.md](../../CHANGEL
 
 | Commit | Summary |
 |--------|---------|
+| [`c93a390`](https://github.com/Vabian124/balance-board-controller/commit/c93a390) | **v1.4.0 CI + fast release** — skip BT wait for simulated connect, dotnet PATH fix, release workflow package-only, `scripts/release/quick-release.ps1` |
+| [`71f30d9`](https://github.com/Vabian124/balance-board-controller/commit/71f30d9) | Fix CI: resolve dotnet CLI via DOTNET_ROOT; skip Bluetooth wait for simulated connect |
 | [`86702e9`](https://github.com/Vabian124/balance-board-controller/commit/86702e9) | **v1.4.0** — unified `scripts/ci/test.ps1` pipeline, headless WPF UI tests, hang hardening (worker/dispatcher/test watchdogs), `--physical-test connect-basic` hardware lane |
 | [`aacec1d`](https://github.com/Vabian124/balance-board-controller/commit/aacec1d) | **post-v1.3.0** — skip duplicate connect when session already healthy |
 | [`ec7bc23`](https://github.com/Vabian124/balance-board-controller/commit/ec7bc23) | **post-v1.3.0** — vJoy Center() after acquire; nullable split-axis sensitivity persistence + tests |

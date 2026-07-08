@@ -100,6 +100,8 @@ Production `start.bat` enforces single instance. Use `scripts/dev/start.ps1 --de
 - Runner: `windows-latest`
 - Steps: crash-safety grep → **format check** → Release build (`-warnaserror`) → **unified test pipeline** (`scripts/ci/test.ps1`) → upload `artifacts/test/`
 
+**Releases:** see [RELEASING.md](RELEASING.md). Tag push runs `release.yml` (package + upload only, ~2–4 min). Use `.\scripts\release\quick-release.ps1` after CI is green.
+
 ### Linting and static analysis
 
 | Tool | What it catches |
