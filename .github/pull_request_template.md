@@ -4,8 +4,10 @@
 
 ## Test plan
 
-- [ ] `.\scripts\lint.ps1` (or CI green)
+- [ ] `.\scripts\ci\lint.ps1` (or CI **Quality gate** green)
 - [ ] Manual smoke (if UI/connect touched): `.\start.bat`
+
+CI runs the unified test pipeline (`scripts/ci/test.ps1`): Core, Fuzz, Integration, **BalanceBoard.App.Ui.Tests**, Validate, **BalanceBoard.Automation**.
 
 ## Checklist
 

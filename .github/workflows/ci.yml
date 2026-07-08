@@ -23,9 +23,44 @@ jobs:
         with:
           global-json-file: global.json
 
+      - name: Cache NuGet packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.nuget/packages
+          key: ${{ runner.os }}-nuget-${{ hashFiles('global.json', 'Directory.Build.props', '**/*.csproj') }}
+          restore-keys: |
+            ${{ runner.os }}-nuget-
+
       - name: Quality gate (format, analyzers, tests, smoke)
         shell: pwsh
         run: ./scripts/ci/lint.ps1
+
+      - name: Test pipeline summary
+        if: always()
+        shell: pwsh
+        run: |
+          $summaryPath = "artifacts/test/summary.json"
+          if (-not (Test-Path $summaryPath)) {
+            "## Test pipeline`n`nNo summary.json (quality gate may have failed before tests)." |
+              Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append -Encoding utf8
+            exit 0
+          }
+
+          $summary = Get-Content $summaryPath -Raw | ConvertFrom-Json
+          $lines = @(
+            "## Test pipeline ($($summary.mode))",
+            "",
+            "| Suite | Phase | Passed | Duration (s) |",
+            "|-------|-------|--------|--------------|"
+          )
+          foreach ($suite in $summary.suites) {
+            $status = if ($suite.passed) { "pass" } else { "**fail**" }
+            $lines += "| $($suite.name) | $($suite.phase) | $status | $($suite.durationSec) |"
+          }
+          $overall = if ($summary.passed) { "PASSED" } else { "**FAILED**" }
+          $lines += ""
+          $lines += "**Overall:** $overall in $($summary.durationSec)s"
+          $lines -join "`n" | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append -Encoding utf8
 
       - name: Upload test artifacts
         if: always() && hashFiles('artifacts/test/**') != ''

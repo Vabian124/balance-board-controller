@@ -96,7 +96,7 @@ dotnet run --project tools/Validate/BalanceBoard.Validate.csproj -c Release
 dotnet run --project src/BalanceBoard.App/BalanceBoard.App.csproj -c Release
 ```
 
-CI: `.github/workflows/ci.yml` runs `scripts/ci/lint.ps1` (format, build, all tests, Validate, UiSmoke, lifecycle smoke).
+CI: `.github/workflows/ci.yml` runs `scripts/ci/lint.ps1` (format, build, unified test pipeline: Core/Fuzz/Integration/App.Ui.Tests, Validate, Automation).
 
 ## Key models
 

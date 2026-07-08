@@ -10,7 +10,7 @@ Thanks for improving Balance Board Controller. This repo is structured for portf
 4. Run the quality gate:
 
    ```powershell
-   .\scripts\lint.ps1
+   .\scripts\ci\lint.ps1
    ```
 
 5. Open a PR (template provided)
@@ -36,10 +36,11 @@ All PRs must pass **CI** (same as `scripts/ci/lint.ps1`):
 |------|------------------|
 | `dotnet format --verify-no-changes` | Consistent style ([`.editorconfig`](.editorconfig)) |
 | `dotnet build -warnaserror` | Roslyn analyzers + nullable (Release) |
-| Test projects | Unit, integration, fuzz, automation |
+| `BalanceBoard.Core.Tests` / `BalanceBoard.Fuzz.Tests` | Unit + property tests |
+| `BalanceBoard.Integration.Tests` | Session/connect fakes |
+| `BalanceBoard.App.Ui.Tests` | Headless WPF UI tests |
 | `tools/Validate` | vJoy/HID diagnostics CLI |
-| `tools/UiSmoke` | WPF XAML runtime load |
-| `scripts/dev/test-flow.ps1` | Start/stop/single-instance lifecycle |
+| `BalanceBoard.Automation` | Start/stop/single-instance lifecycle |
 
 SDK version is pinned in [`global.json`](global.json).
 
