@@ -2,6 +2,24 @@
 
 All notable user-facing changes. For detailed agent work logs see [`docs/updates/`](docs/updates/).
 
+
+## [1.4.2] - 2026-07-08
+
+User-reported bug fixes from PR #13 (weight display, keyboard, mouse, autoconnect, vJoy UX).
+
+### Added
+- **vJoy Configure** button with `VJoyConfigLocator` when the driver is installed but the device is not configured
+- **`docs/DEVELOPER_API.md`** for integrators
+
+### Fixed
+- **Weight display** - absolute weight after Wiimote tare no longer drifts incorrectly
+- **Forward=W keyboard** regression restored for desktop preset
+- **Balance Mouse** - proportional movement instead of fixed step size
+- **Startup auto-reconnect** recovery when a saved board is paired but not yet connected
+- Expanded regression tests for the above
+
+### Changed
+- Assembly and file version bumped to **1.4.2**
 ## [1.4.1] - 2026-07-08
 
 Custom profiles, multi-device picker, accessibility, and a broad hardening + concurrency pass.
