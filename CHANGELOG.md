@@ -3,6 +3,25 @@
 All notable user-facing changes. For detailed agent work logs see [`docs/updates/`](docs/updates/).
 
 
+## [1.5.0] - 2026-07-08
+
+Output-mode refactor: mutually exclusive keyboard vs vJoy movement, Minecraft keyboard default, board-button mapping.
+
+### Added
+- **Output mode** — pick keyboard/mouse or vJoy as primary movement output (prevents double input)
+- **Minecraft (Controlify)** profile — separate from keyboard-first **Minecraft** (WASD + Space)
+- **Board button slot** — map power/A to a key or vJoy button independently of movement
+- **Configurable jump vJoy button** — choose button 1–32 when jump maps to vJoy
+- **vJoy device picker** — lists configured devices with axis/button summary
+- **Movement hysteresis** — reduces trigger-edge flicker on cardinal directions
+- Settings migration for `OutputMode` and `JumpVJoyButton` from older saves
+
+### Changed
+- First-run default is **Minecraft** keyboard (WASD + Space), not vJoy Controlify
+- `ActionEngine` processes movement slots separately from board-button key bindings
+- `VJoyController` tracks multiple buttons; jump no longer forces board A onto vJoy button 1
+- Assembly and file version bumped to **1.5.0**
+
 ## [1.4.2] - 2026-07-08
 
 User-reported bug fixes from PR #13 (weight display, keyboard, mouse, autoconnect, vJoy UX).
