@@ -666,6 +666,17 @@ public class ConnectFlowTests
         // Give the recovery loop time to notice the drop and block inside the slow pairing call.
         await WaitUntilAsync(() => pairing.PairCallCount >= 1, TimeSpan.FromSeconds(2));
 
+        // Drop the artificial delay and queue a successful pair for the *manual* connect that
+        // follows. The recovery attempt must still be cancelled mid-delay (via the handoff);
+        // the manual path should not also inherit a 4s x N-round stall that exceeds InvokeTimeout.
+        pairing.PairDelayMs = 0;
+        pairing.EnqueuePairResult(new BluetoothPairingResult
+        {
+            Success = true,
+            Message = "Paired 1 Nintendo device(s).",
+            DevicesPaired = 1,
+        });
+
         var sw = Stopwatch.StartNew();
         ConnectResult manual;
         try
