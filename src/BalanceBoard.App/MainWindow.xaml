@@ -191,7 +191,7 @@
                                             ToolTip="Game controller preset — vJoy left stick for movement."/>
                                     <Button x:Name="MinecraftPresetButton" Content="Minecraft" MinHeight="44" Style="{StaticResource Button.Secondary}" Margin="0,0,4,4" Click="MinecraftPreset_Click"
                                             AutomationProperties.Name="Minecraft profile"
-                                            ToolTip="vJoy Device 1 in Controlify: lean = left stick (move), jump = A button."/>
+                                            ToolTip="WASD movement and Space to jump — lean to move, lift off to jump."/>
                                     <Button x:Name="DesktopPresetButton" Content="Desktop" MinHeight="44" Style="{StaticResource Button.Secondary}" Margin="0,0,0,4" Click="KeyboardPreset_Click"
                                             AutomationProperties.Name="Desktop keyboard profile"
                                             ToolTip="Keyboard movement preset for desktop use."/>
@@ -367,7 +367,7 @@
                             <StackPanel>
                                 <TextBlock Text="KEYBOARD &amp; MOUSE" Style="{DynamicResource Text.Section}"/>
                                 <TextBlock Style="{DynamicResource Text.Subtitle}" TextWrapping="Wrap" Margin="0,0,0,8"
-                                           Text="Map lean directions to keys or mouse actions. Disable vJoy keyboard block to use these while gaming."/>
+                                           Text="Map lean directions to keys or mouse actions. Use output mode below to avoid sending keys while vJoy is driving movement."/>
                                 <controls:ActionBindingRow x:Name="BindLeft" SlotDisplayName="Left" BindingChanged="ActionBinding_Changed"/>
                                 <controls:ActionBindingRow x:Name="BindRight" SlotDisplayName="Right" BindingChanged="ActionBinding_Changed"/>
                                 <controls:ActionBindingRow x:Name="BindForward" SlotDisplayName="Forward" BindingChanged="ActionBinding_Changed"/>
@@ -376,22 +376,36 @@
                                 <controls:ActionBindingRow x:Name="BindModifier" SlotDisplayName="Modifier" BindingChanged="ActionBinding_Changed"/>
                                 <controls:ActionBindingRow x:Name="BindDiagonalLeft" SlotDisplayName="Diagonal left" BindingChanged="ActionBinding_Changed"/>
                                 <controls:ActionBindingRow x:Name="BindDiagonalRight" SlotDisplayName="Diagonal right" BindingChanged="ActionBinding_Changed"/>
+                                <TextBlock Text="BOARD BUTTON" Style="{DynamicResource Text.Section}" Margin="0,12,0,4"/>
+                                <TextBlock Style="{DynamicResource Text.Subtitle}" TextWrapping="Wrap" Margin="0,0,0,8"
+                                           Text="The balance-board power / A button can map to a key (e.g. Escape) or a vJoy button independently of movement output."/>
+                                <controls:ActionBindingRow x:Name="BindBoardButton" SlotDisplayName="Power / A" BindingChanged="ActionBinding_Changed"/>
                             </StackPanel>
                         </Border>
 
                         <Border x:Name="VJoySection" Style="{StaticResource Card}">
                             <StackPanel>
                                 <TextBlock Text="CONTROLLER OUTPUT (VJOY)" Style="{DynamicResource Text.Section}"/>
-                                <CheckBox x:Name="EnableVJoyCheck" Content="Use virtual game controller" Checked="SettingChanged" Unchecked="SettingChanged"/>
+                                <TextBlock Style="{DynamicResource Text.Subtitle}" TextWrapping="Wrap" Margin="0,0,0,8"
+                                           Text="Pick one primary movement output. vJoy and keyboard movement cannot run together without double input."/>
+                                <TextBlock Text="Movement output" Style="{DynamicResource Text.Subtitle}" Margin="0,0,0,4"/>
+                                <ComboBox x:Name="OutputModeCombo" Margin="0,0,0,8" SelectionChanged="OutputModeCombo_SelectionChanged"/>
+                                <CheckBox x:Name="EnableVJoyCheck" Content="Use virtual game controller (vJoy)" Checked="SettingChanged" Unchecked="SettingChanged" Visibility="Collapsed"/>
+                                <CheckBox x:Name="DisableActionsCheck" Content="Disable keyboard/mouse output" Checked="SettingChanged" Unchecked="SettingChanged" Visibility="Collapsed"/>
                                 <CheckBox x:Name="SendCgCheck" Content="Balance → X/Y axes" Checked="SettingChanged" Unchecked="SettingChanged"/>
                                 <CheckBox x:Name="SendSensorsCheck" Content="Load sensors → Z/RX/RY/RZ" Checked="SettingChanged" Unchecked="SettingChanged"/>
-                                <CheckBox x:Name="DisableActionsCheck" Content="Disable keyboard/mouse output" Checked="SettingChanged" Unchecked="SettingChanged"/>
+                                <CheckBox x:Name="MapJumpVJoyCheck" Content="Jump → vJoy button" Checked="SettingChanged" Unchecked="SettingChanged"/>
+                                <StackPanel x:Name="JumpVJoyPanel" Orientation="Horizontal" Margin="16,0,0,0">
+                                    <TextBlock Text="Jump button #" Style="{DynamicResource Text.Subtitle}" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                                    <ComboBox x:Name="JumpVJoyButtonCombo" Width="72" SelectionChanged="SettingChanged"/>
+                                </StackPanel>
                                 <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
                                     <TextBlock Text="vJoy device" VerticalAlignment="Center" Style="{DynamicResource Text.Subtitle}" Margin="0,0,8,0"/>
-                                    <ComboBox x:Name="VJoyDeviceCombo" Width="64" SelectionChanged="SettingChanged"/>
+                                    <ComboBox x:Name="VJoyDeviceCombo" Width="220" SelectionChanged="VJoyDeviceCombo_SelectionChanged"/>
                                 </StackPanel>
+                                <TextBlock x:Name="VJoyDeviceDetailsText" Style="{DynamicResource Text.Subtitle}" TextWrapping="Wrap" Margin="0,8,0,0"/>
                                 <TextBlock Style="{DynamicResource Text.Subtitle}" TextWrapping="Wrap" Margin="0,10,0,0"
-                                           Text="Axes and buttons for the vJoy device are set up in vJoy's own Configure tool (installed with the driver). Enable at least axes X and Y for balance control, then Apply and pick the device number above."/>
+                                           Text="Axes and buttons for the vJoy device are set up in vJoy's own Configure tool (installed with the driver). Enable at least axes X and Y for balance control, then Apply and pick the device above."/>
                                 <WrapPanel Margin="0,8,0,0">
                                     <Button x:Name="ConfigureVJoyButton" Content="Configure vJoy…" Style="{StaticResource Button.Secondary}" Click="ConfigureVJoyButton_Click"/>
                                     <Button x:Name="GetVJoyButton" Content="Get vJoy driver" Style="{StaticResource Button.Secondary}" Click="GetVJoyButton_Click"/>

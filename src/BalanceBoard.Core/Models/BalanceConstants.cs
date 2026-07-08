@@ -18,6 +18,8 @@ public static class BalanceConstants
     public const double VJoyJumpPulseSeconds = 0.35;
     public const float BalanceCenterPercent = 50f;
     public const float DiagonalDeltaThreshold = 15f;
+    /// <summary>Extra percent band before a latched movement direction releases (prevents trigger-edge flicker).</summary>
+    public const float MovementTriggerHysteresisPercent = 3f;
     public const float MinTotalWeightEpsilon = 0.001f;
     public const float PercentScale = 100f;
     public const float JoyAxisScale = 655.34f;

@@ -6,14 +6,16 @@ public static class ActionPresets
     public const string Pedal = "Pedal / Rudder";
     public const string KeyboardMovement = "Hand-Free Desktop";
     public const string BalanceMouse = "Balance Mouse";
-    public const string Minecraft = "Minecraft (Controlify)";
+    public const string Minecraft = "Minecraft";
+    public const string MinecraftControlify = "Minecraft (Controlify)";
     public const string Default = "Default";
 
     public static IReadOnlyList<string> All { get; } =
     [
         Default,
-        GameController,
         Minecraft,
+        GameController,
+        MinecraftControlify,
         Pedal,
         KeyboardMovement,
         BalanceMouse,
@@ -28,6 +30,9 @@ public static class ActionPresets
                 break;
             case Minecraft:
                 ApplyMinecraft(settings);
+                break;
+            case MinecraftControlify:
+                ApplyMinecraftControlify(settings);
                 break;
             case Pedal:
                 ApplyPedal(settings);
@@ -47,36 +52,62 @@ public static class ActionPresets
     public static void ApplyGameController(AppSettings settings)
     {
         settings.ActiveProfileName = GameController;
-        settings.EnableVJoy = true;
-        settings.DisableKeyboardActions = true;
+        settings.SetOutputMode(OutputMode.VJoy);
         settings.SendCenterOfGravityToAxes = true;
         settings.SendLoadSensorsToAxes = false;
         settings.MapJumpToVJoyButton = false;
+        settings.Actions[ActionSlots.BoardButton] = new ActionBinding
+        {
+            Kind = ActionKind.VJoyButton,
+            VJoyButtonNumber = 2,
+        };
         TriggerDefaults.ApplyTo(settings);
+    }
+
+    /// <summary>
+    /// Keyboard WASD movement + Space jump — default Minecraft template.
+    /// </summary>
+    public static void ApplyMinecraft(AppSettings settings)
+    {
+        settings.ActiveProfileName = Minecraft;
+        settings.SetOutputMode(OutputMode.Keyboard);
+        settings.SendCenterOfGravityToAxes = false;
+        settings.SendLoadSensorsToAxes = false;
+        settings.MapJumpToVJoyButton = false;
+        JumpPresets.Apply(settings, JumpLevel.Normal);
+        SensitivityPresets.Apply(settings, SensitivityLevel.Medium);
+        settings.ResponseCurve = ResponseCurve.MinecraftSnappy;
+        TriggerDefaults.ApplyTo(settings);
+        settings.Actions = CreateMinecraftKeyboardBindings();
+        settings.Actions[ActionSlots.BoardButton] = new ActionBinding { Kind = ActionKind.Key, KeyName = "Escape" };
     }
 
     /// <summary>
     /// vJoy left stick = move (lean), button 1 = jump — bind vJoy Device 1 in Controlify for Minecraft.
     /// </summary>
-    public static void ApplyMinecraft(AppSettings settings)
+    public static void ApplyMinecraftControlify(AppSettings settings)
     {
-        settings.ActiveProfileName = Minecraft;
-        settings.EnableVJoy = true;
-        settings.DisableKeyboardActions = true;
+        settings.ActiveProfileName = MinecraftControlify;
+        settings.SetOutputMode(OutputMode.VJoy);
         settings.SendCenterOfGravityToAxes = true;
         settings.SendLoadSensorsToAxes = false;
         settings.MapJumpToVJoyButton = true;
+        settings.JumpVJoyButton = 1;
         JumpPresets.Apply(settings, JumpLevel.Normal);
         SensitivityPresets.Apply(settings, SensitivityLevel.Medium);
         settings.ResponseCurve = ResponseCurve.MinecraftSnappy;
         TriggerDefaults.ApplyTo(settings);
+        settings.Actions[ActionSlots.BoardButton] = new ActionBinding
+        {
+            Kind = ActionKind.VJoyButton,
+            VJoyButtonNumber = 2,
+        };
     }
 
     public static void ApplyPedal(AppSettings settings)
     {
         settings.ActiveProfileName = Pedal;
-        settings.EnableVJoy = true;
-        settings.DisableKeyboardActions = true;
+        settings.SetOutputMode(OutputMode.VJoy);
         settings.SendCenterOfGravityToAxes = false;
         settings.SendLoadSensorsToAxes = true;
     }
@@ -84,24 +115,37 @@ public static class ActionPresets
     public static void ApplyKeyboardMovement(AppSettings settings)
     {
         settings.ActiveProfileName = KeyboardMovement;
-        settings.EnableVJoy = false;
-        settings.DisableKeyboardActions = false;
+        settings.SetOutputMode(OutputMode.Keyboard);
         settings.SendCenterOfGravityToAxes = false;
         settings.SendLoadSensorsToAxes = false;
         TriggerDefaults.ApplyTo(settings);
         settings.Actions = CreateLegacyKeyboardBindings();
+        settings.Actions[ActionSlots.BoardButton] = new ActionBinding { Kind = ActionKind.Key, KeyName = "Escape" };
     }
 
     public static void ApplyBalanceMouse(AppSettings settings)
     {
         settings.ActiveProfileName = BalanceMouse;
-        settings.EnableVJoy = false;
-        settings.DisableKeyboardActions = false;
+        settings.SetOutputMode(OutputMode.Keyboard);
         settings.SendCenterOfGravityToAxes = false;
         settings.SendLoadSensorsToAxes = false;
         SensitivityPresets.Apply(settings, SensitivityLevel.Medium);
         settings.Actions = CreateBalanceMouseBindings();
+        settings.Actions[ActionSlots.BoardButton] = new ActionBinding { Kind = ActionKind.None };
     }
+
+    public static Dictionary<string, ActionBinding> CreateMinecraftKeyboardBindings() =>
+        new()
+        {
+            [ActionSlots.Left] = BindKey("A"),
+            [ActionSlots.Right] = BindKey("D"),
+            [ActionSlots.Forward] = BindKey("W"),
+            [ActionSlots.Backward] = BindKey("S"),
+            [ActionSlots.Jump] = BindKey("Space"),
+            [ActionSlots.Modifier] = new ActionBinding(),
+            [ActionSlots.DiagonalLeft] = new ActionBinding(),
+            [ActionSlots.DiagonalRight] = new ActionBinding(),
+        };
 
     public static Dictionary<string, ActionBinding> CreateLegacyKeyboardBindings() =>
         new()

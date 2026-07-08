@@ -13,6 +13,10 @@ public sealed class BalanceProcessor
     private bool _resetCenterPossible;
     private DateTime _jumpTime = DateTime.MinValue;
     private bool _aboveJumpThreshold;
+    private bool _moveLeft;
+    private bool _moveRight;
+    private bool _moveForward;
+    private bool _moveBackward;
 
     public void Tare()
     {
@@ -23,6 +27,10 @@ public sealed class BalanceProcessor
         _offsetBottomRight = 0;
         _resetCenterPossible = false;
         _aboveJumpThreshold = false;
+        _moveLeft = false;
+        _moveRight = false;
+        _moveForward = false;
+        _moveBackward = false;
     }
 
     public void SetCenterFromCurrentReading(BalanceReading reading)
@@ -70,9 +78,7 @@ public sealed class BalanceProcessor
             ref _aboveJumpThreshold);
 
         var onBoard = weight > BalanceConstants.WeightOnBoardThresholdKg;
-        var vJoyButton1 = settings.MapJumpToVJoyButton
-            ? jump || reading.ButtonA
-            : reading.ButtonA;
+        var vJoyButton1 = settings.MapJumpToVJoyButton && jump;
 
         if (!onBoard)
         {
@@ -107,7 +113,18 @@ public sealed class BalanceProcessor
             owrTopLeft, owrTopRight, owrBottomLeft, owrBottomRight);
 
         var (moveLeft, moveRight, moveForward, moveBackward) =
-            BalanceMath.EvaluateCardinalMovement(balanceX, balanceY, settings);
+            BalanceMath.EvaluateCardinalMovement(
+                balanceX,
+                balanceY,
+                settings,
+                _moveLeft,
+                _moveRight,
+                _moveForward,
+                _moveBackward);
+        _moveLeft = moveLeft;
+        _moveRight = moveRight;
+        _moveForward = moveForward;
+        _moveBackward = moveBackward;
 
         var modifier = BalanceMath.EvaluateModifier(balanceX, balanceY, settings);
 

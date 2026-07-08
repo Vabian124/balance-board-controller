@@ -8,12 +8,15 @@ public sealed class AppSettings
     public int TriggerForwardBackward { get; set; } = TriggerDefaults.ForwardBackward;
     public int TriggerModifierLeftRight { get; set; } = TriggerDefaults.ModifierLeftRight;
     public int TriggerModifierForwardBackward { get; set; } = TriggerDefaults.ModifierForwardBackward;
-    public bool EnableVJoy { get; set; } = true;
+    public bool EnableVJoy { get; set; }
     public bool SendCenterOfGravityToAxes { get; set; } = true;
     public bool SendLoadSensorsToAxes { get; set; }
-    public bool DisableKeyboardActions { get; set; } = true;
-    /// <summary>When true, one-foot jump detection drives vJoy button 1 (gamepad A).</summary>
+    public bool DisableKeyboardActions { get; set; }
+    public OutputMode OutputMode { get; set; } = OutputMode.Keyboard;
+    /// <summary>When true, one-foot jump detection drives a vJoy button (see <see cref="JumpVJoyButton"/>).</summary>
     public bool MapJumpToVJoyButton { get; set; }
+    /// <summary>1-based vJoy button used when <see cref="MapJumpToVJoyButton"/> is true.</summary>
+    public int JumpVJoyButton { get; set; } = 1;
     public uint VJoyDeviceId { get; set; } = 1;
     public bool AutoConnectOnStartup { get; set; } = true;
     public bool HasConnectedBefore { get; set; }
@@ -50,12 +53,41 @@ public sealed class AppSettings
     /// <summary>vJoy Y (forward/back) stays centered — strafe only.</summary>
     public bool LockForwardBackwardAxis { get; set; }
     public ThemePreference ThemePreference { get; set; } = ThemePreference.System;
-    public string ActiveProfileName { get; set; } = "Default";
+    public string ActiveProfileName { get; set; } = ActionPresets.Minecraft;
     public bool SetupWizardCompleted { get; set; }
     public Dictionary<string, ActionBinding> Actions { get; set; } = CreateDefaultActions();
 
-    public static Dictionary<string, ActionBinding> CreateDefaultActions() =>
-        ActionSlots.All.ToDictionary(name => name, _ => new ActionBinding());
+    public static Dictionary<string, ActionBinding> CreateDefaultActions()
+    {
+        var actions = ActionPresets.CreateMinecraftKeyboardBindings();
+        actions[ActionSlots.BoardButton] = new ActionBinding { Kind = ActionKind.Key, KeyName = "Escape" };
+        return actions;
+    }
+
+    /// <summary>First-run settings: Minecraft keyboard template with keyboard output enabled.</summary>
+    public static AppSettings CreateFresh()
+    {
+        var settings = new AppSettings();
+        ActionPresets.ApplyMinecraft(settings);
+        return settings;
+    }
+
+    public void SetOutputMode(OutputMode mode)
+    {
+        OutputMode = mode;
+        switch (mode)
+        {
+            case OutputMode.VJoy:
+                EnableVJoy = true;
+                DisableKeyboardActions = true;
+                break;
+            case OutputMode.Keyboard:
+                EnableVJoy = false;
+                DisableKeyboardActions = false;
+                MapJumpToVJoyButton = false;
+                break;
+        }
+    }
 
     /// <summary>
     /// Machine/connection identity fields that must never travel with an exported or shared profile.
@@ -117,6 +149,7 @@ public sealed class AppSettings
                 KeyName = kv.Value.KeyName,
                 MouseButton = kv.Value.MouseButton,
                 Amount = kv.Value.Amount,
+                VJoyButtonNumber = kv.Value.VJoyButtonNumber,
             },
             StringComparer.Ordinal);
     }
@@ -137,6 +170,7 @@ public enum ActionKind
     MouseButton,
     MouseMoveX,
     MouseMoveY,
+    VJoyButton,
 }
 
 public sealed class ActionBinding
@@ -145,4 +179,6 @@ public sealed class ActionBinding
     public string KeyName { get; set; } = string.Empty;
     public string MouseButton { get; set; } = string.Empty;
     public int Amount { get; set; } = 10;
+    /// <summary>1-based vJoy button index when <see cref="Kind"/> is <see cref="ActionKind.VJoyButton"/>.</summary>
+    public int VJoyButtonNumber { get; set; } = 1;
 }

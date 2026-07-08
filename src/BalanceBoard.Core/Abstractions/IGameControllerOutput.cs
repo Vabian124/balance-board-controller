@@ -11,7 +11,7 @@ public interface IGameControllerOutput : IDisposable
 
     bool Initialize(uint deviceId = 1, bool attemptCleanupOnBusy = true);
 
-    void Update(ProcessedBalance data);
+    void Update(ProcessedBalance data, AppSettings settings);
 
     void Center();
 

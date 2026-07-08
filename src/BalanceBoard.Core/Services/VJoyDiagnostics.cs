@@ -3,6 +3,22 @@ using vJoyInterfaceWrap;
 
 namespace BalanceBoard.Core.Services;
 
+public sealed class VJoyDeviceInfo
+{
+    public uint DeviceId { get; init; }
+    public string Status { get; init; } = "Unknown";
+    public int ButtonCount { get; init; }
+    public bool HasAxisX { get; init; }
+    public bool HasAxisY { get; init; }
+    public bool HasAxisZ { get; init; }
+    public bool HasAxisRx { get; init; }
+    public bool HasAxisRy { get; init; }
+    public bool HasAxisRz { get; init; }
+
+    public string Summary =>
+        $"#{DeviceId}  {Status}  buttons={ButtonCount}  axes X{(HasAxisX ? "✓" : "·")} Y{(HasAxisY ? "✓" : "·")} Z{(HasAxisZ ? "✓" : "·")}";
+}
+
 public sealed class VJoyDiagnostics
 {
     public bool DriverEnabled { get; init; }
@@ -19,6 +35,47 @@ public sealed class VJoyDiagnostics
     public bool HasAxisRy { get; init; }
     public bool HasAxisRz { get; init; }
     public int ButtonCount { get; init; }
+
+    public static IReadOnlyList<VJoyDeviceInfo> ListConfiguredDevices()
+    {
+        try
+        {
+            var joystick = new vJoy();
+            if (!joystick.vJoyEnabled())
+            {
+                return [];
+            }
+
+            var devices = new List<VJoyDeviceInfo>();
+            for (uint id = 1; id <= 16; id++)
+            {
+                var status = joystick.GetVJDStatus(id);
+                if (status == VjdStat.VJD_STAT_MISS)
+                {
+                    continue;
+                }
+
+                devices.Add(new VJoyDeviceInfo
+                {
+                    DeviceId = id,
+                    Status = status.ToString(),
+                    ButtonCount = joystick.GetVJDButtonNumber(id),
+                    HasAxisX = joystick.GetVJDAxisExist(id, HID_USAGES.HID_USAGE_X),
+                    HasAxisY = joystick.GetVJDAxisExist(id, HID_USAGES.HID_USAGE_Y),
+                    HasAxisZ = joystick.GetVJDAxisExist(id, HID_USAGES.HID_USAGE_Z),
+                    HasAxisRx = joystick.GetVJDAxisExist(id, HID_USAGES.HID_USAGE_RX),
+                    HasAxisRy = joystick.GetVJDAxisExist(id, HID_USAGES.HID_USAGE_RY),
+                    HasAxisRz = joystick.GetVJDAxisExist(id, HID_USAGES.HID_USAGE_RZ),
+                });
+            }
+
+            return devices;
+        }
+        catch
+        {
+            return [];
+        }
+    }
 
     public static VJoyDiagnostics Inspect(uint deviceId = 1)
     {

@@ -23,7 +23,7 @@ public sealed class ConcurrencyTrackingGameControllerOutput : IGameControllerOut
 
     public bool Initialize(uint deviceId = 1, bool attemptCleanupOnBusy = true) => true;
 
-    public void Update(ProcessedBalance data)
+    public void Update(ProcessedBalance data, AppSettings settings)
     {
         var current = Interlocked.Increment(ref _active);
         try

@@ -770,7 +770,7 @@ public sealed class BalanceBoardSession : IDisposable
         ApplyPreset(ActionPresets.ApplyBalanceMouse, "Applied balance mouse preset (lean to move, jump to click).");
 
     public void ApplyMinecraftPreset() =>
-        ApplyPreset(ActionPresets.ApplyMinecraft, "Applied Minecraft (Controlify) preset — lean = move, jump = vJoy A.");
+        ApplyPreset(ActionPresets.ApplyMinecraft, "Applied Minecraft preset — WASD movement, Space to jump.");
 
     public void ApplyProfile(string profileName)
     {
@@ -1313,7 +1313,7 @@ public sealed class BalanceBoardSession : IDisposable
         {
             try
             {
-                _vjoy.Update(processed);
+                _vjoy.Update(processed, Settings);
             }
             catch (Exception ex)
             {
@@ -1322,7 +1322,7 @@ public sealed class BalanceBoardSession : IDisposable
             }
         }
 
-        if (!Settings.DisableKeyboardActions)
+        if (!Settings.DisableKeyboardActions || HasBoardButtonKeyBinding())
         {
             try
             {
@@ -1335,6 +1335,11 @@ public sealed class BalanceBoardSession : IDisposable
             }
         }
     }
+
+    private bool HasBoardButtonKeyBinding() =>
+        Settings.Actions.TryGetValue(ActionSlots.BoardButton, out var binding)
+        && binding.Kind == ActionKind.Key
+        && !string.IsNullOrWhiteSpace(binding.KeyName);
 
     private void LogJumpEdge(ProcessedBalance processed)
     {
