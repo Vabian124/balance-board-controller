@@ -1,7 +1,26 @@
 # Canonical quality gate: format, static analysis, unified test pipeline.
+param(
+    [switch]$Quick
+)
+
 $ErrorActionPreference = "Stop"
 $Root = Split-Path (Split-Path $PSScriptRoot -Parent) -Parent
 Set-Location $Root
+
+function Resolve-DotNetCli {
+    if ($env:DOTNET_ROOT) {
+        foreach ($name in @("dotnet.exe", "dotnet")) {
+            $candidate = Join-Path $env:DOTNET_ROOT $name
+            if (Test-Path $candidate) {
+                return $candidate
+            }
+        }
+    }
+
+    return "dotnet"
+}
+
+$DotNetCli = Resolve-DotNetCli
 
 Write-Host "=== Balance Board Controller — quality gate ===" -ForegroundColor Cyan
 
@@ -26,15 +45,18 @@ Write-Host "`n=== Crash-safety grep ==="
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
 Write-Host "`n=== dotnet format ==="
-dotnet format BalanceBoard.sln --verify-no-changes
+& $DotNetCli format BalanceBoard.sln --verify-no-changes
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
 Write-Host "`n=== dotnet build (Release, warnings as errors) ==="
-dotnet build BalanceBoard.sln -c Release -warnaserror
+& $DotNetCli build BalanceBoard.sln -c Release -warnaserror
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
-Write-Host "`n=== Unified test pipeline (full) ==="
-& (Join-Path $PSScriptRoot "test.ps1") -SkipBuild
+$testMode = if ($Quick) { "quick" } else { "full" }
+Write-Host "`n=== Unified test pipeline ($testMode) ==="
+$testArgs = @("-SkipBuild")
+if ($Quick) { $testArgs += "-Quick" }
+& (Join-Path $PSScriptRoot "test.ps1") @testArgs
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
 Write-Host "`n=== All quality checks passed ===" -ForegroundColor Green

@@ -29,6 +29,8 @@ public sealed class BalanceBoardSession : IDisposable
 
     private bool _adapterMacConfirmedAtConnectStart;
 
+    private bool UsesSimulatedConnection => _connection is SimulatedBalanceBoardConnection;
+
     public void CancelConnect() => _connectCts?.Cancel();
 
     public event Action<ProcessedBalance>? Processed;
@@ -233,7 +235,7 @@ public sealed class BalanceBoardSession : IDisposable
         {
             var ct = _connectCts.Token;
             // Probe Bluetooth before WiimoteLib HID — HID enumeration can spuriously break InTheHand.
-            if (!WaitForBluetoothAtConnectStart(ct))
+            if (!UsesSimulatedConnection && !WaitForBluetoothAtConnectStart(ct))
             {
                 if (ct.IsCancellationRequested)
                 {
@@ -480,7 +482,7 @@ public sealed class BalanceBoardSession : IDisposable
         for (var round = 1; round <= discoveryRounds; round++)
         {
             ct.ThrowIfCancellationRequested();
-            if (!WaitForBluetoothAtConnectStart(ct))
+            if (!UsesSimulatedConnection && !WaitForBluetoothAtConnectStart(ct))
             {
                 if (ct.IsCancellationRequested)
                 {
