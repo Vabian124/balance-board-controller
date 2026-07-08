@@ -37,7 +37,6 @@ dotnet format BalanceBoard.sln
 # Dev scripts live under scripts/dev/
 .\scripts\dev\start.ps1
 .\scripts\dev\stop.ps1
-.\scripts\dev\test-flow.ps1
 
 # Publish self-contained folder
 dotnet publish src/BalanceBoard.App/BalanceBoard.App.csproj -c Release -r win-x64 --self-contained
@@ -52,7 +51,6 @@ Output EXE: `src/BalanceBoard.App/bin/Release/net8.0-windows/BalanceBoardApp.exe
 | `BalanceBoard.App` | Core | Contain device/vJoy logic |
 | `BalanceBoard.Core` | WiimoteLib, vJoy wrap | Reference WPF |
 | `BalanceBoard.Validate` | Core | Duplicate diagnostics logic |
-| `BalanceBoard.UiSmoke` | App | Headless MainWindow load test |
 
 ## Adding a feature — checklist
 
@@ -109,7 +107,7 @@ Production `start.bat` enforces single instance. Use `scripts/dev/start.ps1 --de
 | `dotnet format` | C# style, import order |
 | Built-in .NET analyzers | Nullable, code quality (`AnalysisLevel=latest`) |
 | [WpfAnalyzers](https://www.nuget.org/packages/WpfAnalyzers) | WPF dependency property mistakes (on `BalanceBoard.App`) |
-| `tools/UiSmoke` | Legacy minimal MainWindow load (superseded by `BalanceBoard.App.Ui.Tests`) |
+| `BalanceBoard.App.Ui.Tests` | Headless WPF UI smoke (settings, profiles, detail levels) |
 | `tools/Validate` | vJoy driver, HID discovery |
 | `scripts/ci/test.ps1` | Unified test pipeline + `artifacts/test/` logs |
 | `scripts/ci/lint.ps1` | Runs format, build, and unified test pipeline |
@@ -140,7 +138,7 @@ Mismatch shows as warning in diagnostics; may still work.
 ## Testing without hardware
 
 - Validate tool: vJoy driver + DLL checks
-- **UiSmoke tool:** legacy minimal loader; use `BalanceBoard.App.Ui.Tests` for CI
+- `BalanceBoard.App.Ui.Tests`: headless WPF UI smoke in CI
 - `scripts/lint.ps1` or `scripts/ci/lint.ps1`: full pre-commit check suite
 - `DiscoverDevices()` returns empty if no Wii HID — expected
 - Unit/integration/fuzz/automation tests under `tests/` — see [TESTING.md](TESTING.md)

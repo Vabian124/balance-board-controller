@@ -1,7 +1,7 @@
 using BalanceBoard.Core.Models;
 using BalanceBoard.Core.Processing;
 
-namespace BalanceBoard.Core.Services;
+namespace BalanceBoard.Core.Processing;
 
 public sealed class BalanceProcessor
 {

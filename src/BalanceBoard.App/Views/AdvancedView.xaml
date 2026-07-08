@@ -1,0 +1,86 @@
+<UserControl x:Class="BalanceBoard.App.Views.AdvancedView" xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:controls="clr-namespace:BalanceBoard.App.Controls"><ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled"><StackPanel>
+
+                        <Border x:Name="KeyboardSection" Style="{StaticResource Card}">
+                            <StackPanel>
+                                <TextBlock Text="KEYBOARD &amp; MOUSE" Style="{DynamicResource Text.Section}"/>
+                                <TextBlock Style="{DynamicResource Text.Subtitle}" TextWrapping="Wrap" Margin="0,0,0,8"
+                                           Text="Map lean directions to keys or mouse actions. Use output mode below to avoid sending keys while vJoy is driving movement."/>
+                                <controls:ActionBindingRow x:Name="BindLeft" SlotDisplayName="Left"/>
+                                <controls:ActionBindingRow x:Name="BindRight" SlotDisplayName="Right"/>
+                                <controls:ActionBindingRow x:Name="BindForward" SlotDisplayName="Forward"/>
+                                <controls:ActionBindingRow x:Name="BindBackward" SlotDisplayName="Backward"/>
+                                <controls:ActionBindingRow x:Name="BindJump" SlotDisplayName="Jump"/>
+                                <controls:ActionBindingRow x:Name="BindModifier" SlotDisplayName="Modifier"/>
+                                <controls:ActionBindingRow x:Name="BindDiagonalLeft" SlotDisplayName="Diagonal left"/>
+                                <controls:ActionBindingRow x:Name="BindDiagonalRight" SlotDisplayName="Diagonal right"/>
+                                <TextBlock Text="BOARD BUTTON" Style="{DynamicResource Text.Section}" Margin="0,12,0,4"/>
+                                <TextBlock Style="{DynamicResource Text.Subtitle}" TextWrapping="Wrap" Margin="0,0,0,8"
+                                           Text="The balance-board power / A button can map to a key (e.g. Escape) or a vJoy button independently of movement output."/>
+                                <controls:ActionBindingRow x:Name="BindBoardButton" SlotDisplayName="Power / A"/>
+                            </StackPanel>
+                        </Border>
+
+                        <Border x:Name="VJoySection" Style="{StaticResource Card}">
+                            <StackPanel>
+                                <TextBlock Text="CONTROLLER OUTPUT (VJOY)" Style="{DynamicResource Text.Section}"/>
+                                <TextBlock Style="{DynamicResource Text.Subtitle}" TextWrapping="Wrap" Margin="0,0,0,8"
+                                           Text="Pick one primary movement output. vJoy and keyboard movement cannot run together without double input."/>
+                                <TextBlock Text="Movement output" Style="{DynamicResource Text.Subtitle}" Margin="0,0,0,4"/>
+                                <ComboBox x:Name="OutputModeCombo" Margin="0,0,0,8"/><CheckBox x:Name="DisableActionsCheck" Content="Disable keyboard/mouse output" Visibility="Collapsed"/>
+                                <CheckBox x:Name="SendCgCheck" Content="Balance → X/Y axes"/>
+                                <CheckBox x:Name="SendSensorsCheck" Content="Load sensors → Z/RX/RY/RZ"/>
+                                <CheckBox x:Name="MapJumpVJoyCheck" Content="Jump → vJoy button"/>
+                                <StackPanel x:Name="JumpVJoyPanel" Orientation="Horizontal" Margin="16,0,0,0">
+                                    <TextBlock Text="Jump button #" Style="{DynamicResource Text.Subtitle}" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                                    <ComboBox x:Name="JumpVJoyButtonCombo" Width="72"/>
+                                </StackPanel>
+                                <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
+                                    <TextBlock Text="vJoy device" VerticalAlignment="Center" Style="{DynamicResource Text.Subtitle}" Margin="0,0,8,0"/>
+                                    <ComboBox x:Name="VJoyDeviceCombo" Width="220"/>
+                                </StackPanel>
+                                <TextBlock x:Name="VJoyDeviceDetailsText" Style="{DynamicResource Text.Subtitle}" TextWrapping="Wrap" Margin="0,8,0,0"/>
+                                <TextBlock Style="{DynamicResource Text.Subtitle}" TextWrapping="Wrap" Margin="0,10,0,0"
+                                           Text="Axes and buttons for the vJoy device are set up in vJoy's own Configure tool (installed with the driver). Enable at least axes X and Y for balance control, then Apply and pick the device above."/>
+                                <WrapPanel Margin="0,8,0,0">
+                                    <Button x:Name="ConfigureVJoyButton" Content="Configure vJoy…" Style="{StaticResource Button.Secondary}"/>
+                                    <Button x:Name="GetVJoyButton" Content="Get vJoy driver" Style="{StaticResource Button.Secondary}"/>
+                                </WrapPanel>
+                            </StackPanel>
+                        </Border>
+
+                        <Border x:Name="CalibrationSection" Style="{StaticResource Card}">
+                            <StackPanel>
+                                <TextBlock Text="CALIBRATION" Style="{DynamicResource Text.Section}"/>
+                                <TextBlock Style="{DynamicResource Text.Subtitle}" TextWrapping="Wrap"
+                                           Text="Tare zeros the board while you are off it. Set center while standing in your neutral pose."/>
+                                <CheckBox x:Name="AutoTareCheck" Content="Auto-tare when connected" Margin="0,8,0,0"/>
+                            </StackPanel>
+                        </Border>
+
+                        <Border x:Name="PerformanceSection" Style="{StaticResource Card}">
+                            <StackPanel>
+                                <TextBlock Text="PERFORMANCE" Style="{DynamicResource Text.Section}"/>
+                                <TextBlock x:Name="PollIntervalLabel" Style="{DynamicResource Text.Subtitle}" Margin="0,4,0,0"/>
+                                <Slider x:Name="PollIntervalSlider" Minimum="10" Maximum="100" Value="50"
+                                        TickFrequency="5" IsSnapToTickEnabled="True"
+                                        AutomationProperties.Name="Board update interval in milliseconds"/>
+                                <TextBlock Style="{DynamicResource Text.Subtitle}" TextWrapping="Wrap" Margin="0,4,0,0"
+                                           Text="Lower = more responsive but more CPU. 50 ms (20 Hz) matches the board's native rate."/>
+                            </StackPanel>
+                        </Border>
+
+                        <Border x:Name="DiagnosticsSection" Style="{StaticResource Card}">
+                            <StackPanel>
+                                <TextBlock Text="DIAGNOSTICS" Style="{DynamicResource Text.Section}"/>
+                                <TextBlock x:Name="HealthSummaryText" Style="{DynamicResource Text.Subtitle}" Margin="0,0,0,8"
+                                           Text="Run a health check to verify vJoy and Bluetooth."/>
+                                <TextBlock x:Name="VJoyStatusText" Style="{DynamicResource Text.Mono}" Margin="0,0,0,8"/>
+                                <WrapPanel Margin="0,4,0,0">
+                                    <Button x:Name="RunHealthCheckButton" Content="Health check" Style="{StaticResource Button.Primary}"/>
+                                    <Button x:Name="CopyReportButton" Content="Copy report" Style="{StaticResource Button.Secondary}"/>
+                                    <Button x:Name="OpenLogFolderFromDiagnosticsButton" Content="Open logs" Style="{StaticResource Button.Secondary}"/>
+                                </WrapPanel>
+                            </StackPanel>
+                        </Border>
+
+                    </StackPanel></ScrollViewer></UserControl>

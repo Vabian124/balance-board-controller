@@ -3,7 +3,7 @@
 **Orchestrator:** `edd330ed`  
 **Repo:** `https://github.com/Vabian124/balance-board-controller`  
 **Baseline:** `main` @ `de834b7` (CI P0 landed); **v1.5.0 shipped** @ `89d9ba7` / tag `v1.5.0` (PR #14)  
-**Last updated:** 2026-07-08
+**Last updated:** 2026-07-09
 
 This document synthesizes sibling worker specs into one prioritized execution plan. Full specs live in agent transcripts only — do not duplicate them here.
 
@@ -20,10 +20,11 @@ This document synthesizes sibling worker specs into one prioritized execution pl
 | UI spec | `08c38bd9` | **Done** | **SettingsSync** P0; no full MVVM; tab split P1 |
 | Backend spec | `92ce83ea` | **Done** | `OutputRoutingPolicy` ≡ `FrameOutput`; OutputMode tests + log key |
 | Automation CI | `f5bd74d1` | **Done** | Doc drift, release gates, NuGet cache, job summary |
-| Implementation | `3ceb614d` | **v1.5.0 done** | OutputMode refactor merged (PR #14); **next:** Pass 1 cleanup → Core P0 → UI P0 |
+| Implementation | `3ceb614d` | **Phase 2 done** | PR `refactor/phase2-full` — FrameOutput, ProfileCoordinator, SettingsSync, test split |
 | GitHub Manager | `6986e727` | **Finishing** | CI P0 merged (`de834b7`); **pending:** push docs, re-run `v1.5.0` release, wire `verify-version.ps1` |
+| Orchestrator | `edd330ed` | **Phase 2 PR** | Branch `refactor/phase2-full`; 293 tests green; no release/tag |
 
-**Progress:** All 7 analysis/spec workers **complete**. Execution: implementation + GitHub Manager **in flight**.
+**Progress:** Phase 2 (Core P0 + UI P0 partial) **complete** on `refactor/phase2-full`. Phase 3 UX P0 blocked until merge.
 
 ---
 
@@ -55,11 +56,10 @@ This document synthesizes sibling worker specs into one prioritized execution pl
 
 ```text
 Phase 0  [SHIPPED]     v1.5.0 OutputMode (PR #14)
-Phase 1  [NEXT]       Pass 1 safe cleanup          → branch refactor/pass1-cleanup
-Phase 2               Core P0 (FrameOutput, tests) → branch refactor/p0-output-pipeline
-Phase 3               UI P0 (SettingsSync)       → same or follow-on PR
-Phase 4               UX P0 (banners, toasts)    → after Phase 2 merge
-Phase 5               Release v1.5.1             → GitHub Manager
+Phase 1  [SHIPPED]     Pass 1 safe cleanup (on main @ 5cfde5b)
+Phase 2  [PR OPEN]     Core P0 + UI P0 (SettingsSync, tab views) → refactor/phase2-full
+Phase 3  [NEXT]       UX P0 (banners, toasts)    → after Phase 2 merge
+Phase 4               Release v1.5.1             → GitHub Manager (no tag in Phase 2 PR)
 ```
 
 Gate every phase: `scripts/ci/lint.ps1` green before PR merge.
