@@ -89,7 +89,8 @@ dotnet run --project src/BalanceBoard.App/BalanceBoard.App.csproj -c Release -- 
 
 ```powershell
 .\scripts\lint.ps1              # full gate (delegates to scripts/ci/lint.ps1)
-.\scripts\ci\test-all.ps1       # lint + optional -IncludeHardware
+.\scripts\ci\test.ps1           # unified test pipeline (build + all suites)
+.\scripts\ci\test.ps1 -Quick    # PR-fast subset (skips fuzz + slow tests)
 ```
 
 CI runs the same gate on every push/PR ([`.github/workflows/ci.yml`](.github/workflows/ci.yml)).
@@ -98,10 +99,11 @@ CI runs the same gate on every push/PR ([`.github/workflows/ci.yml`](.github/wor
 |--------|------|
 | Format | `dotnet format --verify-no-changes` |
 | Static analysis | .NET analyzers + `-warnaserror` (Release) |
-| Tests | unit · integration · fuzz · automation |
-| Tools | `Validate`, `UiSmoke`, lifecycle `test-flow` |
+| Tests | unit · fuzz · integration · headless WPF UI · automation lifecycle |
+| Tools | `Validate` CLI |
+| Physical (manual) | `BalanceBoardApp.exe --physical-test connect-basic` |
 
-See [docs/testing/README.md](docs/testing/README.md).
+See [docs/TESTING.md](docs/TESTING.md).
 
 ## Repository layout
 
@@ -110,15 +112,16 @@ src/
   BalanceBoard.App/     WPF UI (tabbed MainWindow)
   BalanceBoard.Core/    Device logic, processing, vJoy (no WPF)
 tests/
-  BalanceBoard.*.Tests/ Unit, integration, fuzz, automation
+  BalanceBoard.*.Tests/ Unit, integration, fuzz, headless WPF UI, automation
   BalanceBoard.Testing/ Shared fakes
   hardware/             Optional board scripts
 tools/
   Validate/             CLI health check
-  UiSmoke/              XAML load smoke
+  UiSmoke/              Legacy minimal loader (superseded by App.Ui.Tests)
 scripts/
-  ci/                   lint.ps1, verify-tests.ps1, test-all.ps1
+  ci/                   lint.ps1, test.ps1, verify-tests.ps1
   dev/                  start, stop, restart, connect, test-flow, sync-vjoy-dlls
+  test/                 run-all.ps1 (alias for ci/test.ps1)
 reference/              Legacy WiiBalanceWalker (MS-PL, not in solution)
 libs/x64/               WiimoteLib + vJoy native DLLs
 docs/                   Architecture, CODEMAP, testing guide

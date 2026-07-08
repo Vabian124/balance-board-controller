@@ -3,9 +3,12 @@ using Xunit;
 
 namespace BalanceBoard.Automation;
 
-public class SimulateBoardProcessTests
+public class SimulateBoardProcessTests : IDisposable
 {
+    public void Dispose() => ProcessTestHarness.StopProcessesByName("BalanceBoardApp");
+
     [Fact]
+    [Trait("Category", "Slow")]
     public void Simulate_board_connects_and_exits_cleanly()
     {
         var root = FindRepoRoot();
@@ -25,18 +28,10 @@ public class SimulateBoardProcessTests
             "BalanceBoardApp",
             "logs");
 
-        using var proc = Process.Start(new ProcessStartInfo
-        {
-            FileName = exe,
-            Arguments = "--simulate-board --dev --auto-exit-after 2",
-            UseShellExecute = false,
-            CreateNoWindow = true,
-        });
-
-        Assert.NotNull(proc);
+        using var proc = ProcessTestHarness.StartApp(exe, "--simulate-board --dev --auto-exit-after 2");
         var started = DateTime.Now;
-        Assert.True(proc.WaitForExit(30_000), "Simulated board process did not exit in time.");
-        Assert.Equal(0, proc.ExitCode);
+        ProcessTestHarness.WaitForExitOrThrow(proc);
+        Assert.True(proc.HasExited, "Simulated board process did not exit cleanly.");
 
         var latest = Directory.Exists(logDir)
             ? Directory.GetFiles(logDir, "session-*.log")

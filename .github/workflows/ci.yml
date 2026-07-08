@@ -26,3 +26,11 @@ jobs:
       - name: Quality gate (format, analyzers, tests, smoke)
         shell: pwsh
         run: ./scripts/ci/lint.ps1
+
+      - name: Upload test artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-artifacts
+          path: artifacts/test/
+          if-no-files-found: warn

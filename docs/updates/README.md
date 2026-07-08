@@ -6,6 +6,7 @@ Short index for AI assistants. User-facing history: [CHANGELOG.md](../../CHANGEL
 
 | Commit | Summary |
 |--------|---------|
+| *pending* | **v1.4.0** — unified `scripts/ci/test.ps1` pipeline, headless WPF UI tests, hang hardening (worker/dispatcher/test watchdogs), `--physical-test connect-basic` hardware lane |
 | [`aacec1d`](https://github.com/Vabian124/balance-board-controller/commit/aacec1d) | **post-v1.3.0** — skip duplicate connect when session already healthy |
 | [`ec7bc23`](https://github.com/Vabian124/balance-board-controller/commit/ec7bc23) | **post-v1.3.0** — vJoy Center() after acquire; nullable split-axis sensitivity persistence + tests |
 | [`b62cdba`](https://github.com/Vabian124/balance-board-controller/commit/b62cdba) | **v1.3.0** — vJoy unsigned axis center mapping, per-axis deadzone/sensitivity UI, debug trace cleanup |

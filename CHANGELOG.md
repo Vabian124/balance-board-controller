@@ -2,6 +2,23 @@
 
 All notable user-facing changes. For detailed agent work logs see [`docs/updates/`](docs/updates/).
 
+## [1.4.0] - 2026-07-08
+
+Unified automated test pipeline, hang hardening, and opt-in physical hardware validation.
+
+### Added
+- **Unified test pipeline** — `scripts/ci/test.ps1` runs build + unit, integration, headless WPF UI, Validate CLI, and lifecycle suites with structured `artifacts/test/` logs and TRX output
+- **Headless WPF UI tests** — `BalanceBoard.App.Ui.Tests` covers navigation, profiles, settings persistence, simulated connect, and shutdown without user interaction
+- **Physical test lane** — `--physical-test connect-basic` guided manual hardware validation with per-run artifacts under `%AppData%\BalanceBoardApp\artifacts\physical-tests\`
+- **Process test harness** — lifecycle automation uses timeouts and tree-kill cleanup for spawned `BalanceBoardApp` processes
+- **`docs/TESTING.md`** — testing guide for automated vs physical lanes
+
+### Fixed
+- **`--auto-exit-after` without connect** — lifecycle smoke exits on schedule even when no board connect runs
+- **ConnectionWorker invoke timeouts** — queued actions abort after 15s instead of hanging callers indefinitely
+- **WPF test host dispatcher timeouts** — UI test harness fails fast on stuck dispatcher work
+- **Test pipeline watchdogs** — per-suite command timeouts and stale `testhost` / `BalanceBoardApp` cleanup between suites
+
 ## [1.3.0] - 2026-07-07
 
 vJoy stick center mapping and per-axis tuning.

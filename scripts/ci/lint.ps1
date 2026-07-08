@@ -1,4 +1,4 @@
-# Canonical quality gate: format, static analysis, tests, tools, lifecycle smoke.
+# Canonical quality gate: format, static analysis, unified test pipeline.
 $ErrorActionPreference = "Stop"
 $Root = Split-Path (Split-Path $PSScriptRoot -Parent) -Parent
 Set-Location $Root
@@ -7,6 +7,19 @@ Write-Host "=== Balance Board Controller — quality gate ===" -ForegroundColor 
 
 Write-Host "`n=== Stop running app (unlocks build output) ==="
 & (Join-Path $Root "scripts\dev\stop.ps1")
+
+Write-Host "`n=== Stop stale test hosts ==="
+foreach ($proc in @(Get-Process -Name "testhost", "testhost.net", "BalanceBoardApp" -ErrorAction SilentlyContinue)) {
+    try {
+        if (-not $proc.HasExited) {
+            Stop-Process -Id $proc.Id -Force -ErrorAction Stop
+            Write-Host "Stopped $($proc.ProcessName) ($($proc.Id))"
+        }
+    }
+    catch {
+        Write-Warning "Failed to stop $($proc.ProcessName) ($($proc.Id)): $($_.Exception.Message)"
+    }
+}
 
 Write-Host "`n=== Crash-safety grep ==="
 & (Join-Path $PSScriptRoot "check-crash-safety.ps1")
@@ -20,34 +33,8 @@ Write-Host "`n=== dotnet build (Release, warnings as errors) ==="
 dotnet build BalanceBoard.sln -c Release -warnaserror
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
-$testProjects = @(
-    "tests/BalanceBoard.Core.Tests/BalanceBoard.Core.Tests.csproj",
-    "tests/BalanceBoard.Integration.Tests/BalanceBoard.Integration.Tests.csproj",
-    "tests/BalanceBoard.Fuzz.Tests/BalanceBoard.Fuzz.Tests.csproj",
-    "tests/BalanceBoard.Automation/BalanceBoard.Automation.csproj"
-)
-
-foreach ($proj in $testProjects) {
-    $name = Split-Path (Split-Path $proj -Parent) -Leaf
-    Write-Host "`n=== Tests: $name ==="
-    dotnet test $proj -c Release --no-build --logger "console;verbosity=minimal"
-    if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-}
-
-Write-Host "`n=== Meta: verify test harness ==="
-& (Join-Path $PSScriptRoot "verify-tests.ps1") -VerifyCountsOnly
-if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-
-Write-Host "`n=== Validate (vJoy / HID) ==="
-dotnet run --project tools/Validate/BalanceBoard.Validate.csproj -c Release --no-build
-if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-
-Write-Host "`n=== UI smoke (loads MainWindow XAML) ==="
-dotnet run --project tools/UiSmoke/BalanceBoard.UiSmoke.csproj -c Release --no-build
-if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-
-Write-Host "`n=== Lifecycle smoke ==="
-& (Join-Path $Root "scripts\dev\test-flow.ps1")
+Write-Host "`n=== Unified test pipeline (full) ==="
+& (Join-Path $PSScriptRoot "test.ps1") -SkipBuild
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
 Write-Host "`n=== All quality checks passed ===" -ForegroundColor Green

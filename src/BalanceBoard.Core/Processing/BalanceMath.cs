@@ -220,8 +220,8 @@ public static class BalanceMath
         }
 
         var maxLen = Math.Sqrt(
-            (center / dzx) * (center / dzx) +
-            (center / dzy) * (center / dzy));
+            center / dzx * (center / dzx) +
+            center / dzy * (center / dzy));
         var t = Math.Min(1.0, (len - 1.0) / Math.Max(maxLen - 1.0, 1e-6));
         var outEx = ex / len * t * maxLen;
         var outEy = ey / len * t * maxLen;

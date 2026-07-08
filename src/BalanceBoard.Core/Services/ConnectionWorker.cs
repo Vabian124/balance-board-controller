@@ -8,6 +8,8 @@ namespace BalanceBoard.Core.Services;
 /// </summary>
 public sealed class ConnectionWorker : IDisposable
 {
+    private static readonly TimeSpan InvokeTimeout = TimeSpan.FromSeconds(15);
+    private static readonly TimeSpan DisposeJoinTimeout = TimeSpan.FromSeconds(5);
     private readonly BlockingCollection<Action> _queue = new();
     private readonly Thread _thread;
     private readonly object _pollSync = new();
@@ -121,7 +123,19 @@ public sealed class ConnectionWorker : IDisposable
             return;
         }
 
-        done.Wait();
+        if (!done.Wait(InvokeTimeout))
+        {
+            var timeout = new TimeoutException(
+                $"ConnectionWorker action did not complete within {InvokeTimeout.TotalSeconds:0.#} seconds.");
+            if (rethrow)
+            {
+                throw timeout;
+            }
+
+            System.Diagnostics.Debug.WriteLine($"ConnectionWorker invoke timeout: {timeout.Message}");
+            return;
+        }
+
         if (error is not null)
         {
             if (rethrow)
@@ -196,7 +210,12 @@ public sealed class ConnectionWorker : IDisposable
         _disposed = true;
         _pollEnabled = false;
         _queue.CompleteAdding();
-        _thread.Join(TimeSpan.FromSeconds(5));
+        if (!_thread.Join(DisposeJoinTimeout))
+        {
+            System.Diagnostics.Debug.WriteLine(
+                $"ConnectionWorker thread did not exit within {DisposeJoinTimeout.TotalSeconds:0.#} seconds.");
+        }
+
         _queue.Dispose();
     }
 }

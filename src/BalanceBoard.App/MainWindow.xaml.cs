@@ -12,27 +12,44 @@ namespace BalanceBoard.App;
 
 public partial class MainWindow : Window
 {
-    private readonly SettingsStore _settingsStore = new();
+    private readonly SettingsStore _settingsStore;
     private readonly BalanceBoardSession _session;
     private readonly FileLogService _fileLog;
     private readonly StartupOptions _startupOptions;
-    private readonly AppSettings _settings = new();
+    private readonly AppSettings _settings;
+    private readonly PhysicalTestRunner? _physicalTestRunner;
     private readonly bool _uiReady;
     private bool _shutdownCompleted;
     private bool _connectInProgress;
     private CancellationTokenSource? _connectCts;
+    private Task<ConnectResult>? _connectTask;
+    private CancellationTokenSource? _autoExitCts;
     private string _lastHealthReport = string.Empty;
     private string _lastLogLine = string.Empty;
+    private bool _physicalTestConnected;
 
-    public MainWindow(StartupOptions startupOptions, FileLogService? fileLog = null, int competingProcessesStopped = 0)
+    public MainWindow(
+        StartupOptions startupOptions,
+        FileLogService? fileLog = null,
+        SettingsStore? settingsStore = null,
+        BalanceBoardSession? session = null,
+        int competingProcessesStopped = 0)
     {
         _fileLog = fileLog ?? new FileLogService();
         _startupOptions = startupOptions;
-        _session = startupOptions.SimulateBoard
+        _settingsStore = settingsStore ?? new SettingsStore();
+        _session = session ?? (startupOptions.SimulateBoard
             ? new BalanceBoardSession(connection: new SimulatedBalanceBoardConnection())
-            : new BalanceBoardSession();
+            : new BalanceBoardSession());
         _settings = _settingsStore.Load();
         _session.LoadSettings(_settings, initializeVJoy: false);
+        if (_startupOptions.HardwareTestMode)
+        {
+            _physicalTestRunner = new PhysicalTestRunner(
+                PhysicalTestScenarioCatalog.Create(_startupOptions.PhysicalTestScenario!),
+                _fileLog);
+        }
+
         InitializeComponent();
         ThemeManager.Apply(_settings.ThemePreference);
         _uiReady = true;
@@ -48,6 +65,7 @@ public partial class MainWindow : Window
         RefreshVJoyStatus();
         UpdateSliderLabels();
         UpdateConnectUi(isBusy: false);
+        InitializePhysicalTestMode();
 
         if (competingProcessesStopped > 0)
         {
@@ -56,6 +74,11 @@ public partial class MainWindow : Window
 
         Log("Ready.");
         _fileLog.WriteSessionHeader(_settingsStore.SettingsPath, _settings);
+        if (_physicalTestRunner is not null)
+        {
+            Log($"[PHYSICAL] Scenario={_physicalTestRunner.Scenario.Id} artifacts={_physicalTestRunner.OutputDirectory}");
+        }
+
         UpdateConnectionChip(ConnectionPhase.Offline);
     }
 
@@ -98,14 +121,14 @@ public partial class MainWindow : Window
         {
             StatusText.Text = "Welcome — click Connect to pair your balance board.";
             Log("First launch: waiting for you to click Connect (no automatic pairing).");
-            return;
         }
-
-        if (_settings.AutoConnectOnStartup)
+        else if (_settings.AutoConnectOnStartup)
         {
             Log("Auto-reconnect: looking for a paired board…");
             BeginConnect(ConnectionIntent.QuickReconnect, quiet: true);
         }
+
+        ScheduleAutoExitIfRequested();
     }
 
     public void OnActivatedFromSecondInstance()
@@ -130,7 +153,9 @@ public partial class MainWindow : Window
         {
             try
             {
+                _physicalTestConnected = phase == ConnectionPhase.Connected;
                 UpdateConnectionChip(phase);
+                UpdatePhysicalTestObservation();
             }
             catch (Exception ex)
             {
@@ -143,6 +168,7 @@ public partial class MainWindow : Window
             {
                 SafeLog(status);
                 StatusText.Text = FormatStatusForUser(status);
+                UpdatePhysicalTestObservation();
                 // Do not read ConnectionPhase here — connect runs on ConnectionWorker and
                 // TryInvoke from the UI thread would deadlock while StatusChanged fires mid-connect.
             }
@@ -162,6 +188,74 @@ public partial class MainWindow : Window
             _lastLogLine = line;
             UpdateLogPreview();
         });
+    }
+
+    private void InitializePhysicalTestMode()
+    {
+        if (_physicalTestRunner is null)
+        {
+            PhysicalTestPanel.Visibility = Visibility.Collapsed;
+            return;
+        }
+
+        PhysicalTestPanel.Visibility = Visibility.Visible;
+        PhysicalTestScenarioText.Text =
+            $"{_physicalTestRunner.Scenario.DisplayName} ({_physicalTestRunner.Scenario.Id})" + Environment.NewLine +
+            _physicalTestRunner.Scenario.Description;
+        PhysicalTestArtifactsText.Text = $"Artifacts: {_physicalTestRunner.OutputDirectory}";
+        UpdatePhysicalTestUi();
+    }
+
+    private void UpdatePhysicalTestObservation(ProcessedBalance? data = null)
+    {
+        if (_physicalTestRunner is null)
+        {
+            return;
+        }
+
+        _physicalTestRunner.UpdateObservation(new PhysicalTestObservation
+        {
+            TimestampUtc = DateTime.UtcNow,
+            IsConnected = _physicalTestConnected,
+            WeightKg = data?.WeightKg ?? 0,
+            BalanceX = data?.BalanceX ?? 0,
+            BalanceY = data?.BalanceY ?? 0,
+            JumpDetected = data?.Jump ?? false,
+            StatusText = StatusText.Text,
+        });
+        UpdatePhysicalTestUi();
+    }
+
+    private void UpdatePhysicalTestUi()
+    {
+        if (_physicalTestRunner is null)
+        {
+            return;
+        }
+
+        if (_physicalTestRunner.CurrentStep is { } currentStep)
+        {
+            PhysicalTestStepTitleText.Text = currentStep.Title;
+            PhysicalTestStepInstructionsText.Text = currentStep.Instructions;
+            PhysicalTestExpectedSignalText.Text = string.IsNullOrWhiteSpace(currentStep.ExpectedSignal)
+                ? string.Empty
+                : $"Expected: {currentStep.ExpectedSignal}";
+        }
+        else
+        {
+            PhysicalTestStepTitleText.Text = "Run complete";
+            PhysicalTestStepInstructionsText.Text = "Review the artifact folder for the structured result and event trace.";
+            PhysicalTestExpectedSignalText.Text = $"Final status: {_physicalTestRunner.OverallStatus}";
+        }
+
+        var completed = _physicalTestRunner.Steps.Count(step => step.Outcome != PhysicalTestStepOutcome.Pending);
+        PhysicalTestProgressText.Text =
+            $"Progress: {completed}/{_physicalTestRunner.Steps.Count} steps  |  Run status: {_physicalTestRunner.OverallStatus}";
+
+        var interactive = !_physicalTestRunner.IsComplete;
+        PhysicalTestPassButton.IsEnabled = interactive;
+        PhysicalTestFailButton.IsEnabled = interactive;
+        PhysicalTestSkipButton.IsEnabled = interactive;
     }
 
     private void Window_Loaded(object sender, RoutedEventArgs e)
@@ -561,6 +655,7 @@ public partial class MainWindow : Window
                     $"TL {data.TopLeftKg:0.0} kg  TR {data.TopRightKg:0.0} kg  BL {data.BottomLeftKg:0.0} kg  BR {data.BottomRightKg:0.0} kg";
                 VJoyAxesText.Text = $"vJoy  X={data.JoyX,6}  Y={data.JoyY,6}  Z={data.JoyZ,6}  RX={data.JoyRx,6}";
                 BoardButtonText.Text = DescribeBoardButton(data);
+                UpdatePhysicalTestObservation(data);
             }
             catch (Exception ex)
             {
@@ -869,7 +964,8 @@ public partial class MainWindow : Window
 
     private async void BeginConnect(ConnectionIntent intent, bool quiet = false)
     {
-        if (_connectInProgress
+        if (_shutdownCompleted
+            || _connectInProgress
             || _session.ConnectionPhase is ConnectionPhase.Connected or ConnectionPhase.Connecting)
         {
             return;
@@ -892,7 +988,13 @@ public partial class MainWindow : Window
         try
         {
             var token = _connectCts.Token;
-            var result = await _session.ConnectWithIntentAsync(intent, cancellationToken: token);
+            _connectTask = _session.ConnectWithIntentAsync(intent, cancellationToken: token);
+            var result = await _connectTask;
+
+            if (_shutdownCompleted)
+            {
+                return;
+            }
 
             if (result.IsSuccess)
             {
@@ -933,10 +1035,14 @@ public partial class MainWindow : Window
         {
             _connectCts?.Dispose();
             _connectCts = null;
+            _connectTask = null;
             _connectInProgress = false;
-            UpdateConnectUi(isBusy: false);
-            UpdateConnectionChip(_session.ConnectionPhase);
-            Log($"[CONNECT] UI end connected={_session.IsConnected}");
+            if (!_shutdownCompleted)
+            {
+                UpdateConnectUi(isBusy: false);
+                UpdateConnectionChip(_session.ConnectionPhase);
+                Log($"[CONNECT] UI end connected={_session.IsConnected}");
+            }
         }
     }
 
@@ -1006,9 +1112,28 @@ public partial class MainWindow : Window
             return;
         }
 
+        _autoExitCts?.Cancel();
+        _autoExitCts?.Dispose();
+        _autoExitCts = new CancellationTokenSource();
         Log($"Auto-exit in {_startupOptions.AutoExitAfterSeconds}s (--auto-exit-after).");
-        _ = Task.Delay(TimeSpan.FromSeconds(_startupOptions.AutoExitAfterSeconds))
-            .ContinueWith(_ => Dispatcher.BeginInvoke(Close));
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                await Task.Delay(TimeSpan.FromSeconds(_startupOptions.AutoExitAfterSeconds), _autoExitCts.Token);
+                await Dispatcher.InvokeAsync(() =>
+                {
+                    if (!_shutdownCompleted)
+                    {
+                        Close();
+                    }
+                });
+            }
+            catch (OperationCanceledException)
+            {
+                // Window is shutting down or a new auto-exit timer replaced this one.
+            }
+        });
     }
 
     private void DisconnectButton_Click(object sender, RoutedEventArgs e)
@@ -1019,12 +1144,31 @@ public partial class MainWindow : Window
             StatusText.Text = "Disconnected.";
             UpdateConnectionChip(ConnectionPhase.Offline);
             UpdateConnectUi(isBusy: false);
+            UpdatePhysicalTestObservation();
         }
         catch (Exception ex)
         {
             _fileLog.WriteException(ex, "Disconnect button");
             SafeLog($"Disconnect error: {ex.Message}");
         }
+    }
+
+    private void PhysicalTestPassButton_Click(object sender, RoutedEventArgs e)
+    {
+        _physicalTestRunner?.MarkPassed("Confirmed manually in guided physical test mode.");
+        UpdatePhysicalTestUi();
+    }
+
+    private void PhysicalTestFailButton_Click(object sender, RoutedEventArgs e)
+    {
+        _physicalTestRunner?.MarkFailed("Marked failed by tester from guided physical test mode.");
+        UpdatePhysicalTestUi();
+    }
+
+    private void PhysicalTestSkipButton_Click(object sender, RoutedEventArgs e)
+    {
+        _physicalTestRunner?.MarkSkipped("Skipped by tester.");
+        UpdatePhysicalTestUi();
     }
 
     private void ExitButton_Click(object sender, RoutedEventArgs e) => Close();
@@ -1378,6 +1522,9 @@ public partial class MainWindow : Window
         }
 
         _shutdownCompleted = true;
+        _autoExitCts?.Cancel();
+        _autoExitCts?.Dispose();
+        _autoExitCts = null;
         CancelConnect();
         if (_uiReady)
         {
@@ -1393,6 +1540,7 @@ public partial class MainWindow : Window
             _fileLog.WriteException(ex, "Session dispose");
         }
 
+        _physicalTestRunner?.FinishIfNeeded();
         Log("Shutting down.");
     }
 
@@ -1410,4 +1558,57 @@ public partial class MainWindow : Window
     }
 
     internal Brush? SmokeProfileCardBorderBrush => ProfileCard.BorderBrush;
+
+    internal SettingsStore TestSettingsStore => _settingsStore;
+
+    internal AppSettings TestSettings => _settings;
+
+    internal BalanceBoardSession TestSession => _session;
+
+    internal FileLogService TestFileLog => _fileLog;
+
+    internal TabControl TestMainTabControl => MainTabControl;
+
+    internal TabItem TestAdvancedTab => AdvancedTab;
+
+    internal TabItem TestFineTuningTab => FineTuningTab;
+
+    internal ComboBox TestProfileCombo => ProfileCombo;
+
+    internal ComboBox TestDetailLevelCombo => DetailLevelCombo;
+
+    internal ComboBox TestThemeCombo => ThemeCombo;
+
+    internal Slider TestDeadzoneSlider => DeadzoneSlider;
+
+    internal CheckBox TestAutoConnectCheck => AutoConnectCheck;
+
+    internal CheckBox TestEnableVJoyCheck => EnableVJoyCheck;
+
+    internal TextBlock TestConnectionChipText => ConnectionChipText;
+
+    internal TextBox TestLogBox => LogBox;
+
+    internal Visibility TestPhysicalTestPanelVisibility => PhysicalTestPanel.Visibility;
+
+    internal string TestPhysicalTestScenarioText => PhysicalTestScenarioText.Text;
+
+    internal string TestPhysicalTestStepTitle => PhysicalTestStepTitleText.Text;
+
+    internal void TestSelectTab(int index) => MainTabControl.SelectedIndex = index;
+
+    internal void TestClickGamePreset() => GamePreset_Click(GamePresetButton, new RoutedEventArgs());
+
+    internal void TestClickMinecraftPreset() => MinecraftPreset_Click(MinecraftPresetButton, new RoutedEventArgs());
+
+    internal void TestClickDesktopPreset() => KeyboardPreset_Click(DesktopPresetButton, new RoutedEventArgs());
+
+    internal void TestRunHealthCheck() => RunHealthCheckButton_Click(RunHealthCheckButton, new RoutedEventArgs());
+
+    internal void TestPumpDispatcher(TimeSpan? timeout = null)
+    {
+        var frame = new DispatcherFrame();
+        _ = Dispatcher.BeginInvoke(DispatcherPriority.Background, new Action(() => frame.Continue = false));
+        Dispatcher.PushFrame(frame);
+    }
 }

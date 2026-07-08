@@ -12,7 +12,8 @@ $expectedProjects = @(
     @{ Path = "tests/BalanceBoard.Core.Tests/BalanceBoard.Core.Tests.csproj"; MinTests = 40 },
     @{ Path = "tests/BalanceBoard.Integration.Tests/BalanceBoard.Integration.Tests.csproj"; MinTests = 10 },
     @{ Path = "tests/BalanceBoard.Fuzz.Tests/BalanceBoard.Fuzz.Tests.csproj"; MinTests = 4 },
-    @{ Path = "tests/BalanceBoard.Automation/BalanceBoard.Automation.csproj"; MinTests = 1 }
+    @{ Path = "tests/BalanceBoard.App.Ui.Tests/BalanceBoard.App.Ui.Tests.csproj"; MinTests = 8 },
+    @{ Path = "tests/BalanceBoard.Automation/BalanceBoard.Automation.csproj"; MinTests = 2 }
 )
 
 foreach ($entry in $expectedProjects) {

@@ -6,13 +6,27 @@ Use this matrix to verify workflow behavior. Hardware tests need a Wii Balance B
 
 ```powershell
 cd <repo-root>
-.\scripts\dev\test-flow.ps1
-# or: .\scripts\test-flow.ps1  (shim to dev/)
+.\scripts\ci\test.ps1          # full unified pipeline
+.\scripts\ci\test.ps1 -Quick   # PR-fast subset
+.\scripts\test\run-all.ps1     # same as test.ps1
 ```
 
-Checks: build, start/stop lifecycle, second-instance activation, log file creation.
+Checks: build, unit/integration/UI tests, Validate CLI, and deterministic process lifecycle smoke (launch, session logs, simulated board, shutdown).
 
-For full static analysis including **XAML runtime load**, run `.\scripts\lint.ps1` (delegates to `scripts/ci/lint.ps1`).
+For full static analysis including **format + analyzers**, run `.\scripts\lint.ps1` (delegates to `scripts/ci/lint.ps1`).
+
+See [TESTING.md](TESTING.md) for layer details and log locations.
+
+## Opt-in physical hardware lane
+
+For guided manual validation with structured artifacts, launch the app explicitly in physical mode:
+
+```powershell
+dotnet build BalanceBoard.sln -c Release
+.\src\BalanceBoard.App\bin\Release\net8.0-windows\BalanceBoardApp.exe --physical-test connect-basic
+```
+
+This mode is interactive on purpose and is excluded from `scripts/ci/test.ps1`, `scripts/test/run-all.ps1`, and CI by default.
 
 ## Edge-case matrix
 
@@ -53,6 +67,15 @@ dotnet run --project src/BalanceBoard.App/BalanceBoard.App.csproj -c Release
 - [ ] Status: welcome message
 - [ ] Session log has **no** "Searching for balance board" until Connect clicked
 
+### Guided physical lane (`connect-basic`)
+
+- [ ] Dashboard shows the **PHYSICAL TEST MODE** panel with the `connect-basic` scenario and artifact path
+- [ ] Step 1 auto-passes after a successful board connection
+- [ ] Step 2 auto-passes after stepping on the board and exceeding the live weight threshold
+- [ ] Remaining steps can be marked pass/fail/skip without blocking the app UI
+- [ ] `%AppData%\BalanceBoardApp\artifacts\physical-tests\<run-id>\run.json` is created with per-step outcomes
+- [ ] `%AppData%\BalanceBoardApp\artifacts\physical-tests\<run-id>\events.jsonl` records the step timeline
+
 ### 2. Pairing
 
 - [ ] Click Connect → SYNC prompt
@@ -85,7 +108,7 @@ Start-Process ".\src\BalanceBoard.App\bin\Release\net8.0-windows\BalanceBoardApp
 
 ```powershell
 dotnet build BalanceBoard.sln -c Release
-.\scripts\dev\test-flow.ps1
+.\scripts\ci\test.ps1 -Quick
 ```
 
 - [ ] Build succeeds

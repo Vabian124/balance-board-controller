@@ -25,6 +25,7 @@
 
   <ItemGroup>
     <InternalsVisibleTo Include="BalanceBoard.UiSmoke" />
+    <InternalsVisibleTo Include="BalanceBoard.App.Ui.Tests" />
   </ItemGroup>
 
   <ItemGroup>

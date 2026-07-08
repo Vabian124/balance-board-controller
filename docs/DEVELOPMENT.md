@@ -24,10 +24,15 @@ dotnet run --project tools/Validate/BalanceBoard.Validate.csproj -c Release
 # Format (optional)
 dotnet format BalanceBoard.sln
 
-# Full lint + static analysis (format, build, tests, Validate, UI smoke, lifecycle)
+# Full lint + static analysis (format, build, unified tests)
 .\scripts\lint.ps1
 # or directly:
 .\scripts\ci\lint.ps1
+
+# Unified test pipeline only
+.\scripts\ci\test.ps1
+.\scripts\ci\test.ps1 -Quick
+.\scripts\test\run-all.ps1
 
 # Dev scripts live under scripts/dev/
 .\scripts\dev\start.ps1
@@ -93,7 +98,7 @@ Production `start.bat` enforces single instance. Use `scripts/dev/start.ps1 --de
 
 - Trigger: push/PR to `main`, or manual **workflow_dispatch**
 - Runner: `windows-latest`
-- Steps: crash-safety grep → **format check** → Release build (`-warnaserror`) → **all test projects** → Validate → **UI smoke** → **lifecycle smoke** (`test-flow.ps1`)
+- Steps: crash-safety grep → **format check** → Release build (`-warnaserror`) → **unified test pipeline** (`scripts/ci/test.ps1`) → upload `artifacts/test/`
 
 ### Linting and static analysis
 
@@ -102,12 +107,13 @@ Production `start.bat` enforces single instance. Use `scripts/dev/start.ps1 --de
 | `dotnet format` | C# style, import order |
 | Built-in .NET analyzers | Nullable, code quality (`AnalysisLevel=latest`) |
 | [WpfAnalyzers](https://www.nuget.org/packages/WpfAnalyzers) | WPF dependency property mistakes (on `BalanceBoard.App`) |
-| `tools/UiSmoke` | **Runtime XAML errors** — wrong resource types, broken templates (would have caught `CornerRadius` / `Double` bug) |
+| `tools/UiSmoke` | Legacy minimal MainWindow load (superseded by `BalanceBoard.App.Ui.Tests`) |
 | `tools/Validate` | vJoy driver, HID discovery |
-| `scripts/ci/lint.ps1` | Runs all of the above + `test-flow.ps1` |
+| `scripts/ci/test.ps1` | Unified test pipeline + `artifacts/test/` logs |
+| `scripts/ci/lint.ps1` | Runs format, build, and unified test pipeline |
 | `scripts/lint.ps1` | Thin wrapper → `scripts/ci/lint.ps1` |
 
-**Note:** No existing XAML linter reliably validates `StaticResource` type compatibility at compile time on .NET 8. The **UI smoke test** is the practical guard.
+**Note:** No existing XAML linter reliably validates `StaticResource` type compatibility at compile time on .NET 8. **Headless WPF UI tests** (`BalanceBoard.App.Ui.Tests`) are the practical guard.
 
 Optional IDE extension: [Rapid XAML Toolkit](https://marketplace.visualstudio.com/items?itemName=MattLaceyLtd.RapidXamlAnalysis) for in-editor XAML hints (not in CI — `RapidXaml.BuildAnalysis` NuGet is broken on SDK-style projects).
 
@@ -132,10 +138,10 @@ Mismatch shows as warning in diagnostics; may still work.
 ## Testing without hardware
 
 - Validate tool: vJoy driver + DLL checks
-- **UiSmoke tool:** constructs `MainWindow`, applies Minecraft preset — catches XAML/theme failures
+- **UiSmoke tool:** legacy minimal loader; use `BalanceBoard.App.Ui.Tests` for CI
 - `scripts/lint.ps1` or `scripts/ci/lint.ps1`: full pre-commit check suite
 - `DiscoverDevices()` returns empty if no Wii HID — expected
-- Unit/integration/fuzz/automation tests under `tests/` — see [testing/README.md](testing/README.md)
+- Unit/integration/fuzz/automation tests under `tests/` — see [TESTING.md](TESTING.md)
 
 ## Git hygiene
 

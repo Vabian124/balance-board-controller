@@ -6,8 +6,10 @@ public sealed class StartupOptions
     public bool SkipSingleInstance { get; init; }
     public bool ConnectOnLaunch { get; init; }
     public bool SimulateBoard { get; init; }
-    public bool HardwareTestMode { get; init; }
+    public string? PhysicalTestScenario { get; init; }
     public int AutoExitAfterSeconds { get; init; }
+
+    public bool HardwareTestMode => !string.IsNullOrWhiteSpace(PhysicalTestScenario);
 
     public static StartupOptions Parse(string[] args)
     {
@@ -25,9 +27,26 @@ public sealed class StartupOptions
             SkipSingleInstance = devMode || HasFlag(args, "--allow-multiple", "--dev"),
             ConnectOnLaunch = HasFlag(args, "--connect") || simulate,
             SimulateBoard = simulate,
-            HardwareTestMode = HasFlag(args, "--hardware-test-mode"),
+            PhysicalTestScenario = ParseStringFlag(args, "--physical-test"),
             AutoExitAfterSeconds = ParseIntFlag(args, "--auto-exit-after", 0),
         };
+    }
+
+    private static string? ParseStringFlag(string[] args, string flag)
+    {
+        for (var i = 0; i < args.Length - 1; i++)
+        {
+            if (string.Equals(args[i], flag, StringComparison.OrdinalIgnoreCase))
+            {
+                var value = args[i + 1];
+                if (!string.IsNullOrWhiteSpace(value) && !value.StartsWith("--", StringComparison.Ordinal))
+                {
+                    return value.Trim();
+                }
+            }
+        }
+
+        return null;
     }
 
     private static int ParseIntFlag(string[] args, string flag, int defaultValue)

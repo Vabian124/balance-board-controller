@@ -21,9 +21,10 @@ Complete map of **maintained source** (ignore `bin/`, `obj/`, `.vs/`).
 | `App.xaml.cs` | Instant UI, deferred startup, single-instance via `SingleInstanceService` |
 | `MainWindow.xaml` | Tabbed UI: **Dashboard** (connect, balance visual), **Profiles** (presets, sensitivity, jump), **Advanced** (sliders, vJoy, bindings, debug) |
 | `MainWindow.xaml.cs` | UI ↔ session; `UiDetailLevel` visibility; smart connect; cancellable connect |
-| `Services/StartupOptions.cs` | CLI: `--dev`, `--connect`, `--simulate-board`, `--no-cleanup`, `--allow-multiple` |
+| `Services/StartupOptions.cs` | CLI: `--dev`, `--connect`, `--simulate-board`, `--no-cleanup`, `--allow-multiple`, `--physical-test <scenario>` |
 | `Services/SingleInstanceService.cs` | Mutex + named pipe; second launch activates window |
 | `Services/ThemeManager.cs` | System / Light / Dark theme switching |
+| `Services/PhysicalTestRunner.cs` | Opt-in manual hardware lane: guided scenarios, per-step outcomes, structured artifact writing |
 | `Controls/BalanceBoardVisual.xaml(.cs)` | Live 2D balance dot, jump banner |
 | `Controls/ActionBindingRow.xaml(.cs)` | Per-slot key/mouse binding editor row |
 | `Themes/Colors.xaml` | Shared brush keys |
@@ -113,13 +114,14 @@ Complete map of **maintained source** (ignore `bin/`, `obj/`, `.vs/`).
 | Path | Purpose |
 |------|---------|
 | `lint.ps1` | Entry point → delegates to `scripts/ci/lint.ps1` |
-| `ci/lint.ps1` | Full gate: format, build, tests, Validate, UiSmoke, test-flow |
-| `ci/test-all.ps1` | Lint + optional `-IncludeHardware` |
+| `ci/lint.ps1` | Full gate: format, build, unified test pipeline |
+| `ci/test.ps1` | Layered tests + `artifacts/test/` structured logs |
+| `test/run-all.ps1` | Local wrapper → `ci/test.ps1` |
 | `ci/verify-tests.ps1` | Meta: test projects wired in solution |
 | `ci/check-crash-safety.ps1` | Grep guard for unsafe patterns |
 | `ci/publish-release.ps1` | Package win-x64 zip for GitHub Releases |
 | `dev/start.ps1` / `stop.ps1` / `restart.ps1` / `connect.ps1` | Dev launch helpers |
-| `dev/test-flow.ps1` | Process lifecycle smoke tests |
+| `dev/test-flow.ps1` | Deprecated wrapper → `scripts/ci/test.ps1 -Quick` |
 | `dev/sync-vjoy-dlls.ps1` | Copy vJoy DLLs from install into `libs/x64/` |
 
 ## `tests/`
@@ -129,7 +131,8 @@ Complete map of **maintained source** (ignore `bin/`, `obj/`, `.vs/`).
 | `BalanceBoard.Core.Tests` | Unit: `BalanceMath`, `BalanceProcessor`, `JumpPresets`, `ActionEngine`, migrations |
 | `BalanceBoard.Integration.Tests` | Session, disconnect, simulated board |
 | `BalanceBoard.Fuzz.Tests` | FsCheck property tests |
-| `BalanceBoard.Automation` | Spawns exe with `--simulate-board` |
+| `BalanceBoard.Automation` | Deterministic app launch/session-log + `--simulate-board` smoke |
+| `BalanceBoard.App.Ui.Tests` | Headless WPF UI: settings, profiles, detail levels, connect |
 | `BalanceBoard.Testing` | Shared fakes for integration tests |
 | `hardware/` | Optional scripts when physical board present |
 
@@ -152,6 +155,7 @@ Original WiiBalanceWalker v0.5 WinForms project. Use for behavioral reference on
 | `%AppData%\BalanceBoardApp\settings.json` | User settings |
 | `%AppData%\BalanceBoardApp\profiles\` | Saved profile JSON files |
 | `%AppData%\BalanceBoardApp\logs\` | Session logs |
+| `%AppData%\BalanceBoardApp\artifacts\physical-tests\` | Opt-in guided hardware test run artifacts (`run.json`, `events.jsonl`) |
 
 ## Dependency graph
 

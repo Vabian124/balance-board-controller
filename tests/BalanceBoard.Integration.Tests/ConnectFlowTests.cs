@@ -16,6 +16,7 @@ public class ConnectionWorkerTests
     }
 
     [Fact]
+    [Trait("Category", "Slow")]
     public void Poll_tick_runs_while_polling_enabled()
     {
         using var worker = new ConnectionWorker();
@@ -25,6 +26,27 @@ public class ConnectionWorkerTests
         Thread.Sleep(180);
         worker.StopPolling();
         Assert.True(ticks >= 2);
+    }
+
+    [Fact]
+    [Trait("Category", "Slow")]
+    public async Task InvokeStrict_times_out_when_worker_action_never_returns()
+    {
+        using var worker = new ConnectionWorker();
+        var entered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var release = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        var hung = Task.Run(() =>
+            Assert.Throws<TimeoutException>(() =>
+                worker.InvokeStrict(() =>
+                {
+                    entered.TrySetResult();
+                    release.Task.Wait(TimeSpan.FromSeconds(30));
+                })));
+
+        await entered.Task.WaitAsync(TimeSpan.FromSeconds(2));
+        await hung.WaitAsync(TimeSpan.FromSeconds(20));
+        release.TrySetResult();
     }
 }
 
@@ -148,7 +170,14 @@ public class ConnectFlowTests
         using var session = new BalanceBoardSession(
             gameController: new NullGameControllerOutput(),
             actionSimulator: new NullActionSimulator(),
-            connection: new SimulatedBalanceBoardConnection());
+            connection: new SimulatedBalanceBoardConnection(),
+            pairing: new FakeBluetoothPairingService());
+        session.LoadSettings(new AppSettings
+        {
+            EnableVJoy = false,
+            DisableKeyboardActions = true,
+            AutoTareOnConnect = false,
+        }, initializeVJoy: false);
 
         ProcessedBalance? seen = null;
         session.Processed += data => seen = data;
@@ -371,6 +400,7 @@ public class ConnectFlowTests
     }
 
     [Fact]
+    [Trait("Category", "Slow")]
     public async Task Connect_waits_through_bluetooth_toggle_at_start()
     {
         var pairing = new FakeBluetoothPairingService { BluetoothAvailable = false };
@@ -397,6 +427,7 @@ public class ConnectFlowTests
     }
 
     [Fact]
+    [Trait("Category", "Slow")]
     public async Task Bluetooth_recovery_pauses_when_radio_unavailable_then_resumes()
     {
         const string boardId = "FAKE-BOARD-001";
@@ -475,6 +506,7 @@ public class ConnectFlowTests
     }
 
     [Fact]
+    [Trait("Category", "Slow")]
     public async Task Stale_hid_triggers_bluetooth_recovery()
     {
         const string boardId = "FAKE-BOARD-001";
@@ -498,6 +530,7 @@ public class ConnectFlowTests
     }
 
     [Fact]
+    [Trait("Category", "Slow")]
     public async Task Bluetooth_recovery_reconnects_after_unexpected_drop()
     {
         const string boardId = "FAKE-BOARD-001";
