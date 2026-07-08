@@ -300,6 +300,7 @@ public partial class MainWindow : Window
         AutoConnectCheck.IsChecked = _settings.AutoConnectOnStartup;
         StartMinimizedCheck.IsChecked = _settings.StartMinimized;
         AutoTareCheck.IsChecked = _settings.AutoTareOnConnect;
+        PollIntervalSlider.Value = _settings.PollIntervalMs;
         TriggerLeftRightSlider.Value = _settings.TriggerLeftRight;
         TriggerForwardBackwardSlider.Value = _settings.TriggerForwardBackward;
         DeadzoneSlider.Value = _settings.DeadzonePercent;
@@ -409,6 +410,8 @@ public partial class MainWindow : Window
         DeadzoneForwardBackwardLabel.Text = splitDz
             ? $"Forward / back deadzone: {DeadzoneForwardBackwardSlider.Value:0}%"
             : $"Forward / back deadzone: {mainDz:0}% (main)";
+        var pollMs = PollIntervalSlider.Value;
+        PollIntervalLabel.Text = $"Update rate: {pollMs:0} ms (~{(pollMs > 0 ? 1000.0 / pollMs : 0):0} Hz)";
         TriggerLeftRightLabel.Text = $"Left/right trigger: {TriggerLeftRightSlider.Value:0}%";
         TriggerForwardBackwardLabel.Text = $"Forward/back trigger: {TriggerForwardBackwardSlider.Value:0}%";
         JumpThresholdLabel.Text = _settings.UiDetailLevel == UiDetailLevel.Simple
@@ -877,6 +880,7 @@ public partial class MainWindow : Window
         _settings.AutoConnectOnStartup = AutoConnectCheck.IsChecked == true;
         _settings.StartMinimized = StartMinimizedCheck.IsChecked == true;
         _settings.AutoTareOnConnect = AutoTareCheck.IsChecked == true;
+        _settings.PollIntervalMs = (int)PollIntervalSlider.Value;
         _settings.TriggerLeftRight = (int)TriggerLeftRightSlider.Value;
         _settings.TriggerForwardBackward = (int)TriggerForwardBackwardSlider.Value;
         _settings.DeadzonePercent = DeadzoneSlider.Value;
@@ -1447,6 +1451,7 @@ public partial class MainWindow : Window
         AutoConnectCheck.IsChecked = _settings.AutoConnectOnStartup;
         StartMinimizedCheck.IsChecked = _settings.StartMinimized;
         AutoTareCheck.IsChecked = _settings.AutoTareOnConnect;
+        PollIntervalSlider.Value = _settings.PollIntervalMs;
         TriggerLeftRightSlider.Value = _settings.TriggerLeftRight;
         TriggerForwardBackwardSlider.Value = _settings.TriggerForwardBackward;
         DeadzoneSlider.Value = _settings.DeadzonePercent;
@@ -1833,6 +1838,8 @@ public partial class MainWindow : Window
     internal ComboBox TestThemeCombo => ThemeCombo;
 
     internal Slider TestDeadzoneSlider => DeadzoneSlider;
+
+    internal Slider TestPollIntervalSlider => PollIntervalSlider;
 
     internal CheckBox TestAutoConnectCheck => AutoConnectCheck;
 

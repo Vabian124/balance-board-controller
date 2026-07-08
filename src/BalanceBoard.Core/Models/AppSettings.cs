@@ -23,6 +23,8 @@ public sealed class AppSettings
     public string? LastBluetoothAdapterMac { get; set; }
     public bool AutoTareOnConnect { get; set; } = true;
     public bool StartMinimized { get; set; }
+    /// <summary>Board poll cadence in milliseconds. Clamped to [<see cref="BalanceConstants.MinPollIntervalMs"/>, <see cref="BalanceConstants.MaxPollIntervalMs"/>].</summary>
+    public int PollIntervalMs { get; set; } = BalanceConstants.SessionPollIntervalMs;
     public double DeadzonePercent { get; set; } = 5;
     /// <summary>Per-axis deadzone; null = use <see cref="DeadzonePercent"/>.</summary>
     public double? DeadzoneLeftRightPercent { get; set; }

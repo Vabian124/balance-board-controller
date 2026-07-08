@@ -29,7 +29,7 @@ Planned improvements. Safe for agents to implement incrementally.
 
 ## Phase 3 — robustness
 
-- [ ] Configurable poll rate in settings
+- [x] Configurable poll rate in settings — Advanced → Performance slider (10–100 ms); `ConnectionWorker.PollIntervalMs` drives the idle poll cadence, wired via `BalanceBoardSession.LoadSettings`
 - [x] Graceful reconnect when Bluetooth drops (auto-retry with backoff)
 
 ## Phase 4 — distribution

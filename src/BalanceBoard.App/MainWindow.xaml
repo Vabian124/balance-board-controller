@@ -380,6 +380,18 @@
                             </StackPanel>
                         </Border>
 
+                        <Border x:Name="PerformanceSection" Style="{StaticResource Card}">
+                            <StackPanel>
+                                <TextBlock Text="PERFORMANCE" Style="{DynamicResource Text.Section}"/>
+                                <TextBlock x:Name="PollIntervalLabel" Style="{DynamicResource Text.Subtitle}" Margin="0,4,0,0"/>
+                                <Slider x:Name="PollIntervalSlider" Minimum="10" Maximum="100" Value="50"
+                                        TickFrequency="5" IsSnapToTickEnabled="True" ValueChanged="SettingChanged"
+                                        AutomationProperties.Name="Board update interval in milliseconds"/>
+                                <TextBlock Style="{DynamicResource Text.Subtitle}" TextWrapping="Wrap" Margin="0,4,0,0"
+                                           Text="Lower = more responsive but more CPU. 50 ms (20 Hz) matches the board's native rate."/>
+                            </StackPanel>
+                        </Border>
+
                         <Border x:Name="DiagnosticsSection" Style="{StaticResource Card}">
                             <StackPanel>
                                 <TextBlock Text="DIAGNOSTICS" Style="{DynamicResource Text.Section}"/>

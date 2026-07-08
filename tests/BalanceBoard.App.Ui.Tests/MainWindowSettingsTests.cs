@@ -92,6 +92,33 @@ public sealed class MainWindowSettingsTests : UiTestBase
     }
 
     [Fact]
+    public void Poll_interval_slider_persists_and_applies_to_session()
+    {
+        var window = Ctx.CreateWindow(seedSettings: new AppSettings
+        {
+            UiDetailLevel = UiDetailLevel.Advanced,
+            PollIntervalMs = 50,
+        });
+
+        try
+        {
+            WpfTestHost.Invoke(() =>
+            {
+                window.TestSelectTab(3);
+                window.TestPollIntervalSlider.Value = 20;
+                window.TestPumpDispatcher();
+            });
+
+            var saved = Ctx.ReadPersistedSettings();
+            Assert.Equal(20, saved.PollIntervalMs);
+        }
+        finally
+        {
+            Ctx.CloseAll();
+        }
+    }
+
+    [Fact]
     public void Theme_change_persists_to_settings_file()
     {
         var window = Ctx.CreateWindow(seedSettings: new AppSettings

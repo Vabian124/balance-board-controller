@@ -25,6 +25,10 @@ public static class BalanceConstants
     public const double JoySensitivityMultiplier = 2.0;
     public const int SensorKgToAxisMultiplier = 100;
     public const int SessionPollIntervalMs = 50;
+    /// <summary>Fastest configurable poll cadence (100 Hz) — lower is more responsive but uses more CPU.</summary>
+    public const int MinPollIntervalMs = 10;
+    /// <summary>Slowest configurable poll cadence (~10 Hz).</summary>
+    public const int MaxPollIntervalMs = 100;
     public const int DisconnectGraceMs = 500;
     public const int HidCallbackDrainMs = 1200;
     /// <summary>Extra drain after wake-probe disconnect so WiimoteLib OnReadData callbacks finish.</summary>
