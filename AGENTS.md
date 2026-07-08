@@ -35,6 +35,7 @@ Upstream inspiration: [WiiBalanceWalker v0.5](https://github.com/lshachar/WiiBal
 9. [docs/GLOSSARY.md](docs/GLOSSARY.md) — domain terms
 10. [docs/ROADMAP.md](docs/ROADMAP.md) — planned work (safe to implement)
 11. [docs/updates/README.md](docs/updates/README.md) — **what past agents did** (timestamped, per commit)
+12. [docs/DEVELOPER_API.md](docs/DEVELOPER_API.md) — consume Core as a library (readings, lean, session)
 
 **Python rewrite:** start with `Processing/BalanceMath.cs` + `tests/BalanceBoard.Core.Tests/`.
 

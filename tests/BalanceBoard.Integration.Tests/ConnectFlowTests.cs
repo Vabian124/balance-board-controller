@@ -747,4 +747,32 @@ public class ConnectFlowTests
         Assert.Contains(lines, line => line.Contains("Adapter address changed", StringComparison.Ordinal));
         Assert.True(pairing.PairCallCount >= 1);
     }
+
+    [Fact]
+    [Trait("Category", "Slow")]
+    public async Task QuickReconnect_failure_starts_background_recovery_when_auto_connect_enabled()
+    {
+        const string boardId = "FAKE-BOARD-001";
+        var connection = new FakeBalanceBoardConnection { DiscoveredDevices = Array.Empty<string>() };
+        var settings = new AppSettings
+        {
+            AutoConnectOnStartup = true,
+            HasConnectedBefore = true,
+            LastConnectedDeviceId = boardId,
+        };
+        using var session = CreateSession(connection, new FakeBluetoothPairingService(), settings);
+        var lines = new List<string>();
+        session.Log += lines.Add;
+
+        var result = await session.ConnectWithIntentAsync(ConnectionIntent.QuickReconnect);
+        Assert.False(result.IsSuccess);
+        Assert.Contains(
+            lines,
+            line => line.Contains("background auto-reconnect", StringComparison.OrdinalIgnoreCase));
+
+        connection.DiscoveredDevices = [boardId];
+        await Task.Delay(BalanceConstants.ReconnectInitialDelayMs + BalanceConstants.PostWakeSettleMs + 1200);
+
+        Assert.True(session.IsConnected);
+    }
 }

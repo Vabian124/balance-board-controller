@@ -3,9 +3,12 @@ using Xunit;
 
 namespace BalanceBoard.Automation;
 
+[Collection("AutomationProcess")]
 public sealed class LifecycleTests : IDisposable
 {
-    public void Dispose() => ProcessTestHarness.StopProcessesByName("BalanceBoardApp");
+    private Process? _process;
+
+    public void Dispose() => ProcessTestHarness.KillIfRunning(_process);
 
     [Fact]
     public void App_launch_creates_session_log()
@@ -17,9 +20,9 @@ public sealed class LifecycleTests : IDisposable
             "BalanceBoardApp",
             "logs");
 
-        using var proc = ProcessTestHarness.StartApp(exe, "--dev --no-cleanup --allow-multiple --auto-exit-after 2");
-        ProcessTestHarness.WaitForExitOrThrow(proc);
-        Assert.True(proc.HasExited, "App did not exit cleanly.");
+        _process = ProcessTestHarness.StartApp(exe, "--dev --no-cleanup --allow-multiple --auto-exit-after 2");
+        ProcessTestHarness.WaitForExitOrThrow(_process);
+        Assert.True(_process.HasExited, "App did not exit cleanly.");
 
         var latest = Directory.Exists(logDir)
             ? Directory.GetFiles(logDir, "session-*.log")

@@ -308,6 +308,12 @@ public sealed class BalanceBoardSession : IDisposable
                 {
                     PersistAdapterMacIfKnown();
                 }
+                else if (!ct.IsCancellationRequested && ShouldAutoRecoverOnStartup())
+                {
+                    Log?.Invoke("[CONNECT] Quick reconnect did not find the board yet — starting background auto-reconnect.");
+                    SetConnectionPhase(ConnectionPhase.Reconnecting);
+                    StartBluetoothRecovery();
+                }
 
                 ConnectionFlowLogger.LogFlowComplete(Log, quick.IsSuccess);
                 return quick;
@@ -622,6 +628,11 @@ public sealed class BalanceBoardSession : IDisposable
         return (DateTime.UtcNow - _lastReadingUtc.Value).TotalMilliseconds
             <= BalanceConstants.ReadingHealthTimeoutMs;
     }
+
+    private bool ShouldAutoRecoverOnStartup() =>
+        !_manualDisconnect
+        && Settings.AutoConnectOnStartup
+        && DeviceIdRules.ShouldPersistConnectionState(Settings.LastConnectedDeviceId);
 
     private string? ResolvePreferredDeviceId() =>
         DeviceIdRules.ShouldPersistConnectionState(Settings.LastConnectedDeviceId)

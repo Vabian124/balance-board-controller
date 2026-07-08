@@ -1,6 +1,7 @@
 using System.IO;
 using BalanceBoard.Core.Abstractions;
 using BalanceBoard.Core.Models;
+using BalanceBoard.Core.Processing;
 using WiimoteLib;
 
 namespace BalanceBoard.Core.Services;
@@ -373,9 +374,15 @@ public sealed class BalanceBoardConnection : IBalanceBoardConnection
     private static BalanceReading ToReading(WiimoteState state)
     {
         var bb = state.BalanceBoardState;
+        var zp = bb.ZeroPoint;
+        var zeroPointTotalKg = zp.SensorValuesKg.TopLeft
+            + zp.SensorValuesKg.TopRight
+            + zp.SensorValuesKg.BottomLeft
+            + zp.SensorValuesKg.BottomRight;
         return new BalanceReading
         {
-            WeightKg = bb.WeightKg,
+            // Report the absolute weight on the board, not the tared delta (see RestoreAbsoluteWeightKg).
+            WeightKg = BalanceMath.RestoreAbsoluteWeightKg(bb.WeightKg, zp.IsSet, zeroPointTotalKg),
             TopLeftKg = bb.SensorValuesKg.TopLeft,
             TopRightKg = bb.SensorValuesKg.TopRight,
             BottomLeftKg = bb.SensorValuesKg.BottomLeft,

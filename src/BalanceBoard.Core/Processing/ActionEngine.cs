@@ -17,7 +17,7 @@ public sealed class ActionEngine(IInputBackend backend) : IActionSimulator
     {
         foreach (var slot in ActionSlots.All)
         {
-            Set(slot, MovementMapper.IsActive(slot, data), settings.Actions[slot]);
+            Set(slot, MovementMapper.IsActive(slot, data), settings.Actions[slot], MovementMapper.SlotIntensity(slot, data));
         }
     }
 
@@ -29,7 +29,7 @@ public sealed class ActionEngine(IInputBackend backend) : IActionSimulator
         }
     }
 
-    private void Set(string name, bool active, ActionBinding binding)
+    private void Set(string name, bool active, ActionBinding binding, float intensity)
     {
         if (!_actions.TryGetValue(name, out var runtime))
         {
@@ -40,6 +40,8 @@ public sealed class ActionEngine(IInputBackend backend) : IActionSimulator
         {
             runtime.UpdateBinding(binding);
         }
+
+        runtime.SetIntensity(intensity);
 
         if (active)
         {
@@ -56,6 +58,7 @@ public sealed class ActionEngine(IInputBackend backend) : IActionSimulator
         private readonly IInputBackend _backend;
         private ActionBinding _binding;
         private bool _active;
+        private float _intensity = 1f;
         private readonly System.Timers.Timer _timer;
 
         public RuntimeAction(IInputBackend backend, ActionBinding binding)
@@ -65,16 +68,19 @@ public sealed class ActionEngine(IInputBackend backend) : IActionSimulator
             _timer = new System.Timers.Timer(ActionConstants.MouseMoveIntervalMs) { AutoReset = true };
             _timer.Elapsed += (_, _) =>
             {
+                var amount = MovementMapper.ScaleMouseAmount(_binding.Amount, _intensity);
                 if (_binding.Kind == ActionKind.MouseMoveX)
                 {
-                    _backend.MoveRelative(_binding.Amount, 0);
+                    _backend.MoveRelative(amount, 0);
                 }
                 else if (_binding.Kind == ActionKind.MouseMoveY)
                 {
-                    _backend.MoveRelative(0, _binding.Amount);
+                    _backend.MoveRelative(0, amount);
                 }
             };
         }
+
+        public void SetIntensity(float intensity) => _intensity = intensity;
 
         /// <summary>
         /// Swaps the binding. If the slot is currently held down and the new binding drives a

@@ -97,6 +97,7 @@ Complete map of **maintained source** (ignore `bin/`, `obj/`, `.vs/`).
 | `AppDataPaths.cs` | Canonical paths for settings, logs, profiles |
 | `FileLogService.cs` | Daily session log with SESSION header + structured tags |
 | `DiagnosticsReport.cs` | Structured health check for UI + clipboard |
+| `VJoyConfigLocator.cs` | Locates `vJoyConf.exe` for in-app Configure vJoy button |
 
 ## `tools/Validate/`
 

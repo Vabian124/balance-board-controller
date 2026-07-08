@@ -98,7 +98,12 @@ public partial class MainWindow : Window
         }
 
         BluetoothPairingService.Warmup();
-        _session.LoadSettings(_settings, initializeVJoy: true);
+        if (_startupOptions.SimulateBoard)
+        {
+            _settings.EnableVJoy = false;
+        }
+
+        _session.LoadSettings(_settings, initializeVJoy: _settings.EnableVJoy);
 
         if (!_settings.HasConnectedBefore && _settings.ActiveProfileName == ActionPresets.Default)
         {
@@ -111,7 +116,15 @@ public partial class MainWindow : Window
         RefreshDynamicBrushes();
 
         var diag = VJoyDiagnostics.Inspect(_settings.VJoyDeviceId);
-        Log($"vJoy: driver={(diag.DriverEnabled ? "OK" : "missing")}, status={diag.DeviceStatus}");
+        if (_settings.EnableVJoy)
+        {
+            Log($"vJoy: driver={(diag.DriverEnabled ? "OK" : "missing")}, status={diag.DeviceStatus}");
+        }
+        else if (_startupOptions.SimulateBoard)
+        {
+            Log("vJoy: skipped for simulated board (--simulate-board).");
+        }
+
         RefreshVJoyStatus();
 
         if (connectOnLaunch)
@@ -386,7 +399,24 @@ public partial class MainWindow : Window
         }
     }
 
-    private void ActionBinding_Changed(object sender, EventArgs e) => SaveSettingsFromUi();
+    private void ActionBinding_Changed(object sender, EventArgs e)
+    {
+        if (_uiReady
+            && !_suppressSettingEvents
+            && DisableActionsCheck.IsChecked == true
+            && HasAnyActiveBinding())
+        {
+            _suppressSettingEvents = true;
+            DisableActionsCheck.IsChecked = false;
+            _suppressSettingEvents = false;
+            Log("Enabled keyboard/mouse output because a custom binding was set.");
+        }
+
+        SaveSettingsFromUi();
+    }
+
+    private bool HasAnyActiveBinding() =>
+        ActionBindingUi().Any(entry => entry.Row.GetBinding().Kind != ActionKind.None);
 
     private void UpdateSliderLabels()
     {
@@ -797,6 +827,50 @@ public partial class MainWindow : Window
         catch (Exception ex)
         {
             _fileLog.WriteException(ex, "RefreshVJoyStatus");
+        }
+    }
+
+    private void ConfigureVJoyButton_Click(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            var configExe = VJoyConfigLocator.FindConfigExe();
+            if (configExe is null)
+            {
+                Log("vJoy Configure tool not found. Install/repair vJoy, then look for 'Configure vJoy' in the Start menu.");
+                MessageBox.Show(
+                    this,
+                    "Could not find vJoy's Configure tool (vJoyConf.exe).\n\n" +
+                    "vJoy joysticks are set up in vJoy's own Configure utility that installs with the driver:\n" +
+                    "  • Open the Start menu and search for \"Configure vJoy\", or\n" +
+                    "  • Reinstall vJoy from the official download, then reboot.\n\n" +
+                    "In that tool, enable at least axes X and Y for the device number selected here, then click Apply.",
+                    "Configure vJoy",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Information);
+                return;
+            }
+
+            Log($"Opening vJoy Configure tool: {configExe}");
+            Process.Start(new ProcessStartInfo(configExe) { UseShellExecute = true });
+        }
+        catch (Exception ex)
+        {
+            _fileLog.WriteException(ex, "ConfigureVJoy");
+            SafeLog($"Could not open vJoy Configure: {ex.Message}");
+        }
+    }
+
+    private void GetVJoyButton_Click(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            Process.Start(new ProcessStartInfo("https://github.com/njz3/vJoy/releases") { UseShellExecute = true });
+        }
+        catch (Exception ex)
+        {
+            _fileLog.WriteException(ex, "GetVJoy");
+            SafeLog($"Could not open vJoy download page: {ex.Message}");
         }
     }
 
