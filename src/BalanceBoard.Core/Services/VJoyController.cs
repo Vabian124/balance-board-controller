@@ -15,6 +15,7 @@ public sealed class VJoyController : IGameControllerOutput
 
     private static readonly AxisRange SignedFallback = new(-32768, 32767);
 
+    private readonly object _sync = new();
     private vJoy? _joystick;
     private uint _deviceId = 1;
     private bool _acquired;
@@ -35,37 +36,49 @@ public sealed class VJoyController : IGameControllerOutput
 
     public event Action<string>? Log;
 
-    public bool IsReady => _acquired && _joystick is not null;
+    public bool IsReady
+    {
+        get
+        {
+            lock (_sync)
+            {
+                return _acquired && _joystick is not null;
+            }
+        }
+    }
 
     public string? LastError { get; private set; }
 
     public bool Initialize(uint deviceId = 1, bool attemptCleanupOnBusy = true)
     {
-        if (_acquired && _deviceId == deviceId && _joystick is not null)
+        lock (_sync)
         {
-            return true;
+            if (_acquired && _deviceId == deviceId && _joystick is not null)
+            {
+                return true;
+            }
+
+            ShutdownUnlocked();
+            _deviceId = deviceId;
+
+            if (deviceId is < 1 or > 16)
+            {
+                LastError = $"Illegal vJoy device id {deviceId}.";
+                return false;
+            }
+
+            _joystick = new vJoy();
+            if (!_joystick.vJoyEnabled())
+            {
+                LastError = "vJoy driver not enabled.";
+                Log?.Invoke($"[VJOY] {LastError}");
+                return false;
+            }
+
+            Log?.Invoke($"[VJOY] {_joystick.GetvJoyManufacturerString()} / {_joystick.GetvJoyProductString()}");
+
+            return TryAcquire(deviceId, attemptCleanupOnBusy);
         }
-
-        Shutdown();
-        _deviceId = deviceId;
-
-        if (deviceId is < 1 or > 16)
-        {
-            LastError = $"Illegal vJoy device id {deviceId}.";
-            return false;
-        }
-
-        _joystick = new vJoy();
-        if (!_joystick.vJoyEnabled())
-        {
-            LastError = "vJoy driver not enabled.";
-            Log?.Invoke($"[VJOY] {LastError}");
-            return false;
-        }
-
-        Log?.Invoke($"[VJOY] {_joystick.GetvJoyManufacturerString()} / {_joystick.GetvJoyProductString()}");
-
-        return TryAcquire(deviceId, attemptCleanupOnBusy);
     }
 
     private bool TryAcquire(uint deviceId, bool attemptCleanupOnBusy)
@@ -110,7 +123,7 @@ public sealed class VJoyController : IGameControllerOutput
             _axesInitialized = false;
             LastError = null;
             CacheAxisRanges(deviceId);
-            Center();
+            CenterUnlocked();
             Log?.Invoke($"[VJOY] Acquired device {deviceId}.");
             return true;
         }
@@ -158,32 +171,43 @@ public sealed class VJoyController : IGameControllerOutput
 
     public void Update(ProcessedBalance data)
     {
-        if (!IsReady || _joystick is null)
+        lock (_sync)
         {
-            return;
-        }
+            if (!_acquired || _joystick is null)
+            {
+                return;
+            }
 
-        try
-        {
-            WriteAxes(data.JoyX, data.JoyY, data.JoyZ, data.JoyRx, data.JoyRy, data.JoyRz, data.VJoyButton1);
-        }
-        catch (Exception ex)
-        {
-            LastError = ex.Message;
-            Log?.Invoke($"[VJOY] Update failed: {ex.Message}");
+            try
+            {
+                WriteAxesUnlocked(data.JoyX, data.JoyY, data.JoyZ, data.JoyRx, data.JoyRy, data.JoyRz, data.VJoyButton1);
+            }
+            catch (Exception ex)
+            {
+                LastError = ex.Message;
+                Log?.Invoke($"[VJOY] Update failed: {ex.Message}");
+            }
         }
     }
 
     public void Center()
     {
-        if (!IsReady || _joystick is null)
+        lock (_sync)
+        {
+            CenterUnlocked();
+        }
+    }
+
+    private void CenterUnlocked()
+    {
+        if (!_acquired || _joystick is null)
         {
             return;
         }
 
         try
         {
-            WriteAxes(0, 0, 0, 0, 0, 0, false);
+            WriteAxesUnlocked(0, 0, 0, 0, 0, 0, false);
         }
         catch (Exception ex)
         {
@@ -192,7 +216,7 @@ public sealed class VJoyController : IGameControllerOutput
         }
     }
 
-    private void WriteAxes(short x, short y, short z, short rx, short ry, short rz, bool buttonA)
+    private void WriteAxesUnlocked(short x, short y, short z, short rx, short ry, short rz, bool buttonA)
     {
         if (_joystick is null)
         {
@@ -253,11 +277,19 @@ public sealed class VJoyController : IGameControllerOutput
 
     public void Shutdown()
     {
+        lock (_sync)
+        {
+            ShutdownUnlocked();
+        }
+    }
+
+    private void ShutdownUnlocked()
+    {
         if (_acquired && _joystick is not null)
         {
             try
             {
-                Center();
+                CenterUnlocked();
                 _joystick.RelinquishVJD(_deviceId);
             }
             catch

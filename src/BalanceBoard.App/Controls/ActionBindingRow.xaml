@@ -18,7 +18,8 @@
         <Grid Grid.Column="2" VerticalAlignment="Center">
             <Button x:Name="KeyCaptureButton" Style="{StaticResource Button.Secondary}"
                     Content="Press a key…" Click="KeyCaptureButton_Click"
-                    PreviewKeyDown="KeyCaptureButton_PreviewKeyDown" Focusable="True"
+                    PreviewKeyDown="KeyCaptureButton_PreviewKeyDown"
+                    LostKeyboardFocus="KeyCaptureButton_LostKeyboardFocus" Focusable="True"
                     Visibility="Collapsed" HorizontalAlignment="Stretch" Padding="8,4" Margin="0"/>
             <ComboBox x:Name="MouseButtonCombo" Visibility="Collapsed"
                       SelectionChanged="Value_Changed"/>

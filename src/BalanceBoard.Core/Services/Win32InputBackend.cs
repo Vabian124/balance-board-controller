@@ -51,6 +51,7 @@ public sealed class Win32InputBackend : IInputBackend
 
     private const uint INPUT_MOUSE = 0;
     private const uint INPUT_KEYBOARD = 1;
+    private const uint KEYEVENTF_EXTENDEDKEY = 0x0001;
     private const uint KEYEVENTF_KEYUP = 0x0002;
     private const uint KEYEVENTF_SCANCODE = 0x0008;
     private const uint MOUSEEVENTF_LEFTDOWN = 0x0002;
@@ -63,13 +64,61 @@ public sealed class Win32InputBackend : IInputBackend
     private const uint MOUSEEVENTF_XUP = 0x0100;
     private const uint MOUSEEVENTF_MOVE = 0x0001;
 
+    // Match WiiBalanceWalker InputManager.GetScanKey — extended flag distinguishes arrows/nav from numpad.
+    private static readonly HashSet<ushort> ExtendedVirtualKeys =
+    [
+        0x21, // PageUp
+        0x22, // PageDown
+        0x23, // End
+        0x24, // Home
+        0x25, // Left
+        0x26, // Up
+        0x27, // Right
+        0x28, // Down
+        0x2D, // Insert
+        0x2E, // Delete
+        0x5B, // LWin
+        0x5C, // RWin
+        0x6F, // Divide (numpad /) — treated as extended by Windows
+        0x90, // NumLock
+        0xA3, // RControlKey
+        0xA5, // RMenu (RAlt)
+        0x2C, // PrintScreen
+    ];
+
+    /// <summary>
+    /// True when <paramref name="virtualKey"/> must be sent with <c>KEYEVENTF_EXTENDEDKEY</c>
+    /// so scancode injection is not interpreted as a numpad key.
+    /// </summary>
+    public static bool RequiresExtendedKeyFlag(ushort virtualKey) => ExtendedVirtualKeys.Contains(virtualKey);
+
+    /// <summary>Build SendInput KEYBDINPUT.dwFlags for a virtual-key scancode injection.</summary>
+    public static uint BuildKeyEventFlags(ushort virtualKey, bool keyUp)
+    {
+        var flags = KEYEVENTF_SCANCODE;
+        if (RequiresExtendedKeyFlag(virtualKey))
+        {
+            flags |= KEYEVENTF_EXTENDEDKEY;
+        }
+
+        if (keyUp)
+        {
+            flags |= KEYEVENTF_KEYUP;
+        }
+
+        return flags;
+    }
+
     public void KeyDown(ushort virtualKey)
     {
         var scan = (ushort)MapVirtualKey(virtualKey, 0);
         var input = new INPUT
         {
             dwType = INPUT_KEYBOARD,
-            U = new InputUnion { ki = new KEYBDINPUT { wScan = scan, dwFlags = KEYEVENTF_SCANCODE } }
+            U = new InputUnion
+            {
+                ki = new KEYBDINPUT { wScan = scan, dwFlags = BuildKeyEventFlags(virtualKey, keyUp: false) },
+            },
         };
         _ = SendInput(1, ref input, Marshal.SizeOf<INPUT>());
     }
@@ -82,8 +131,8 @@ public sealed class Win32InputBackend : IInputBackend
             dwType = INPUT_KEYBOARD,
             U = new InputUnion
             {
-                ki = new KEYBDINPUT { wScan = scan, dwFlags = KEYEVENTF_SCANCODE | KEYEVENTF_KEYUP }
-            }
+                ki = new KEYBDINPUT { wScan = scan, dwFlags = BuildKeyEventFlags(virtualKey, keyUp: true) },
+            },
         };
         _ = SendInput(1, ref input, Marshal.SizeOf<INPUT>());
     }

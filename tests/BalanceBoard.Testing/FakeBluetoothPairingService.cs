@@ -33,11 +33,22 @@ public sealed class FakeBluetoothPairingService : IBluetoothPairingService
         PairCallCount++;
         cancellationToken.ThrowIfCancellationRequested();
 
+        // Poll in short slices so CancelInFlightRecoveryHandoff can unwind a mid-pair
+        // recovery attempt instead of always waiting out the full PairDelayMs (which can
+        // exceed ConnectionWorker.InvokeTimeout when multiplied across pairing rounds).
         if (PairDelayMs > 0)
         {
-            if (cancellationToken.WaitHandle.WaitOne(PairDelayMs))
+            var remaining = PairDelayMs;
+            while (remaining > 0)
             {
                 cancellationToken.ThrowIfCancellationRequested();
+                var slice = Math.Min(50, remaining);
+                if (cancellationToken.WaitHandle.WaitOne(slice))
+                {
+                    cancellationToken.ThrowIfCancellationRequested();
+                }
+
+                remaining -= slice;
             }
         }
 

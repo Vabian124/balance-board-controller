@@ -26,8 +26,11 @@ public sealed class BalanceBoardSession : IDisposable
     private ConnectionPhase _connectionPhase = ConnectionPhase.Offline;
     private volatile bool _staleHidHandled;
     private int _connectActive;
+    private int _pollGate;
 
     private bool _adapterMacConfirmedAtConnectStart;
+
+    private bool UsesSimulatedConnection => _connection is SimulatedBalanceBoardConnection;
 
     public void CancelConnect() => _connectCts?.Cancel();
 
@@ -83,6 +86,7 @@ public sealed class BalanceBoardSession : IDisposable
     public void LoadSettings(AppSettings settings, bool initializeVJoy = true)
     {
         Settings = settings;
+        _worker.PollIntervalMs = settings.PollIntervalMs;
         var key =
             $"{settings.ActiveProfileName}|{settings.EnableVJoy}|{settings.JumpWeightThresholdKg:0.0}|{settings.UiDetailLevel}";
         if (!string.Equals(key, _lastSettingsLogKey, StringComparison.Ordinal))
@@ -99,8 +103,17 @@ public sealed class BalanceBoardSession : IDisposable
             return;
         }
 
-        SyncVJoyFromSettings();
+        SyncVJoyFromSettingsThreadSafe();
     }
+
+    /// <summary>
+    /// Marshals vJoy init/shutdown onto the ConnectionWorker thread. Poll() calls
+    /// _vjoy.Update()/Center() inline on that same thread — without this, a settings
+    /// save from the UI thread (e.g. toggling "Enable vJoy" or changing the device id)
+    /// could Shutdown()/Initialize() the vJoy device concurrently with an in-flight
+    /// Update() call on the worker thread.
+    /// </summary>
+    private void SyncVJoyFromSettingsThreadSafe() => _worker.Invoke(SyncVJoyFromSettings);
 
     private void SyncVJoyFromSettings()
     {
@@ -153,6 +166,7 @@ public sealed class BalanceBoardSession : IDisposable
 
         try
         {
+            CancelInFlightRecoveryHandoff();
             return await Task.Run(() =>
                 _worker.InvokeStrict(() => ConnectWithIntentCore(intent, deviceIndex, discoveryRounds, cancellationToken)));
         }
@@ -183,6 +197,7 @@ public sealed class BalanceBoardSession : IDisposable
 
         try
         {
+            CancelInFlightRecoveryHandoff();
             return _worker.InvokeStrict(() => ConnectWithIntentCore(intent, deviceIndex, discoveryRounds, cancellationToken));
         }
         finally
@@ -196,6 +211,30 @@ public sealed class BalanceBoardSession : IDisposable
     /// </summary>
     public bool ConnectOrPair(int deviceIndex = 0, int discoveryRounds = 4, CancellationToken cancellationToken = default) =>
         ConnectWithIntent(ConnectionIntent.PairAndConnect, deviceIndex, discoveryRounds, cancellationToken).IsSuccess;
+
+    /// <summary>
+    /// Signals cancellation to any in-flight background Bluetooth recovery attempt before
+    /// this connect's action is queued onto the ConnectionWorker. Without this, a manual
+    /// or quick connect issued while BluetoothRecoveryLoop is mid-attempt (e.g. a slow
+    /// pairing round) would simply queue behind it and have to wait for that attempt to run
+    /// to completion — the recovery loop only observes cancellation at its own checkpoints,
+    /// and those checkpoints are never reached until something cancels the token. Cancelling
+    /// here (from the caller's thread, before the worker even starts this connect) lets an
+    /// in-flight recovery step unwind at its very next check instead of always finishing
+    /// first. StopRecovery() still runs once this connect's action reaches the worker
+    /// thread, for the remaining teardown/bookkeeping.
+    /// </summary>
+    private void CancelInFlightRecoveryHandoff()
+    {
+        try
+        {
+            _recoveryCts?.Cancel();
+        }
+        catch
+        {
+            // Best-effort — StopRecovery() retries teardown once this connect runs.
+        }
+    }
 
     private ConnectResult ConnectWithIntentCore(
         ConnectionIntent intent,
@@ -233,7 +272,7 @@ public sealed class BalanceBoardSession : IDisposable
         {
             var ct = _connectCts.Token;
             // Probe Bluetooth before WiimoteLib HID — HID enumeration can spuriously break InTheHand.
-            if (!WaitForBluetoothAtConnectStart(ct))
+            if (!UsesSimulatedConnection && !WaitForBluetoothAtConnectStart(ct))
             {
                 if (ct.IsCancellationRequested)
                 {
@@ -480,7 +519,7 @@ public sealed class BalanceBoardSession : IDisposable
         for (var round = 1; round <= discoveryRounds; round++)
         {
             ct.ThrowIfCancellationRequested();
-            if (!WaitForBluetoothAtConnectStart(ct))
+            if (!UsesSimulatedConnection && !WaitForBluetoothAtConnectStart(ct))
             {
                 if (ct.IsCancellationRequested)
                 {
@@ -725,14 +764,14 @@ public sealed class BalanceBoardSession : IDisposable
     public void ApplyProfile(string profileName)
     {
         ActionPresets.Apply(Settings, profileName);
-        SyncVJoyFromSettings();
+        SyncVJoyFromSettingsThreadSafe();
         Log?.Invoke($"Applied profile: {profileName}");
     }
 
     private void ApplyPreset(Action<AppSettings> apply, string logMessage)
     {
         apply(Settings);
-        SyncVJoyFromSettings();
+        SyncVJoyFromSettingsThreadSafe();
         Log?.Invoke(logMessage);
     }
 
@@ -755,6 +794,18 @@ public sealed class BalanceBoardSession : IDisposable
     private void Poll()
     {
         if (_disposed)
+        {
+            return;
+        }
+
+        // Poll() is reachable from two different threads for a real device: the
+        // ConnectionWorker's own idle-tick health poll (SetPollTick) and WiimoteLib's
+        // internal HID read thread firing OnReadingAvailable on every incoming report.
+        // Neither BalanceProcessor's tare/jump state nor ActionEngine's pressed-key state
+        // is synchronized, so two overlapping calls would race those fields. Skip an
+        // overlapping call rather than block WiimoteLib's callback thread — the next tick
+        // or report picks up the current reading a moment later.
+        if (Interlocked.CompareExchange(ref _pollGate, 1, 0) != 0)
         {
             return;
         }
@@ -794,6 +845,10 @@ public sealed class BalanceBoardSession : IDisposable
         {
             Log?.Invoke($"Poll error: {ex.Message}");
             Log?.Invoke(ex.StackTrace ?? string.Empty);
+        }
+        finally
+        {
+            Interlocked.Exchange(ref _pollGate, 0);
         }
     }
 
@@ -910,6 +965,19 @@ public sealed class BalanceBoardSession : IDisposable
     private void StopRecovery()
     {
         _recoveryCts?.Cancel();
+
+        if (_worker.IsCurrentThreadWorker)
+        {
+            // ConnectWithIntentCore (a manual/quick connect) runs on the ConnectionWorker
+            // thread. If the recovery loop is currently blocked inside its own
+            // _worker.InvokeStrict call (RunRecoveryConnect) waiting for this very thread,
+            // blocking here too would deadlock both sides until timeouts expire. The
+            // cancellation above is enough — RunRecoveryConnect checks the token before
+            // touching the connection, and the recovery task calls EndRecovery itself
+            // (from its own thread) once it unwinds.
+            return;
+        }
+
         var task = _recoveryTask;
         if (task is not null)
         {
@@ -1058,6 +1126,11 @@ public sealed class BalanceBoardSession : IDisposable
 
     private ConnectResult RunRecoveryConnect(int failedAttempts, CancellationToken ct)
     {
+        // A manual/quick connect (ConnectWithIntentCore) may have queued itself on the
+        // ConnectionWorker and already cancelled this recovery token by the time this
+        // action actually gets to run. Re-check right before touching the connection so a
+        // stale recovery attempt can never race a fresh connect that completed in between
+        // (see StopRecovery for the matching deadlock-avoidance half of this fix).
         if (_adapterMacChanged || failedAttempts >= BalanceConstants.RecoveryFullPairAfterAttempts)
         {
             SafeCallbacks.Raise(Log,
@@ -1065,7 +1138,10 @@ public sealed class BalanceBoardSession : IDisposable
                     ? "[CONNECT] Recovery: adapter MAC changed — full SYNC pairing (press SYNC if board is flashing)."
                     : "[CONNECT] Recovery: repeated failures — full SYNC pairing (press SYNC if board is flashing).");
             return _worker.InvokeStrict(() =>
-                TryPairAndConnect(0, 4, ct));
+            {
+                ct.ThrowIfCancellationRequested();
+                return TryPairAndConnect(0, 4, ct);
+            });
         }
 
         if (failedAttempts >= BalanceConstants.RecoveryPairAfterAttempts)
@@ -1073,12 +1149,18 @@ public sealed class BalanceBoardSession : IDisposable
             SafeCallbacks.Raise(Log,
                 "[CONNECT] Recovery: HID reconnect failed repeatedly — light re-pair (press SYNC if board is flashing).");
             return _worker.InvokeStrict(() =>
-                TryPairAndConnect(0, 1, ct));
+            {
+                ct.ThrowIfCancellationRequested();
+                return TryPairAndConnect(0, 1, ct);
+            });
         }
 
         SafeCallbacks.Raise(Log, $"[CONNECT] Recovery attempt {failedAttempts + 1} — HID reconnect without pairing.");
         return _worker.InvokeStrict(() =>
-            TryQuickReconnect(0, Settings.LastConnectedDeviceId, ct));
+        {
+            ct.ThrowIfCancellationRequested();
+            return TryQuickReconnect(0, Settings.LastConnectedDeviceId, ct);
+        });
     }
 
     private bool WaitForBluetoothAtConnectStart(CancellationToken ct)

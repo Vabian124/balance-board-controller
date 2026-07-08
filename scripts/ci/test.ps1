@@ -9,6 +9,21 @@ $ErrorActionPreference = "Stop"
 $Root = Split-Path (Split-Path $PSScriptRoot -Parent) -Parent
 Set-Location $Root
 
+function Resolve-DotNetCli {
+    if ($env:DOTNET_ROOT) {
+        foreach ($name in @("dotnet.exe", "dotnet")) {
+            $candidate = Join-Path $env:DOTNET_ROOT $name
+            if (Test-Path $candidate) {
+                return $candidate
+            }
+        }
+    }
+
+    return "dotnet"
+}
+
+$DotNetCli = Resolve-DotNetCli
+
 $Artifacts = Join-Path $Root "artifacts\test"
 New-Item -ItemType Directory -Force -Path $Artifacts | Out-Null
 $LogFile = Join-Path $Artifacts "test.log"
@@ -201,7 +216,7 @@ function Invoke-DotNetTestSuite {
     }
 
     try {
-        $commandResult = Invoke-ExternalCommand -FilePath "dotnet" -Arguments $args -TimeoutSec $TimeoutSec -OutputPath $logPath
+        $commandResult = Invoke-ExternalCommand -FilePath $DotNetCli -Arguments $args -TimeoutSec $TimeoutSec -OutputPath $logPath
     }
     finally {
         $sw.Stop()
@@ -324,7 +339,7 @@ try {
         Invoke-CommandSuite `
             -Name "Build gate" `
             -Phase "build" `
-            -FilePath "dotnet" `
+            -FilePath $DotNetCli `
             -Arguments @("build", "BalanceBoard.sln", "-c", "Release", "-warnaserror") `
             -TimeoutSec $TimeoutsSec.Build | Out-Null
 
@@ -352,7 +367,7 @@ try {
     Invoke-CommandSuite `
         -Name "BalanceBoard.Validate" `
         -Phase "tools" `
-        -FilePath "dotnet" `
+        -FilePath $DotNetCli `
         -Arguments @("run", "--project", "tools/Validate/BalanceBoard.Validate.csproj", "-c", "Release", "--no-build") `
         -TimeoutSec $TimeoutsSec.Tools | Out-Null
 

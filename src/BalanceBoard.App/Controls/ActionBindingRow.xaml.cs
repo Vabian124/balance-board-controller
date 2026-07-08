@@ -20,6 +20,12 @@ public partial class ActionBindingRow : UserControl
 
     private bool _suppressEvents;
     private bool _capturingKey;
+    /// <summary>
+    /// Last committed key name — distinct from the button's display text so an aborted capture
+    /// (Escape, or clicking away without pressing a key) cannot silently persist an empty
+    /// <see cref="ActionBinding.KeyName"/> and erase the user's existing binding on next save.
+    /// </summary>
+    private string _committedKeyName = string.Empty;
 
     public event EventHandler? BindingChanged;
 
@@ -39,8 +45,10 @@ public partial class ActionBindingRow : UserControl
     public void LoadBinding(ActionBinding binding)
     {
         _suppressEvents = true;
+        _capturingKey = false;
+        _committedKeyName = binding.KeyName ?? string.Empty;
         KindCombo.SelectedItem = KindOptions.First(o => o.Kind == binding.Kind).Label;
-        KeyCaptureButton.Content = FormatKeyLabel(binding.KeyName);
+        KeyCaptureButton.Content = FormatKeyLabel(_committedKeyName);
         if (!string.IsNullOrEmpty(binding.MouseButton))
         {
             MouseButtonCombo.SelectedItem = binding.MouseButton;
@@ -64,7 +72,7 @@ public partial class ActionBindingRow : UserControl
             ActionKind.Key => new ActionBinding
             {
                 Kind = ActionKind.Key,
-                KeyName = UnformatKeyLabel(KeyCaptureButton.Content?.ToString() ?? string.Empty),
+                KeyName = _committedKeyName,
             },
             ActionKind.MouseButton => new ActionBinding
             {
@@ -132,13 +140,27 @@ public partial class ActionBindingRow : UserControl
 
         if (e.Key == Key.Escape)
         {
-            KeyCaptureButton.Content = "Press a key…";
+            KeyCaptureButton.Content = FormatKeyLabel(_committedKeyName);
             return;
         }
 
         var keyName = e.Key == Key.System ? e.SystemKey.ToString() : e.Key.ToString();
+        _committedKeyName = keyName;
         KeyCaptureButton.Content = FormatKeyLabel(keyName);
         RaiseChanged();
+    }
+
+    private void KeyCaptureButton_LostKeyboardFocus(object sender, KeyboardFocusChangedEventArgs e)
+    {
+        if (!_capturingKey)
+        {
+            return;
+        }
+
+        // Clicked/tabbed away mid-capture without pressing a key or Escape — restore the
+        // previous label instead of leaving "Press any key…" as the (would-be-persisted) value.
+        _capturingKey = false;
+        KeyCaptureButton.Content = FormatKeyLabel(_committedKeyName);
     }
 
     private void Value_Changed(object sender, SelectionChangedEventArgs e)
@@ -164,7 +186,4 @@ public partial class ActionBindingRow : UserControl
 
     private static string FormatKeyLabel(string keyName) =>
         string.IsNullOrWhiteSpace(keyName) ? "Press a key…" : keyName;
-
-    private static string UnformatKeyLabel(string label) =>
-        label is "Press a key…" or "Press any key…" ? string.Empty : label;
 }
