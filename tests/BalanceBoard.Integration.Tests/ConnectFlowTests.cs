@@ -340,6 +340,21 @@ public class ConnectFlowTests
     }
 
     [Fact]
+    public async Task Connect_while_already_healthy_skips_duplicate_hid_open()
+    {
+        var connection = new FakeBalanceBoardConnection();
+        using var session = CreateSession(connection, new FakeBluetoothPairingService());
+        var first = await session.ConnectWithIntentAsync(ConnectionIntent.QuickReconnect);
+        Assert.True(first.IsSuccess);
+        Assert.True(session.IsConnected);
+
+        var attemptsBefore = connection.ConnectAttempts;
+        var second = await session.ConnectWithIntentAsync(ConnectionIntent.QuickReconnect);
+        Assert.True(second.IsSuccess);
+        Assert.Equal(attemptsBefore, connection.ConnectAttempts);
+    }
+
+    [Fact]
     public async Task Connect_while_already_in_progress_returns_already_in_progress()
     {
         var pairing = new FakeBluetoothPairingService { BluetoothAvailable = false };

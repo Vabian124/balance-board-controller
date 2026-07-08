@@ -203,6 +203,23 @@ public sealed class BalanceBoardSession : IDisposable
         int discoveryRounds,
         CancellationToken cancellationToken)
     {
+        if (_connection.IsConnected)
+        {
+            if (IsSessionHealthy())
+            {
+                Log?.Invoke("[CONNECT] Already connected — ignoring duplicate request.");
+                return ConnectResult.Ok();
+            }
+
+            if (_connectedAtUtc is not null
+                && (DateTime.UtcNow - _connectedAtUtc.Value).TotalMilliseconds
+                    <= BalanceConstants.ConnectHealthGraceMs)
+            {
+                Log?.Invoke("[CONNECT] HID session opening — ignoring duplicate request.");
+                return ConnectResult.Fail(ConnectStatus.AlreadyInProgress);
+            }
+        }
+
         StopRecovery();
         _manualDisconnect = false;
         _adapterMacChanged = false;
