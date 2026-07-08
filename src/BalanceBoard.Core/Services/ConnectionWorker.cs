@@ -16,6 +16,7 @@ public sealed class ConnectionWorker : IDisposable
     private Action? _pollTick;
     private volatile bool _pollEnabled;
     private volatile bool _disposed;
+    private volatile int _pollIntervalMs = BalanceConstants.SessionPollIntervalMs;
 
     public ConnectionWorker()
     {
@@ -26,6 +27,16 @@ public sealed class ConnectionWorker : IDisposable
         };
         _thread.SetApartmentState(ApartmentState.STA);
         _thread.Start();
+    }
+
+    /// <summary>True when called from the ConnectionWorker's own thread (safe to skip re-queueing).</summary>
+    public bool IsCurrentThreadWorker => Thread.CurrentThread == _thread;
+
+    /// <summary>Idle poll cadence in milliseconds. Clamped to the supported range; applied on the next loop iteration.</summary>
+    public int PollIntervalMs
+    {
+        get => _pollIntervalMs;
+        set => _pollIntervalMs = Math.Clamp(value, BalanceConstants.MinPollIntervalMs, BalanceConstants.MaxPollIntervalMs);
     }
 
     public void Invoke(Action action) => Run(action, rethrow: false);
@@ -163,7 +174,7 @@ public sealed class ConnectionWorker : IDisposable
     {
         while (!_disposed)
         {
-            while (_queue.TryTake(out var action, TimeSpan.FromMilliseconds(BalanceConstants.SessionPollIntervalMs)))
+            while (_queue.TryTake(out var action, TimeSpan.FromMilliseconds(_pollIntervalMs)))
             {
                 try
                 {

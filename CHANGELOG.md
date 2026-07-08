@@ -18,6 +18,8 @@ Unified automated test pipeline, hang hardening, and opt-in physical hardware va
 - **ConnectionWorker invoke timeouts** — queued actions abort after 15s instead of hanging callers indefinitely
 - **WPF test host dispatcher timeouts** — UI test harness fails fast on stuck dispatcher work
 - **Test pipeline watchdogs** — per-suite command timeouts and stale `testhost` / `BalanceBoardApp` cleanup between suites
+- **Simulated connect on CI** — skip Bluetooth radio wait for `SimulatedBalanceBoardConnection` (fixes UI + lifecycle timeouts)
+- **Fast release path** — release workflow packages only after green CI; `scripts/release/quick-release.ps1` for maintainers
 
 ## [1.3.0] - 2026-07-07
 

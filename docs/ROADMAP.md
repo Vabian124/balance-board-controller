@@ -21,15 +21,15 @@ Planned improvements. Safe for agents to implement incrementally.
 
 ## Phase 2 — UX & accessibility
 
-- [ ] **Custom game profiles UI** — wire `SettingsStore.SaveProfile` / `LoadProfile` / `ListProfiles` to save/load named snapshots (built-in presets already on Profiles tab)
-- [ ] **Multi-device picker** — when `DiscoverDevices()` returns >1, show selection dialog before `Connect(index)`
+- [x] **Custom game profiles UI** — "My Profiles" card on the Profiles tab: save-as, load, update, delete, export, and import named snapshots (`SettingsStore` profile APIs + `NamePromptDialog`); profiles are portable (connection identity stripped)
+- [x] **Multi-device picker** — when `DiscoverDevices()` returns >1 with no preferred match, show `DevicePickerDialog` before connect (auto/quiet reconnect skips picker)
 - [ ] **Tray icon** — minimize to tray, quick connect/disconnect
-- [ ] **Start minimized** — honor `AppSettings.StartMinimized`
-- [ ] **Accessibility pass** — `AutomationProperties`, live regions for direction text, optional large UI mode
+- [x] **Start minimized** — honor `AppSettings.StartMinimized` (toggle on Profiles → Appearance &amp; startup; window launches minimized)
+- [x] **Accessibility pass** — live regions on connection chip / status / direction / active actions; AutomationProperties.Name on connect, disconnect, tare, and balance readouts (optional large UI mode still deferred)
 
 ## Phase 3 — robustness
 
-- [ ] Configurable poll rate in settings
+- [x] Configurable poll rate in settings — Advanced → Performance slider (10–100 ms); `ConnectionWorker.PollIntervalMs` drives the idle poll cadence, wired via `BalanceBoardSession.LoadSettings`
 - [x] Graceful reconnect when Bluetooth drops (auto-retry with backoff)
 
 ## Phase 4 — distribution

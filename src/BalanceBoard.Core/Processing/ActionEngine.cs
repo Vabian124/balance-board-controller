@@ -76,7 +76,41 @@ public sealed class ActionEngine(IInputBackend backend) : IActionSimulator
             };
         }
 
-        public void UpdateBinding(ActionBinding binding) => _binding = binding;
+        /// <summary>
+        /// Swaps the binding. If the slot is currently held down and the new binding drives a
+        /// different physical output (key/mouse button), release the old output first — otherwise
+        /// the previously pressed key/button would stay stuck down forever (never released, since
+        /// <see cref="Stop"/> would only know about the new binding).
+        /// </summary>
+        public void UpdateBinding(ActionBinding binding)
+        {
+            if (_active && RequiresRebind(_binding, binding))
+            {
+                ReleasePhysical(_binding);
+                _binding = binding;
+                EngagePhysical(binding);
+                return;
+            }
+
+            _binding = binding;
+        }
+
+        private static bool RequiresRebind(ActionBinding oldBinding, ActionBinding newBinding)
+        {
+            if (oldBinding.Kind != newBinding.Kind)
+            {
+                return IsHeldOutput(oldBinding.Kind) || IsHeldOutput(newBinding.Kind);
+            }
+
+            return oldBinding.Kind switch
+            {
+                ActionKind.Key => oldBinding.KeyName != newBinding.KeyName,
+                ActionKind.MouseButton => oldBinding.MouseButton != newBinding.MouseButton,
+                _ => false,
+            };
+        }
+
+        private static bool IsHeldOutput(ActionKind kind) => kind is ActionKind.Key or ActionKind.MouseButton;
 
         public void Start()
         {
@@ -86,25 +120,7 @@ public sealed class ActionEngine(IInputBackend backend) : IActionSimulator
             }
 
             _active = true;
-            switch (_binding.Kind)
-            {
-                case ActionKind.Key when VirtualKeyCodes.TryGet(_binding.KeyName, out var key):
-                    _backend.KeyDown(key);
-                    break;
-                case ActionKind.MouseButton:
-                    _backend.MouseDown(_binding.MouseButton);
-                    break;
-                case ActionKind.MouseMoveX:
-                case ActionKind.MouseMoveY:
-                    _timer.Start();
-                    break;
-                case ActionKind.None:
-                    break;
-                case ActionKind.Key:
-                    break;
-                default:
-                    break;
-            }
+            EngagePhysical(_binding);
         }
 
         public void Stop()
@@ -115,24 +131,36 @@ public sealed class ActionEngine(IInputBackend backend) : IActionSimulator
             }
 
             _active = false;
-            _timer.Stop();
-            switch (_binding.Kind)
+            ReleasePhysical(_binding);
+        }
+
+        private void EngagePhysical(ActionBinding binding)
+        {
+            switch (binding.Kind)
             {
-                case ActionKind.Key when VirtualKeyCodes.TryGet(_binding.KeyName, out var key):
+                case ActionKind.Key when VirtualKeyCodes.TryGet(binding.KeyName, out var key):
+                    _backend.KeyDown(key);
+                    break;
+                case ActionKind.MouseButton:
+                    _backend.MouseDown(binding.MouseButton);
+                    break;
+                case ActionKind.MouseMoveX:
+                case ActionKind.MouseMoveY:
+                    _timer.Start();
+                    break;
+            }
+        }
+
+        private void ReleasePhysical(ActionBinding binding)
+        {
+            _timer.Stop();
+            switch (binding.Kind)
+            {
+                case ActionKind.Key when VirtualKeyCodes.TryGet(binding.KeyName, out var key):
                     _backend.KeyUp(key);
                     break;
                 case ActionKind.MouseButton:
-                    _backend.MouseUp(_binding.MouseButton);
-                    break;
-                case ActionKind.None:
-                    break;
-                case ActionKind.Key:
-                    break;
-                case ActionKind.MouseMoveX:
-                    break;
-                case ActionKind.MouseMoveY:
-                    break;
-                default:
+                    _backend.MouseUp(binding.MouseButton);
                     break;
             }
         }

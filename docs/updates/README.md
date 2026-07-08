@@ -6,6 +6,13 @@ Short index for AI assistants. User-facing history: [CHANGELOG.md](../../CHANGEL
 
 | Commit | Summary |
 |--------|---------|
+| [`8ed9872`](https://github.com/Vabian124/balance-board-controller/commit/8ed9872) | **Poll reentrancy + connect guard** — `_pollGate` skips overlapping `Poll()` (worker tick vs HID `ReadingAvailable`); engage `_connectInProgress` before device-picker `ShowDialog`; tests for concurrent poll |
+| [`59a0ae3`](https://github.com/Vabian124/balance-board-controller/commit/59a0ae3) | **Audit hardening** — ActionEngine sticky-key rebind release, BalanceMath axis clamp, DebugSessionTrace no-op (remove personal path), input sim E2E tests, recovery cancel / preempt regression |
+| [`021f83e`](https://github.com/Vabian124/balance-board-controller/commit/021f83e) | **Hardening + multi-device** — `KEYEVENTF_EXTENDEDKEY`, SettingsStore IO lock, VJoyController sync lock, feeder path check, multi-device picker, connection/status live regions; ROADMAP Phase 2 picker + accessibility checked off |
+| [`4dc1cc1`](https://github.com/Vabian124/balance-board-controller/commit/4dc1cc1) | **Custom profiles + UX batch** — custom named profiles (save/load/update/delete/export/import via `NamePromptDialog`), honor `StartMinimized`, configurable poll rate (`ConnectionWorker.PollIntervalMs`), reset-to-defaults; ROADMAP Phase 2/3 items checked off, Core + UI tests added |
+| [`7661871`](https://github.com/Vabian124/balance-board-controller/commit/7661871) | Fix `quick-release.ps1` CI check (full commit SHA) |
+| [`aeba0e8`](https://github.com/Vabian124/balance-board-controller/commit/aeba0e8) | **v1.4.0 CI + fast release** — skip BT wait for simulated connect, dotnet PATH fix, release workflow package-only, `scripts/release/quick-release.ps1` |
+| [`71f30d9`](https://github.com/Vabian124/balance-board-controller/commit/71f30d9) | Fix CI: resolve dotnet CLI via DOTNET_ROOT; skip Bluetooth wait for simulated connect |
 | [`86702e9`](https://github.com/Vabian124/balance-board-controller/commit/86702e9) | **v1.4.0** — unified `scripts/ci/test.ps1` pipeline, headless WPF UI tests, hang hardening (worker/dispatcher/test watchdogs), `--physical-test connect-basic` hardware lane |
 | [`aacec1d`](https://github.com/Vabian124/balance-board-controller/commit/aacec1d) | **post-v1.3.0** — skip duplicate connect when session already healthy |
 | [`ec7bc23`](https://github.com/Vabian124/balance-board-controller/commit/ec7bc23) | **post-v1.3.0** — vJoy Center() after acquire; nullable split-axis sensitivity persistence + tests |
