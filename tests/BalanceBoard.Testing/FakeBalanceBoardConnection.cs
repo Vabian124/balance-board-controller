@@ -82,6 +82,11 @@ public sealed class FakeBalanceBoardConnection : IBalanceBoardConnection
         ConnectedDeviceId = null;
     }
 
+    /// <summary>Fires <see cref="ReadingAvailable"/> as WiimoteLib's HID read thread would
+    /// (i.e. from whatever thread the caller invokes this on) — used to reproduce the
+    /// event-callback-thread vs. ConnectionWorker-poll-tick race in tests.</summary>
+    public void RaiseReadingAvailable() => ReadingAvailable?.Invoke();
+
     public void Disconnect()
     {
         DisconnectCount++;

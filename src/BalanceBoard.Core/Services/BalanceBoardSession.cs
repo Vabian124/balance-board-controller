@@ -26,6 +26,7 @@ public sealed class BalanceBoardSession : IDisposable
     private ConnectionPhase _connectionPhase = ConnectionPhase.Offline;
     private volatile bool _staleHidHandled;
     private int _connectActive;
+    private int _pollGate;
 
     private bool _adapterMacConfirmedAtConnectStart;
 
@@ -797,6 +798,18 @@ public sealed class BalanceBoardSession : IDisposable
             return;
         }
 
+        // Poll() is reachable from two different threads for a real device: the
+        // ConnectionWorker's own idle-tick health poll (SetPollTick) and WiimoteLib's
+        // internal HID read thread firing OnReadingAvailable on every incoming report.
+        // Neither BalanceProcessor's tare/jump state nor ActionEngine's pressed-key state
+        // is synchronized, so two overlapping calls would race those fields. Skip an
+        // overlapping call rather than block WiimoteLib's callback thread — the next tick
+        // or report picks up the current reading a moment later.
+        if (Interlocked.CompareExchange(ref _pollGate, 1, 0) != 0)
+        {
+            return;
+        }
+
         try
         {
             if (_connection.IsConnected && !IsSessionHealthy())
@@ -832,6 +845,10 @@ public sealed class BalanceBoardSession : IDisposable
         {
             Log?.Invoke($"Poll error: {ex.Message}");
             Log?.Invoke(ex.StackTrace ?? string.Empty);
+        }
+        finally
+        {
+            Interlocked.Exchange(ref _pollGate, 0);
         }
     }
 
