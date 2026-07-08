@@ -89,11 +89,19 @@ public sealed class SettingsStore
         }
     }
 
+    /// <summary>Turn an arbitrary user string into a safe file name (no path separators / invalid chars).</summary>
+    public static string SanitizeProfileName(string name) =>
+        string.Join("_", (name ?? string.Empty).Split(Path.GetInvalidFileNameChars())).Trim();
+
+    private string ProfilePath(string name) =>
+        Path.Combine(ProfilesDirectory, $"{SanitizeProfileName(name)}.json");
+
+    /// <summary>Persist a named profile snapshot. Connection identity is stripped so profiles are portable.</summary>
     public void SaveProfile(string name, AppSettings settings)
     {
-        var safeName = string.Join("_", name.Split(Path.GetInvalidFileNameChars()));
-        var path = Path.Combine(ProfilesDirectory, $"{safeName}.json");
-        File.WriteAllText(path, JsonSerializer.Serialize(settings, _jsonOptions));
+        var snapshot = settings.Clone();
+        snapshot.ClearConnectionState();
+        File.WriteAllText(ProfilePath(name), JsonSerializer.Serialize(snapshot, _jsonOptions));
     }
 
     public IReadOnlyList<string> ListProfiles()
@@ -102,19 +110,98 @@ public sealed class SettingsStore
             .Select(Path.GetFileNameWithoutExtension)
             .Where(n => n is not null)
             .Cast<string>()
-            .OrderBy(n => n)];
+            .OrderBy(n => n, StringComparer.OrdinalIgnoreCase)];
     }
+
+    public bool ProfileExists(string name) => File.Exists(ProfilePath(name));
 
     public AppSettings? LoadProfile(string name)
     {
-        var safeName = string.Join("_", name.Split(Path.GetInvalidFileNameChars()));
-        var path = Path.Combine(ProfilesDirectory, $"{safeName}.json");
+        var path = ProfilePath(name);
         if (!File.Exists(path))
         {
             return null;
         }
 
-        return JsonSerializer.Deserialize<AppSettings>(File.ReadAllText(path));
+        try
+        {
+            var settings = JsonSerializer.Deserialize<AppSettings>(File.ReadAllText(path));
+            if (settings is not null)
+            {
+                NormalizeLoadedProfile(settings);
+            }
+
+            return settings;
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    /// <summary>Delete a named profile. Returns true when a file was removed.</summary>
+    public bool DeleteProfile(string name)
+    {
+        var path = ProfilePath(name);
+        if (!File.Exists(path))
+        {
+            return false;
+        }
+
+        File.Delete(path);
+        return true;
+    }
+
+    /// <summary>Write a portable snapshot of <paramref name="settings"/> to an arbitrary path (Export…).</summary>
+    public void ExportSettings(AppSettings settings, string destinationPath)
+    {
+        var snapshot = settings.Clone();
+        snapshot.ClearConnectionState();
+        var directory = Path.GetDirectoryName(destinationPath);
+        if (!string.IsNullOrEmpty(directory))
+        {
+            Directory.CreateDirectory(directory);
+        }
+
+        File.WriteAllText(destinationPath, JsonSerializer.Serialize(snapshot, _jsonOptions));
+    }
+
+    /// <summary>Read a settings snapshot from an arbitrary path (Import…). Returns null on any failure.</summary>
+    public AppSettings? ImportSettings(string sourcePath)
+    {
+        if (!File.Exists(sourcePath))
+        {
+            return null;
+        }
+
+        try
+        {
+            var settings = JsonSerializer.Deserialize<AppSettings>(File.ReadAllText(sourcePath));
+            if (settings is not null)
+            {
+                NormalizeLoadedProfile(settings);
+            }
+
+            return settings;
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    /// <summary>Ensure a profile/imported snapshot has every action slot and no stray connection identity.</summary>
+    private static void NormalizeLoadedProfile(AppSettings settings)
+    {
+        settings.ClearConnectionState();
+        settings.Actions ??= AppSettings.CreateDefaultActions();
+        foreach (var slot in ActionSlots.All)
+        {
+            if (!settings.Actions.ContainsKey(slot))
+            {
+                settings.Actions[slot] = new ActionBinding();
+            }
+        }
     }
 
     private static bool ApplyMigrations(AppSettings settings, string rawJson)
