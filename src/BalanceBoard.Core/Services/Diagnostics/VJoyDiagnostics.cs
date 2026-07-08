@@ -1,7 +1,7 @@
 using BalanceBoard.Core.Models;
 using vJoyInterfaceWrap;
 
-namespace BalanceBoard.Core.Services;
+namespace BalanceBoard.Core.Services.Diagnostics;
 
 public sealed class VJoyDeviceInfo
 {

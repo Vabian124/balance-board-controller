@@ -2,7 +2,7 @@ using BalanceBoard.Core.Abstractions;
 using BalanceBoard.Core.Models;
 using vJoyInterfaceWrap;
 
-namespace BalanceBoard.Core.Services;
+namespace BalanceBoard.Core.Services.Output;
 
 public sealed class VJoyController : IGameControllerOutput
 {

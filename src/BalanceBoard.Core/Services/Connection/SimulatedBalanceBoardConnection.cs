@@ -1,7 +1,7 @@
 using BalanceBoard.Core.Abstractions;
 using BalanceBoard.Core.Models;
 
-namespace BalanceBoard.Core.Services;
+namespace BalanceBoard.Core.Services.Connection;
 
 /// <summary>
 /// Software-only balance board for --simulate-board and headless automation.

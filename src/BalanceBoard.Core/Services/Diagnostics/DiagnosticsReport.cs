@@ -1,6 +1,6 @@
 using System.Text;
 
-namespace BalanceBoard.Core.Services;
+namespace BalanceBoard.Core.Services.Diagnostics;
 
 public sealed class DiagnosticsReport
 {

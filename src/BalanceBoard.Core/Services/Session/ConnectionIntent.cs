@@ -1,4 +1,4 @@
-namespace BalanceBoard.Core.Services;
+namespace BalanceBoard.Core.Services.Session;
 
 /// <summary>
 /// QuickReconnect: HID connect only (already paired board). PairAndConnect: full Bluetooth pairing.

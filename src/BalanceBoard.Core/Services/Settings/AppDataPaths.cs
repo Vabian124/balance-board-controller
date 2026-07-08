@@ -1,4 +1,4 @@
-namespace BalanceBoard.Core.Services;
+namespace BalanceBoard.Core.Services.Settings;
 
 /// <summary>
 /// All user data lives under %AppData%\BalanceBoardApp\ (never in the repo).

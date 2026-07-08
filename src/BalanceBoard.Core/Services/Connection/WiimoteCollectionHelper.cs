@@ -1,7 +1,7 @@
 using BalanceBoard.Core.Models;
 using WiimoteLib;
 
-namespace BalanceBoard.Core.Services;
+namespace BalanceBoard.Core.Services.Connection;
 
 /// <summary>
 /// Ensures WiimoteLib HID probes are torn down before handles go out of scope.

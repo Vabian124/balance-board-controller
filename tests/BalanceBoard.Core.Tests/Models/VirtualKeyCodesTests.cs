@@ -2,7 +2,7 @@ using BalanceBoard.Core.Models;
 using BalanceBoard.Core.Processing;
 using Xunit;
 
-namespace BalanceBoard.Core.Tests;
+namespace BalanceBoard.Core.Tests.Models;
 
 public class VirtualKeyCodesTests
 {

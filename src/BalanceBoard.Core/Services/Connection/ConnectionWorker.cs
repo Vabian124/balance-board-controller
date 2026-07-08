@@ -1,7 +1,7 @@
 using System.Collections.Concurrent;
 using BalanceBoard.Core.Models;
 
-namespace BalanceBoard.Core.Services;
+namespace BalanceBoard.Core.Services.Connection;
 
 /// <summary>
 /// Single persistent STA thread for WiimoteLib and Bluetooth. Prevents OnReadData-after-dispose crashes.

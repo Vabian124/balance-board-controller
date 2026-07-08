@@ -6,21 +6,11 @@ namespace BalanceBoard.Core.Services;
 /// <summary>
 /// Applies output profiles/presets and syncs vJoy init/shutdown onto the ConnectionWorker thread.
 /// </summary>
-internal sealed class ProfileCoordinator
+internal sealed class ProfileCoordinator(
+    ConnectionWorker worker,
+    IGameControllerOutput vjoy,
+    Action<string>? log = null)
 {
-    private readonly ConnectionWorker _worker;
-    private readonly IGameControllerOutput _vjoy;
-    private readonly Action<string>? _log;
-
-    public ProfileCoordinator(
-        ConnectionWorker worker,
-        IGameControllerOutput vjoy,
-        Action<string>? log = null)
-    {
-        _worker = worker;
-        _vjoy = vjoy;
-        _log = log;
-    }
 
     /// <summary>
     /// Marshals vJoy init/shutdown onto the ConnectionWorker thread. Poll() calls
@@ -30,17 +20,17 @@ internal sealed class ProfileCoordinator
     /// Update() call on the worker thread.
     /// </summary>
     public void SyncVJoyFromSettingsThreadSafe(AppSettings settings) =>
-        _worker.Invoke(() => SyncVJoyFromSettings(settings));
+        worker.Invoke(() => SyncVJoyFromSettings(settings));
 
     public void SyncVJoyFromSettings(AppSettings settings)
     {
         if (settings.EnableVJoy)
         {
-            _vjoy.Initialize(settings.VJoyDeviceId);
+            vjoy.Initialize(settings.VJoyDeviceId);
         }
         else
         {
-            _vjoy.Shutdown();
+            vjoy.Shutdown();
         }
     }
 
@@ -48,13 +38,13 @@ internal sealed class ProfileCoordinator
     {
         ActionPresets.Apply(settings, profileName);
         SyncVJoyFromSettingsThreadSafe(settings);
-        _log?.Invoke($"Applied profile: {profileName}");
+        log?.Invoke($"Applied profile: {profileName}");
     }
 
     public void ApplyPreset(AppSettings settings, Action<AppSettings> apply, string logMessage)
     {
         apply(settings);
         SyncVJoyFromSettingsThreadSafe(settings);
-        _log?.Invoke(logMessage);
+        log?.Invoke(logMessage);
     }
 }

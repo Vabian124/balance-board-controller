@@ -4,7 +4,7 @@ using BalanceBoard.Core.Models;
 using BalanceBoard.Core.Processing;
 using WiimoteLib;
 
-namespace BalanceBoard.Core.Services;
+namespace BalanceBoard.Core.Services.Connection;
 
 public sealed class BalanceBoardConnection : IBalanceBoardConnection
 {

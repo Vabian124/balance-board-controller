@@ -1,7 +1,7 @@
 using System.Runtime.InteropServices;
 using BalanceBoard.Core.Abstractions;
 
-namespace BalanceBoard.Core.Services;
+namespace BalanceBoard.Core.Services.Output;
 
 /// <summary>
 /// Windows SendInput backend for <see cref="Processing.ActionEngine"/>.

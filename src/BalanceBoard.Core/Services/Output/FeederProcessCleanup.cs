@@ -1,7 +1,7 @@
 using System.Diagnostics;
 using System.Reflection;
 
-namespace BalanceBoard.Core.Services;
+namespace BalanceBoard.Core.Services.Output;
 
 /// <summary>
 /// Stops other balance-board / vJoy feeder apps that block device access during development and restarts.

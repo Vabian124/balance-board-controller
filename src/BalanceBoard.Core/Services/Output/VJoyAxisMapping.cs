@@ -1,4 +1,4 @@
-namespace BalanceBoard.Core.Services;
+namespace BalanceBoard.Core.Services.Output;
 
 /// <summary>Maps internal signed stick values (0 = center) to vJoy device axis ranges.</summary>
 public static class VJoyAxisMapping

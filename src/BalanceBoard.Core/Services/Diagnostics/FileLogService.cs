@@ -1,6 +1,6 @@
 using BalanceBoard.Core.Models;
 
-namespace BalanceBoard.Core.Services;
+namespace BalanceBoard.Core.Services.Diagnostics;
 
 public static class LogTags
 {

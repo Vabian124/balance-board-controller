@@ -5,7 +5,7 @@ using BalanceBoard.Core.Services;
 using BalanceBoard.Testing;
 using Xunit;
 
-namespace BalanceBoard.Core.Tests;
+namespace BalanceBoard.Core.Tests.Processing;
 
 public class ActionEngineTests
 {

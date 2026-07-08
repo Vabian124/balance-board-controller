@@ -2,7 +2,7 @@ using BalanceBoard.Core.Abstractions;
 using BalanceBoard.Core.Models;
 using BalanceBoard.Core.Processing;
 
-namespace BalanceBoard.Core.Services;
+namespace BalanceBoard.Core.Services.Session;
 
 public sealed class BalanceBoardSession : IDisposable
 {

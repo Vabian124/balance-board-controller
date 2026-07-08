@@ -1,6 +1,6 @@
 using System.IO;
 
-namespace BalanceBoard.Core.Services;
+namespace BalanceBoard.Core.Services.Diagnostics;
 
 /// <summary>
 /// Locates the official vJoy configuration utility (<c>vJoyConf.exe</c>).

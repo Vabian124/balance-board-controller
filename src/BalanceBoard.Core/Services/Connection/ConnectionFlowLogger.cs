@@ -1,6 +1,6 @@
 using WiimoteLib;
 
-namespace BalanceBoard.Core.Services;
+namespace BalanceBoard.Core.Services.Connection;
 
 /// <summary>
 /// Standard connection-flow log lines — use category <c>CONNECT</c> for grep-friendly session logs.

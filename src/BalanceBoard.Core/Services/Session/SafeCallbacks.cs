@@ -1,4 +1,4 @@
-namespace BalanceBoard.Core.Services;
+namespace BalanceBoard.Core.Services.Session;
 
 internal static class SafeCallbacks
 {

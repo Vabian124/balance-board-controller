@@ -1,8 +1,9 @@
+using System.Text.Json;
 using BalanceBoard.Core.Models;
-using BalanceBoard.Core.Services;
+using BalanceBoard.Core.Services.Settings;
 using Xunit;
 
-namespace BalanceBoard.Core.Tests;
+namespace BalanceBoard.Core.Tests.Models;
 
 public class SettingsMigrationsOutputModeTests : IDisposable
 {
@@ -24,12 +25,7 @@ public class SettingsMigrationsOutputModeTests : IDisposable
     [Fact]
     public void Load_json_without_OutputMode_infers_VJoy_from_legacy_flags()
     {
-        var json = """
-            {
-              "EnableVJoy": true,
-              "DisableKeyboardActions": true
-            }
-            """;
+        var json = JsonSerializer.Serialize(new { EnableVJoy = true, DisableKeyboardActions = true });
         File.WriteAllText(_store.SettingsPath, json);
         var loaded = _store.Load();
         Assert.Equal(OutputMode.VJoy, loaded.OutputMode);
@@ -41,12 +37,7 @@ public class SettingsMigrationsOutputModeTests : IDisposable
     [Fact]
     public void Load_json_without_OutputMode_infers_Keyboard_when_movement_keys_enabled()
     {
-        var json = """
-            {
-              "EnableVJoy": false,
-              "DisableKeyboardActions": false
-            }
-            """;
+        var json = JsonSerializer.Serialize(new { EnableVJoy = false, DisableKeyboardActions = false });
         File.WriteAllText(_store.SettingsPath, json);
         var loaded = _store.Load();
         Assert.Equal(OutputMode.Keyboard, loaded.OutputMode);
@@ -57,12 +48,7 @@ public class SettingsMigrationsOutputModeTests : IDisposable
     [Fact]
     public void Load_json_without_OutputMode_infers_Keyboard_for_mixed_legacy_flags()
     {
-        var json = """
-            {
-              "EnableVJoy": true,
-              "DisableKeyboardActions": false
-            }
-            """;
+        var json = JsonSerializer.Serialize(new { EnableVJoy = true, DisableKeyboardActions = false });
         File.WriteAllText(_store.SettingsPath, json);
         var loaded = _store.Load();
         Assert.Equal(OutputMode.Keyboard, loaded.OutputMode);

@@ -1,4 +1,4 @@
-namespace BalanceBoard.Core.Services;
+namespace BalanceBoard.Core.Services.Connection;
 
 /// <summary>Helpers for choosing among multiple discovered balance-board HID device ids.</summary>
 public static class DeviceSelection

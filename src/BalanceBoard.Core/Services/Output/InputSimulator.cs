@@ -2,7 +2,7 @@ using BalanceBoard.Core.Abstractions;
 using BalanceBoard.Core.Models;
 using BalanceBoard.Core.Processing;
 
-namespace BalanceBoard.Core.Services;
+namespace BalanceBoard.Core.Services.Output;
 
 /// <summary>
 /// Windows keyboard/mouse simulator — thin facade over portable <see cref="ActionEngine"/>.

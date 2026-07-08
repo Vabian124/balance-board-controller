@@ -1,4 +1,4 @@
-using BalanceBoard.Core.Services;
+using BalanceBoard.Core.Services.Connection;
 
 namespace BalanceBoard.Core.Abstractions;
 

@@ -826,8 +826,18 @@ public partial class MainWindow : Window
 
     private void RequestSaveSettingsFromUi(bool immediate = false)
     {
-        if (!_uiReady || _suppressSettingEvents) return;
-        if (immediate) { CancelPendingSettingsSave(); SaveSettingsFromUi(); return; }
+        if (!_uiReady || _suppressSettingEvents)
+        {
+            return;
+        }
+
+        if (immediate)
+        {
+            CancelPendingSettingsSave();
+            SaveSettingsFromUi();
+            return;
+        }
+
         _settingsSaveDebounceTimer ??= new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(SettingsSaveDebounceMs) };
         _settingsSaveDebounceTimer.Stop();
         _settingsSaveDebounceTimer.Tick -= OnDebouncedSettingsSave;
@@ -839,14 +849,22 @@ public partial class MainWindow : Window
 
     private void CancelPendingSettingsSave()
     {
-        if (_settingsSaveDebounceTimer is null) return;
+        if (_settingsSaveDebounceTimer is null)
+        {
+            return;
+        }
+
         _settingsSaveDebounceTimer.Stop();
         _settingsSaveDebounceTimer.Tick -= OnDebouncedSettingsSave;
     }
 
     private void SaveSettingsFromUi()
     {
-        if (!_uiReady || _suppressSettingEvents) return;
+        if (!_uiReady || _suppressSettingEvents)
+        {
+            return;
+        }
+
         CancelPendingSettingsSave();
         _settingsSync.ReadFromUi();
         SaveActionBindingsToSettings();
@@ -905,7 +923,11 @@ public partial class MainWindow : Window
 
     private void VJoyDeviceCombo_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
-        if (!_uiReady || _suppressSettingEvents) return;
+        if (!_uiReady || _suppressSettingEvents)
+        {
+            return;
+        }
+
         UpdateVJoyDeviceDetails(VJoyDeviceCombo.SelectedItem as VJoyDeviceInfo);
         RequestSaveSettingsFromUi(immediate: true);
         RefreshVJoyStatus();

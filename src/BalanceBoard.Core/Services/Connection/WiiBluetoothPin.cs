@@ -1,4 +1,4 @@
-namespace BalanceBoard.Core.Services;
+namespace BalanceBoard.Core.Services.Connection;
 
 /// <summary>
 /// Builds the Wii permanent-sync PIN from the host Bluetooth MAC (reversed byte pairs).

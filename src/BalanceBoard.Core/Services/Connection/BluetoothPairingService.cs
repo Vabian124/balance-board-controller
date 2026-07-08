@@ -4,7 +4,7 @@ using BalanceBoard.Core.Models;
 using InTheHand.Net.Bluetooth;
 using InTheHand.Net.Sockets;
 
-namespace BalanceBoard.Core.Services;
+namespace BalanceBoard.Core.Services.Connection;
 
 public sealed class BluetoothPairingResult
 {

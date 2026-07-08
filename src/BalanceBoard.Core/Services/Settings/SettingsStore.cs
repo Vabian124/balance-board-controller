@@ -1,7 +1,7 @@
 using System.Text.Json;
 using BalanceBoard.Core.Models;
 
-namespace BalanceBoard.Core.Services;
+namespace BalanceBoard.Core.Services.Settings;
 
 public sealed class SettingsStore
 {

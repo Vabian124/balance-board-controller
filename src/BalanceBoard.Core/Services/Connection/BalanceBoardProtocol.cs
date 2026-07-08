@@ -1,7 +1,7 @@
 using BalanceBoard.Core.Models;
 using WiimoteLib;
 
-namespace BalanceBoard.Core.Services;
+namespace BalanceBoard.Core.Services.Connection;
 
 /// <summary>
 /// Wii Balance Board HID constants and handshake helpers (WiiBrew / WiimoteLib).
