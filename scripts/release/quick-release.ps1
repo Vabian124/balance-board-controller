@@ -19,7 +19,11 @@ function Get-VersionFromProps {
 }
 
 function Test-MainCiGreen {
-    param([string]$Commit = "HEAD")
+    param([string]$Commit = "")
+
+    if (-not $Commit) {
+        $Commit = git rev-parse HEAD
+    }
 
     if (-not (Get-Command gh -ErrorAction SilentlyContinue)) {
         Write-Warning "gh CLI not found — skipping CI check."
