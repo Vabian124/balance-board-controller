@@ -6,6 +6,7 @@ Short index for AI assistants. User-facing history: [CHANGELOG.md](../../CHANGEL
 
 | Commit | Summary |
 |--------|---------|
+| _pending_ | **Refactor master plan** — synthesize 6 worker specs into `docs/REFACTOR_MASTER_PLAN.md` (P0 consensus, GitHub/impl directives, UX deferral) |
 | [`8aafbc0`](https://github.com/Vabian124/balance-board-controller/commit/8aafbc0) | **v1.5.0** — version bump, CHANGELOG, fix corrupted agent update log |
 | [`41a86bf`](https://github.com/Vabian124/balance-board-controller/commit/41a86bf) | **OutputMode refactor** — keyboard vs vJoy movement, Minecraft keyboard default + Controlify profile, board-button slot, configurable jump vJoy button, movement hysteresis, vJoy device picker |
 | [`66dc4da`](https://github.com/Vabian124/balance-board-controller/commit/66dc4da) | **v1.4.2** — version bump and changelog for PR #13 user-reported fixes |
