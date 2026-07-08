@@ -25,7 +25,7 @@ public sealed class VJoyController : IGameControllerOutput
     private short _lastRx;
     private short _lastRy;
     private short _lastRz;
-    private bool _lastButtonA;
+    private readonly Dictionary<int, bool> _lastButtons = new();
     private bool _axesInitialized;
     private AxisRange _rangeX = SignedFallback;
     private AxisRange _rangeY = SignedFallback;
@@ -121,6 +121,7 @@ public sealed class VJoyController : IGameControllerOutput
             _joystick.ResetVJD(deviceId);
             _acquired = true;
             _axesInitialized = false;
+            _lastButtons.Clear();
             LastError = null;
             CacheAxisRanges(deviceId);
             CenterUnlocked();
@@ -169,7 +170,7 @@ public sealed class VJoyController : IGameControllerOutput
         return SignedFallback;
     }
 
-    public void Update(ProcessedBalance data)
+    public void Update(ProcessedBalance data, AppSettings settings)
     {
         lock (_sync)
         {
@@ -180,7 +181,8 @@ public sealed class VJoyController : IGameControllerOutput
 
             try
             {
-                WriteAxesUnlocked(data.JoyX, data.JoyY, data.JoyZ, data.JoyRx, data.JoyRy, data.JoyRz, data.VJoyButton1);
+                WriteAxesUnlocked(data.JoyX, data.JoyY, data.JoyZ, data.JoyRx, data.JoyRy, data.JoyRz);
+                WriteButtonsUnlocked(data, settings);
             }
             catch (Exception ex)
             {
@@ -207,7 +209,11 @@ public sealed class VJoyController : IGameControllerOutput
 
         try
         {
-            WriteAxesUnlocked(0, 0, 0, 0, 0, 0, false);
+            WriteAxesUnlocked(0, 0, 0, 0, 0, 0);
+            foreach (var button in _lastButtons.Keys.ToList())
+            {
+                SetButtonUnlocked(button, false);
+            }
         }
         catch (Exception ex)
         {
@@ -216,7 +222,7 @@ public sealed class VJoyController : IGameControllerOutput
         }
     }
 
-    private void WriteAxesUnlocked(short x, short y, short z, short rx, short ry, short rz, bool buttonA)
+    private void WriteAxesUnlocked(short x, short y, short z, short rx, short ry, short rz)
     {
         if (_joystick is null)
         {
@@ -266,14 +272,56 @@ public sealed class VJoyController : IGameControllerOutput
             _lastRz = rz;
         }
 
-        if (!_axesInitialized || buttonA != _lastButtonA)
-        {
-            _joystick.SetBtn(buttonA, _deviceId, 1);
-            _lastButtonA = buttonA;
-        }
-
         _axesInitialized = true;
     }
+
+    private void WriteButtonsUnlocked(ProcessedBalance data, AppSettings settings)
+    {
+        var desired = new Dictionary<int, bool>();
+
+        if (settings.MapJumpToVJoyButton && data.VJoyButton1)
+        {
+            desired[ClampButton(settings.JumpVJoyButton)] = true;
+        }
+
+        if (settings.Actions.TryGetValue(ActionSlots.BoardButton, out var boardBinding)
+            && boardBinding.Kind == ActionKind.VJoyButton
+            && data.ButtonA)
+        {
+            desired[ClampButton(boardBinding.VJoyButtonNumber)] = true;
+        }
+
+        foreach (var pair in desired)
+        {
+            SetButtonUnlocked(pair.Key, pair.Value);
+        }
+
+        foreach (var tracked in _lastButtons.Keys.ToList())
+        {
+            if (!desired.ContainsKey(tracked))
+            {
+                SetButtonUnlocked(tracked, false);
+            }
+        }
+    }
+
+    private void SetButtonUnlocked(int buttonNumber, bool pressed)
+    {
+        if (_joystick is null)
+        {
+            return;
+        }
+
+        if (_lastButtons.TryGetValue(buttonNumber, out var last) && last == pressed)
+        {
+            return;
+        }
+
+        _joystick.SetBtn(pressed, _deviceId, (uint)buttonNumber);
+        _lastButtons[buttonNumber] = pressed;
+    }
+
+    private static int ClampButton(int buttonNumber) => Math.Clamp(buttonNumber, 1, 128);
 
     public void Shutdown()
     {
@@ -300,6 +348,7 @@ public sealed class VJoyController : IGameControllerOutput
 
         _acquired = false;
         _axesInitialized = false;
+        _lastButtons.Clear();
         _joystick = null;
     }
 

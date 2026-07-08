@@ -7,7 +7,7 @@ namespace BalanceBoard.App.Controls;
 
 public partial class ActionBindingRow : UserControl
 {
-    private static readonly (ActionKind Kind, string Label)[] KindOptions =
+    private static readonly (ActionKind Kind, string Label)[] BaseKindOptions =
     [
         (ActionKind.None, "None"),
         (ActionKind.Key, "Key"),
@@ -20,11 +20,6 @@ public partial class ActionBindingRow : UserControl
 
     private bool _suppressEvents;
     private bool _capturingKey;
-    /// <summary>
-    /// Last committed key name — distinct from the button's display text so an aborted capture
-    /// (Escape, or clicking away without pressing a key) cannot silently persist an empty
-    /// <see cref="ActionBinding.KeyName"/> and erase the user's existing binding on next save.
-    /// </summary>
     private string _committedKeyName = string.Empty;
 
     public event EventHandler? BindingChanged;
@@ -32,8 +27,9 @@ public partial class ActionBindingRow : UserControl
     public ActionBindingRow()
     {
         InitializeComponent();
-        KindCombo.ItemsSource = KindOptions.Select(o => o.Label).ToList();
+        RefreshKindOptions();
         MouseButtonCombo.ItemsSource = MouseButtons;
+        VJoyButtonCombo.ItemsSource = Enumerable.Range(1, 32).ToList();
     }
 
     public string SlotDisplayName
@@ -42,12 +38,15 @@ public partial class ActionBindingRow : UserControl
         set => SlotLabel.Text = value;
     }
 
+    public bool IncludeVJoyButton { get; set; }
+
     public void LoadBinding(ActionBinding binding)
     {
         _suppressEvents = true;
         _capturingKey = false;
         _committedKeyName = binding.KeyName ?? string.Empty;
-        KindCombo.SelectedItem = KindOptions.First(o => o.Kind == binding.Kind).Label;
+        RefreshKindOptions();
+        KindCombo.SelectedItem = GetKindOptions().First(o => o.Kind == binding.Kind).Label;
         KeyCaptureButton.Content = FormatKeyLabel(_committedKeyName);
         if (!string.IsNullOrEmpty(binding.MouseButton))
         {
@@ -58,9 +57,10 @@ public partial class ActionBindingRow : UserControl
             MouseButtonCombo.SelectedIndex = 0;
         }
 
+        VJoyButtonCombo.SelectedItem = Math.Clamp(binding.VJoyButtonNumber, 1, 32);
         MoveAmountSlider.Value = binding.Amount;
         MoveAmountLabel.Text = $"{binding.Amount:0}";
-        UpdateValuePanel(binding.Kind);
+        UpdateValuePanel(binding.Kind, beginKeyCaptureIfKey: false);
         _suppressEvents = false;
     }
 
@@ -89,14 +89,34 @@ public partial class ActionBindingRow : UserControl
                 Kind = ActionKind.MouseMoveY,
                 Amount = (int)MoveAmountSlider.Value,
             },
+            ActionKind.VJoyButton => new ActionBinding
+            {
+                Kind = ActionKind.VJoyButton,
+                VJoyButtonNumber = VJoyButtonCombo.SelectedItem is int number ? number : 1,
+            },
             _ => new ActionBinding { Kind = ActionKind.None },
         };
+    }
+
+    private IEnumerable<(ActionKind Kind, string Label)> GetKindOptions()
+    {
+        if (IncludeVJoyButton)
+        {
+            return BaseKindOptions.Append((ActionKind.VJoyButton, "vJoy button"));
+        }
+
+        return BaseKindOptions;
+    }
+
+    private void RefreshKindOptions()
+    {
+        KindCombo.ItemsSource = GetKindOptions().Select(o => o.Label).ToList();
     }
 
     private ActionKind GetSelectedKind()
     {
         var label = KindCombo.SelectedItem?.ToString();
-        return KindOptions.FirstOrDefault(o => o.Label == label).Kind;
+        return GetKindOptions().FirstOrDefault(o => o.Label == label).Kind;
     }
 
     private void KindCombo_SelectionChanged(object sender, SelectionChangedEventArgs e)
@@ -106,27 +126,41 @@ public partial class ActionBindingRow : UserControl
             return;
         }
 
-        UpdateValuePanel(GetSelectedKind());
-        RaiseChanged();
+        var kind = GetSelectedKind();
+        UpdateValuePanel(kind, beginKeyCaptureIfKey: true);
+        if (kind != ActionKind.Key || !string.IsNullOrEmpty(_committedKeyName))
+        {
+            RaiseChanged();
+        }
     }
 
-    private void UpdateValuePanel(ActionKind kind)
+    private void UpdateValuePanel(ActionKind kind, bool beginKeyCaptureIfKey)
     {
         KeyCaptureButton.Visibility = kind == ActionKind.Key ? Visibility.Visible : Visibility.Collapsed;
         MouseButtonCombo.Visibility = kind == ActionKind.MouseButton ? Visibility.Visible : Visibility.Collapsed;
+        VJoyButtonPanel.Visibility = kind == ActionKind.VJoyButton ? Visibility.Visible : Visibility.Collapsed;
         MovePanel.Visibility = kind is ActionKind.MouseMoveX or ActionKind.MouseMoveY
             ? Visibility.Visible
             : Visibility.Collapsed;
         NoneLabel.Visibility = kind == ActionKind.None ? Visibility.Visible : Visibility.Collapsed;
-        _capturingKey = false;
+        if (kind == ActionKind.Key && beginKeyCaptureIfKey)
+        {
+            BeginKeyCapture();
+        }
+        else
+        {
+            _capturingKey = false;
+        }
     }
 
-    private void KeyCaptureButton_Click(object sender, RoutedEventArgs e)
+    private void BeginKeyCapture()
     {
         _capturingKey = true;
         KeyCaptureButton.Content = "Press any key…";
-        KeyCaptureButton.Focus();
+        Dispatcher.BeginInvoke(() => KeyCaptureButton.Focus(), System.Windows.Threading.DispatcherPriority.Input);
     }
+
+    private void KeyCaptureButton_Click(object sender, RoutedEventArgs e) => BeginKeyCapture();
 
     private void KeyCaptureButton_PreviewKeyDown(object sender, KeyEventArgs e)
     {
@@ -157,8 +191,6 @@ public partial class ActionBindingRow : UserControl
             return;
         }
 
-        // Clicked/tabbed away mid-capture without pressing a key or Escape — restore the
-        // previous label instead of leaving "Press any key…" as the (would-be-persisted) value.
         _capturingKey = false;
         KeyCaptureButton.Content = FormatKeyLabel(_committedKeyName);
     }

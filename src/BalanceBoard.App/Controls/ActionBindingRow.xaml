@@ -23,6 +23,10 @@
                     Visibility="Collapsed" HorizontalAlignment="Stretch" Padding="8,4" Margin="0"/>
             <ComboBox x:Name="MouseButtonCombo" Visibility="Collapsed"
                       SelectionChanged="Value_Changed"/>
+            <StackPanel x:Name="VJoyButtonPanel" Orientation="Horizontal" Visibility="Collapsed">
+                <TextBlock Text="Button #" Style="{DynamicResource Text.Subtitle}" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                <ComboBox x:Name="VJoyButtonCombo" Width="72" SelectionChanged="Value_Changed"/>
+            </StackPanel>
             <StackPanel x:Name="MovePanel" Orientation="Horizontal" Visibility="Collapsed">
                 <Slider x:Name="MoveAmountSlider" Minimum="-40" Maximum="40" Width="120"
                         TickFrequency="1" IsSnapToTickEnabled="True"

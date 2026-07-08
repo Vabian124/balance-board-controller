@@ -98,14 +98,35 @@ public static class BalanceMath
     public static (bool MoveLeft, bool MoveRight, bool MoveForward, bool MoveBackward) EvaluateCardinalMovement(
         float balanceX,
         float balanceY,
-        AppSettings settings)
+        AppSettings settings) =>
+        EvaluateCardinalMovement(balanceX, balanceY, settings, false, false, false, false);
+
+    public static (bool MoveLeft, bool MoveRight, bool MoveForward, bool MoveBackward) EvaluateCardinalMovement(
+        float balanceX,
+        float balanceY,
+        AppSettings settings,
+        bool wasMoveLeft,
+        bool wasMoveRight,
+        bool wasMoveForward,
+        bool wasMoveBackward)
     {
         var center = BalanceConstants.BalanceCenterPercent;
+        var hysteresis = BalanceConstants.MovementTriggerHysteresisPercent;
+
+        var leftEngage = center - settings.TriggerLeftRight;
+        var leftRelease = leftEngage + hysteresis;
+        var rightEngage = center + settings.TriggerLeftRight;
+        var rightRelease = rightEngage - hysteresis;
+        var forwardEngage = center - settings.TriggerForwardBackward;
+        var forwardRelease = forwardEngage + hysteresis;
+        var backwardEngage = center + settings.TriggerForwardBackward;
+        var backwardRelease = backwardEngage - hysteresis;
+
         return (
-            balanceX < center - settings.TriggerLeftRight,
-            balanceX > center + settings.TriggerLeftRight,
-            balanceY < center - settings.TriggerForwardBackward,
-            balanceY > center + settings.TriggerForwardBackward);
+            wasMoveLeft ? balanceX < leftRelease : balanceX < leftEngage,
+            wasMoveRight ? balanceX > rightRelease : balanceX > rightEngage,
+            wasMoveForward ? balanceY < forwardRelease : balanceY < forwardEngage,
+            wasMoveBackward ? balanceY > backwardRelease : balanceY > backwardEngage);
     }
 
     public static bool EvaluateModifier(float balanceX, float balanceY, AppSettings settings)

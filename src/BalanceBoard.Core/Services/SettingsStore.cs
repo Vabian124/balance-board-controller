@@ -41,13 +41,13 @@ public sealed class SettingsStore
         {
             if (!File.Exists(SettingsPath))
             {
-                return new AppSettings();
+                return AppSettings.CreateFresh();
             }
 
             try
             {
                 var json = File.ReadAllText(SettingsPath);
-                var settings = JsonSerializer.Deserialize<AppSettings>(json) ?? new AppSettings();
+                var settings = JsonSerializer.Deserialize<AppSettings>(json) ?? AppSettings.CreateFresh();
                 if (ApplyMigrations(settings, json))
                 {
                     SaveUnlocked(settings);
@@ -57,7 +57,7 @@ public sealed class SettingsStore
             }
             catch
             {
-                return new AppSettings();
+                return AppSettings.CreateFresh();
             }
         }
     }
@@ -313,9 +313,25 @@ public sealed class SettingsStore
         {
             if (!settings.Actions.ContainsKey(slot))
             {
-                settings.Actions[slot] = new ActionBinding();
+                settings.Actions[slot] = slot == ActionSlots.BoardButton
+                    ? new ActionBinding { Kind = ActionKind.None }
+                    : new ActionBinding();
                 changed = true;
             }
+        }
+
+        if (!rawJson.Contains("\"OutputMode\"", StringComparison.Ordinal))
+        {
+            settings.OutputMode = settings.EnableVJoy && settings.DisableKeyboardActions
+                ? OutputMode.VJoy
+                : OutputMode.Keyboard;
+            changed = true;
+        }
+
+        if (!rawJson.Contains("\"JumpVJoyButton\"", StringComparison.Ordinal) && settings.JumpVJoyButton < 1)
+        {
+            settings.JumpVJoyButton = 1;
+            changed = true;
         }
 
         return changed;

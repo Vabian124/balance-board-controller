@@ -13,8 +13,23 @@ public static class ActionSlots
     public const string Jump = "Jump";
     public const string DiagonalLeft = "DiagonalLeft";
     public const string DiagonalRight = "DiagonalRight";
+    public const string BoardButton = "BoardButton";
 
     public static IReadOnlyList<string> All { get; } =
+    [
+        Left,
+        Right,
+        Forward,
+        Backward,
+        Modifier,
+        Jump,
+        DiagonalLeft,
+        DiagonalRight,
+        BoardButton,
+    ];
+
+    /// <summary>Lean / jump movement slots — excludes the physical board button.</summary>
+    public static IReadOnlyList<string> Movement { get; } =
     [
         Left,
         Right,

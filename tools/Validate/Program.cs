@@ -61,7 +61,7 @@ if (diag.DriverEnabled)
             {
                 JoyX = x,
                 JoyY = 0,
-            });
+            }, new BalanceBoard.Core.Models.AppSettings());
             Thread.Sleep(50);
         }
         vjoy.Center();

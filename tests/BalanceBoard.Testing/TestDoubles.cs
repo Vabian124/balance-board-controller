@@ -9,7 +9,7 @@ public sealed class NullGameControllerOutput : IGameControllerOutput
 
     public bool Initialize(uint deviceId = 1, bool attemptCleanupOnBusy = true) => false;
 
-    public void Update(ProcessedBalance data)
+    public void Update(ProcessedBalance data, AppSettings settings)
     {
     }
 
@@ -49,7 +49,7 @@ public sealed class ThreadTrackingGameControllerOutput : IGameControllerOutput
         }
     }
 
-    public void Update(ProcessedBalance data)
+    public void Update(ProcessedBalance data, AppSettings settings)
     {
         lock (_sync)
         {

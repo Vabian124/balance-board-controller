@@ -107,7 +107,7 @@ public partial class MainWindow : Window
 
         if (!_settings.HasConnectedBefore && _settings.ActiveProfileName == ActionPresets.Default)
         {
-            _session.ApplyControllerPreset();
+            _session.ApplyMinecraftPreset();
             SyncUiFromSettings();
             _settingsStore.Save(_settings);
         }
@@ -310,6 +310,11 @@ public partial class MainWindow : Window
         SendCgCheck.IsChecked = _settings.SendCenterOfGravityToAxes;
         SendSensorsCheck.IsChecked = _settings.SendLoadSensorsToAxes;
         DisableActionsCheck.IsChecked = _settings.DisableKeyboardActions;
+        MapJumpVJoyCheck.IsChecked = _settings.MapJumpToVJoyButton;
+        PopulateOutputModeCombo();
+        PopulateJumpVJoyButtonCombo();
+        JumpVJoyButtonCombo.SelectedItem = Math.Clamp(_settings.JumpVJoyButton, 1, 32);
+        UpdateJumpVJoyPanelVisibility();
         AutoConnectCheck.IsChecked = _settings.AutoConnectOnStartup;
         StartMinimizedCheck.IsChecked = _settings.StartMinimized;
         AutoTareCheck.IsChecked = _settings.AutoTareOnConnect;
@@ -343,13 +348,8 @@ public partial class MainWindow : Window
         UpdateProfileButtonStyles();
         ApplyDetailLevel();
 
-        VJoyDeviceCombo.Items.Clear();
-        for (uint i = 1; i <= 16; i++)
-        {
-            VJoyDeviceCombo.Items.Add(i);
-        }
-
-        VJoyDeviceCombo.SelectedItem = _settings.VJoyDeviceId;
+        RefreshVJoyDeviceCombo();
+        BindBoardButton.IncludeVJoyButton = true;
         LoadActionBindingsFromSettings();
         RefreshCustomProfiles();
         _suppressSettingEvents = true;
@@ -368,6 +368,7 @@ public partial class MainWindow : Window
         (ActionSlots.Modifier, BindModifier),
         (ActionSlots.DiagonalLeft, BindDiagonalLeft),
         (ActionSlots.DiagonalRight, BindDiagonalRight),
+        (ActionSlots.BoardButton, BindBoardButton),
     ];
 
     private void LoadActionBindingsFromSettings()
@@ -403,20 +404,25 @@ public partial class MainWindow : Window
     {
         if (_uiReady
             && !_suppressSettingEvents
-            && DisableActionsCheck.IsChecked == true
-            && HasAnyActiveBinding())
+            && sender is ActionBindingRow row
+            && row != BindBoardButton
+            && row.GetBinding().Kind != ActionKind.None
+            && _settings.OutputMode == OutputMode.VJoy)
         {
             _suppressSettingEvents = true;
-            DisableActionsCheck.IsChecked = false;
+            _settings.SetOutputMode(OutputMode.Keyboard);
+            PopulateOutputModeCombo();
+            EnableVJoyCheck.IsChecked = _settings.EnableVJoy;
+            DisableActionsCheck.IsChecked = _settings.DisableKeyboardActions;
             _suppressSettingEvents = false;
-            Log("Enabled keyboard/mouse output because a custom binding was set.");
+            Log("Switched movement output to keyboard because a movement binding was set.");
         }
 
         SaveSettingsFromUi();
     }
 
     private bool HasAnyActiveBinding() =>
-        ActionBindingUi().Any(entry => entry.Row.GetBinding().Kind != ActionKind.None);
+        ActionBindingUi().Any(entry => entry.Row != BindBoardButton && entry.Row.GetBinding().Kind != ActionKind.None);
 
     private void UpdateSliderLabels()
     {
@@ -517,8 +523,8 @@ public partial class MainWindow : Window
             if (minecraft)
             {
                 ProfileHintText.Text =
-                    "Minecraft + Controlify: in Options → Controls → Controlify, bind vJoy Device 1. " +
-                    "Lean maps to the left stick (move); lift one foot to jump (vJoy A). Use mouse/right stick for look.";
+                    "Minecraft keyboard: lean to move (WASD), lift one foot to jump (Space). " +
+                    "For Controlify/vJoy instead, pick “Minecraft (Controlify)” in the profile list.";
                 ProfileHintText.Visibility = Visibility.Visible;
             }
             else
@@ -709,17 +715,27 @@ public partial class MainWindow : Window
 
     private string DescribeBoardButton(ProcessedBalance data)
     {
+        if (!_settings.Actions.TryGetValue(ActionSlots.BoardButton, out var binding))
+        {
+            return data.ButtonA ? "Board button: pressed (A)" : "Board button: up";
+        }
+
+        if (data.ButtonA)
+        {
+            return binding.Kind switch
+            {
+                ActionKind.Key => $"Board button → {binding.KeyName}",
+                ActionKind.VJoyButton => $"Board button → vJoy #{binding.VJoyButtonNumber}",
+                _ => "Board button: pressed (A)",
+            };
+        }
+
         if (data.Jump && _settings.MapJumpToVJoyButton)
         {
-            return "vJoy A: jump";
+            return $"Jump → vJoy #{_settings.JumpVJoyButton}";
         }
 
-        if (data.VJoyButton1 && _settings.MapJumpToVJoyButton)
-        {
-            return "vJoy A: pressed";
-        }
-
-        return data.ButtonA ? "Board button: pressed (A)" : "Board button: up";
+        return "Board button: up";
     }
 
     private static string DescribeDirection(ProcessedBalance data)
@@ -815,6 +831,8 @@ public partial class MainWindow : Window
             VJoyStatusText.Text =
                 $"Driver: {(diag.DriverEnabled ? "OK" : "MISSING")}\n" +
                 $"Status: {diag.DeviceStatus}\n" +
+                $"Product: {diag.Product ?? "—"}\n" +
+                $"Buttons configured: {diag.ButtonCount}\n" +
                 $"Axes: {diag.HasAxisX}/{diag.HasAxisY}/{diag.HasAxisZ}/{diag.HasAxisRx}/{diag.HasAxisRy}/{diag.HasAxisRz}\n" +
                 (diag.Error ?? "OK");
 
@@ -947,10 +965,24 @@ public partial class MainWindow : Window
             return;
         }
 
-        _settings.EnableVJoy = EnableVJoyCheck.IsChecked == true;
-        _settings.SendCenterOfGravityToAxes = SendCgCheck.IsChecked == true;
-        _settings.SendLoadSensorsToAxes = SendSensorsCheck.IsChecked == true;
-        _settings.DisableKeyboardActions = DisableActionsCheck.IsChecked == true;
+        if (OutputModeCombo.SelectedIndex == 1)
+        {
+            _settings.SetOutputMode(OutputMode.VJoy);
+        }
+        else if (OutputModeCombo.SelectedIndex == 0)
+        {
+            _settings.SetOutputMode(OutputMode.Keyboard);
+        }
+
+        EnableVJoyCheck.IsChecked = _settings.EnableVJoy;
+        SendCgCheck.IsChecked = _settings.SendCenterOfGravityToAxes;
+        SendSensorsCheck.IsChecked = _settings.SendLoadSensorsToAxes;
+        DisableActionsCheck.IsChecked = _settings.DisableKeyboardActions;
+        _settings.MapJumpToVJoyButton = MapJumpVJoyCheck.IsChecked == true;
+        if (JumpVJoyButtonCombo.SelectedItem is int jumpButton)
+        {
+            _settings.JumpVJoyButton = jumpButton;
+        }
         _settings.AutoConnectOnStartup = AutoConnectCheck.IsChecked == true;
         _settings.StartMinimized = StartMinimizedCheck.IsChecked == true;
         _settings.AutoTareOnConnect = AutoTareCheck.IsChecked == true;
@@ -999,7 +1031,11 @@ public partial class MainWindow : Window
         _settings.DeadzoneForwardBackwardPercent = SplitAxisDeadzoneCheck.IsChecked == true
             ? DeadzoneForwardBackwardSlider.Value
             : null;
-        if (VJoyDeviceCombo.SelectedItem is uint id)
+        if (VJoyDeviceCombo.SelectedItem is VJoyDeviceInfo deviceInfo)
+        {
+            _settings.VJoyDeviceId = deviceInfo.DeviceId;
+        }
+        else if (VJoyDeviceCombo.SelectedItem is uint id)
         {
             _settings.VJoyDeviceId = id;
         }
@@ -1007,6 +1043,8 @@ public partial class MainWindow : Window
         {
             _settings.VJoyDeviceId = (uint)intId;
         }
+
+        UpdateJumpVJoyPanelVisibility();
 
         SaveActionBindingsToSettings();
 
@@ -1017,6 +1055,84 @@ public partial class MainWindow : Window
         _session.LoadSettings(_settings);
         ThemeManager.Apply(_settings.ThemePreference);
         RefreshDynamicBrushes();
+        RefreshVJoyStatus();
+        UpdateVJoyDeviceDetails(VJoyDeviceCombo.SelectedItem as VJoyDeviceInfo);
+    }
+
+    private void PopulateOutputModeCombo()
+    {
+        OutputModeCombo.ItemsSource = new[]
+        {
+            "Keyboard & mouse (WASD, Space, etc.)",
+            "Virtual controller (vJoy)",
+        };
+        OutputModeCombo.SelectedIndex = _settings.OutputMode == OutputMode.VJoy ? 1 : 0;
+    }
+
+    private static void PopulateJumpVJoyButtonCombo(ComboBox combo)
+    {
+        combo.ItemsSource = Enumerable.Range(1, 32).ToList();
+    }
+
+    private void PopulateJumpVJoyButtonCombo() => PopulateJumpVJoyButtonCombo(JumpVJoyButtonCombo);
+
+    private void UpdateJumpVJoyPanelVisibility() =>
+        JumpVJoyPanel.Visibility = MapJumpVJoyCheck.IsChecked == true && _settings.OutputMode == OutputMode.VJoy
+            ? Visibility.Visible
+            : Visibility.Collapsed;
+
+    private void RefreshVJoyDeviceCombo()
+    {
+        var devices = VJoyDiagnostics.ListConfiguredDevices();
+        if (devices.Count == 0)
+        {
+            devices = [.. Enumerable.Range(1, 16).Select(id => new VJoyDeviceInfo
+            {
+                DeviceId = (uint)id,
+                Status = "Unknown",
+            })];
+        }
+
+        VJoyDeviceCombo.ItemsSource = devices;
+        VJoyDeviceCombo.DisplayMemberPath = nameof(VJoyDeviceInfo.Summary);
+        var selected = devices.FirstOrDefault(d => d.DeviceId == _settings.VJoyDeviceId) ?? devices[0];
+        VJoyDeviceCombo.SelectedItem = selected;
+        UpdateVJoyDeviceDetails(selected);
+    }
+
+    private void UpdateVJoyDeviceDetails(VJoyDeviceInfo? device)
+    {
+        if (device is null)
+        {
+            VJoyDeviceDetailsText.Text = "No vJoy device selected.";
+            return;
+        }
+
+        VJoyDeviceDetailsText.Text =
+            $"{device.Summary}\n" +
+            $"RX {(device.HasAxisRx ? "✓" : "·")}  RY {(device.HasAxisRy ? "✓" : "·")}  RZ {(device.HasAxisRz ? "✓" : "·")}";
+    }
+
+    private void OutputModeCombo_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (!_uiReady || _suppressSettingEvents)
+        {
+            return;
+        }
+
+        SaveSettingsFromUi();
+    }
+
+    private void VJoyDeviceCombo_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (!_uiReady || _suppressSettingEvents)
+        {
+            return;
+        }
+
+        UpdateVJoyDeviceDetails(VJoyDeviceCombo.SelectedItem as VJoyDeviceInfo);
+        SaveSettingsFromUi();
+        RefreshVJoyStatus();
     }
 
     private void SettingChanged(object sender, RoutedEventArgs e) => SaveSettingsFromUi();
@@ -1596,6 +1712,11 @@ public partial class MainWindow : Window
         SendCgCheck.IsChecked = _settings.SendCenterOfGravityToAxes;
         SendSensorsCheck.IsChecked = _settings.SendLoadSensorsToAxes;
         DisableActionsCheck.IsChecked = _settings.DisableKeyboardActions;
+        MapJumpVJoyCheck.IsChecked = _settings.MapJumpToVJoyButton;
+        PopulateOutputModeCombo();
+        PopulateJumpVJoyButtonCombo();
+        JumpVJoyButtonCombo.SelectedItem = Math.Clamp(_settings.JumpVJoyButton, 1, 32);
+        UpdateJumpVJoyPanelVisibility();
         AutoConnectCheck.IsChecked = _settings.AutoConnectOnStartup;
         StartMinimizedCheck.IsChecked = _settings.StartMinimized;
         AutoTareCheck.IsChecked = _settings.AutoTareOnConnect;
@@ -1627,11 +1748,8 @@ public partial class MainWindow : Window
             ProfileCombo.SelectedItem = _settings.ActiveProfileName;
         }
 
-        if (VJoyDeviceCombo.Items.Contains(_settings.VJoyDeviceId))
-        {
-            VJoyDeviceCombo.SelectedItem = _settings.VJoyDeviceId;
-        }
-
+        RefreshVJoyDeviceCombo();
+        BindBoardButton.IncludeVJoyButton = true;
         LoadActionBindingsFromSettings();
         UpdateProfileButtonStyles();
         UpdateJumpPresetButtons();

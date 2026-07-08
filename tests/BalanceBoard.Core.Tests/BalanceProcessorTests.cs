@@ -60,6 +60,29 @@ public class BalanceMathTests
     }
 
     [Fact]
+    public void EvaluateCardinalMovement_holds_forward_until_hysteresis_band_crossed()
+    {
+        var settings = new AppSettings { TriggerForwardBackward = 9 };
+        var engageY = BalanceConstants.BalanceCenterPercent - settings.TriggerForwardBackward - 1f;
+        var (_, _, forwardOn, _) = BalanceMath.EvaluateCardinalMovement(
+            50f, engageY, settings, false, false, false, false);
+        Assert.True(forwardOn);
+
+        var insideBandY = BalanceConstants.BalanceCenterPercent - settings.TriggerForwardBackward + 1f;
+        var (_, _, stillForward, _) = BalanceMath.EvaluateCardinalMovement(
+            50f, insideBandY, settings, false, false, true, false);
+        Assert.True(stillForward);
+
+        var releaseY = BalanceConstants.BalanceCenterPercent
+            - settings.TriggerForwardBackward
+            + BalanceConstants.MovementTriggerHysteresisPercent
+            + 1f;
+        var (_, _, forwardOff, _) = BalanceMath.EvaluateCardinalMovement(
+            50f, releaseY, settings, false, false, true, false);
+        Assert.False(forwardOff);
+    }
+
+    [Fact]
     public void ToBalancePercent_even_corners_sum_to_100_per_side()
     {
         var (tl, tr, bl, br, total) = BalanceMath.ToBalancePercent(10, 10, 10, 10);
@@ -516,7 +539,7 @@ public class BalanceProcessorTests
         var jumped = processor.Process(oneFoot, settings);
 
         Assert.True(jumped.Jump);
-        Assert.True(jumped.VJoyButton1);
+        Assert.False(jumped.VJoyButton1);
         Assert.Equal(BalanceConstants.JumpNormalThresholdKg, settings.JumpWeightThresholdKg);
     }
 
@@ -693,11 +716,29 @@ public class ActionPresetsTests
     }
 
     [Fact]
-    public void ApplyMinecraft_maps_jump_to_vjoy_and_move_axes()
+    public void ApplyMinecraft_binds_wasd_and_space_jump()
     {
         var settings = new AppSettings();
         ActionPresets.ApplyMinecraft(settings);
         Assert.Equal(ActionPresets.Minecraft, settings.ActiveProfileName);
+        Assert.False(settings.EnableVJoy);
+        Assert.False(settings.DisableKeyboardActions);
+        Assert.False(settings.MapJumpToVJoyButton);
+        Assert.Equal("W", settings.Actions[ActionSlots.Forward].KeyName);
+        Assert.Equal("S", settings.Actions[ActionSlots.Backward].KeyName);
+        Assert.Equal("A", settings.Actions[ActionSlots.Left].KeyName);
+        Assert.Equal("D", settings.Actions[ActionSlots.Right].KeyName);
+        Assert.Equal("Space", settings.Actions[ActionSlots.Jump].KeyName);
+        Assert.Equal(BalanceConstants.JumpNormalThresholdKg, settings.JumpWeightThresholdKg);
+        Assert.Equal(ResponseCurve.MinecraftSnappy, settings.ResponseCurve);
+    }
+
+    [Fact]
+    public void ApplyMinecraftControlify_maps_jump_to_vjoy_and_move_axes()
+    {
+        var settings = new AppSettings();
+        ActionPresets.ApplyMinecraftControlify(settings);
+        Assert.Equal(ActionPresets.MinecraftControlify, settings.ActiveProfileName);
         Assert.True(settings.EnableVJoy);
         Assert.True(settings.SendCenterOfGravityToAxes);
         Assert.True(settings.MapJumpToVJoyButton);
@@ -710,10 +751,10 @@ public class ActionPresetsTests
     }
 
     [Fact]
-    public void ApplyMinecraft_uses_normal_jump_preset()
+    public void ApplyMinecraftControlify_uses_normal_jump_preset()
     {
         var settings = new AppSettings();
-        ActionPresets.ApplyMinecraft(settings);
+        ActionPresets.ApplyMinecraftControlify(settings);
         Assert.Equal(BalanceConstants.JumpNormalHoldSeconds, settings.JumpHoldSeconds);
     }
 
@@ -772,6 +813,15 @@ public class JumpPresetsTests
     }
 
     [Fact]
+    public void CreateFresh_uses_minecraft_keyboard_template()
+    {
+        var settings = AppSettings.CreateFresh();
+        Assert.Equal(ActionPresets.Minecraft, settings.ActiveProfileName);
+        Assert.False(settings.DisableKeyboardActions);
+        Assert.Equal("Space", settings.Actions[ActionSlots.Jump].KeyName);
+    }
+
+    [Fact]
     public void Normal_matches_minecraft_preset_jump_defaults()
     {
         var fromPreset = new AppSettings();
@@ -788,7 +838,7 @@ public class JumpPresetsTests
     {
         var processor = new BalanceProcessor();
         var settings = new AppSettings();
-        ActionPresets.ApplyMinecraft(settings);
+        ActionPresets.ApplyMinecraftControlify(settings);
         var onBoard = new BalanceReading
         {
             WeightKg = 60,

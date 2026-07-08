@@ -1,6 +1,5 @@
 using BalanceBoard.Core.Abstractions;
 using BalanceBoard.Core.Models;
-using BalanceBoard.Core.Processing;
 
 namespace BalanceBoard.Core.Processing;
 
@@ -15,9 +14,30 @@ public sealed class ActionEngine(IInputBackend backend) : IActionSimulator
 
     public void Apply(ProcessedBalance data, AppSettings settings)
     {
-        foreach (var slot in ActionSlots.All)
+        var movementEnabled = !settings.DisableKeyboardActions;
+        if (movementEnabled)
         {
-            Set(slot, MovementMapper.IsActive(slot, data), settings.Actions[slot], MovementMapper.SlotIntensity(slot, data));
+            foreach (var slot in ActionSlots.Movement)
+            {
+                Set(slot, MovementMapper.IsActive(slot, data), settings.Actions[slot], MovementMapper.SlotIntensity(slot, data));
+            }
+        }
+        else
+        {
+            foreach (var slot in ActionSlots.Movement)
+            {
+                Set(slot, false, settings.Actions[slot], 0f);
+            }
+        }
+
+        if (settings.Actions.TryGetValue(ActionSlots.BoardButton, out var boardBinding)
+            && boardBinding.Kind == ActionKind.Key)
+        {
+            Set(ActionSlots.BoardButton, data.ButtonA, boardBinding, 1f);
+        }
+        else
+        {
+            Set(ActionSlots.BoardButton, false, new ActionBinding(), 0f);
         }
     }
 
