@@ -3,6 +3,24 @@
 All notable user-facing changes. For detailed agent work logs see [`docs/updates/`](docs/updates/).
 
 
+## [1.5.1] - 2026-07-09
+
+Phase 2 structural refactor: Core output pipeline, SettingsSync, tab views, and test split.
+
+### Added
+- **FrameOutput** and **OutputRoutingPolicy** — extracted from `BalanceBoardSession` for cleaner vJoy vs keyboard routing
+- **ProfileCoordinator** — preset/vJoy sync marshalled onto the ConnectionWorker thread
+- **BalanceReadoutText** / **ConnectionStatusText** — dashboard readout formatting moved to Core
+- **Tab UserControls** — `DashboardView`, `ProfilesView`, `FineTuningView`, `AdvancedView` plus `ConnectionToolbar` and `SessionLogPanel`
+- **SettingsSync** — single map between `AppSettings` and MainWindow controls with debounced saves
+- **GlobalUsings** — namespace imports for reorganized Core service folders
+- Split Core tests into `Models/` and `Processing/` suites; added `OutputMode` and `FrameOutput` coverage
+
+### Changed
+- Core `Services/` reorganized into domain folders (`Connection/`, `Diagnostics/`, `Output/`, `Session/`, `Settings/`)
+- Namespaces aligned with folder structure for CI format gate
+- Assembly and file version bumped to **1.5.1**
+
 ## [1.5.0] - 2026-07-08
 
 Output-mode refactor: mutually exclusive keyboard vs vJoy movement, Minecraft keyboard default, board-button mapping.
