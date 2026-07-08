@@ -1,4 +1,4 @@
-# Fast release helper — assumes CI is already green on the commit you tag.
+# Fast release helper - assumes CI is already green on the commit you tag.
 param(
     [string]$Tag = "",
 
@@ -26,7 +26,7 @@ function Test-MainCiGreen {
     }
 
     if (-not (Get-Command gh -ErrorAction SilentlyContinue)) {
-        Write-Warning "gh CLI not found — skipping CI check."
+        Write-Warning "gh CLI not found - skipping CI check."
         return $true
     }
 
@@ -86,7 +86,7 @@ if (-not (git tag -l $Tag)) {
     Write-Host "Created tag $Tag on $(git rev-parse --short HEAD)" -ForegroundColor Green
 }
 else {
-    Write-Host "Tag $Tag already exists on $(git rev-parse --short $Tag^{commit})" -ForegroundColor Yellow
+    Write-Host "Tag $Tag already exists on $(git rev-parse --short ($Tag + '^{commit}'))" -ForegroundColor Yellow
 }
 
 Write-Host "Pushing tag $Tag..." -ForegroundColor Cyan
@@ -96,4 +96,4 @@ Write-Host ""
 Write-Host "Release workflow started (package + upload only, ~2-4 min)." -ForegroundColor Green
 Write-Host "  gh run list --workflow release.yml --limit 3" -ForegroundColor Cyan
 Write-Host ""
-Write-Host "Re-publish without re-tagging: .\scripts\release\quick-release.ps1 -Tag $Tag -DispatchOnly" -ForegroundColor DarkGray
+Write-Host "Re-publish without re-tagging: .\scripts\release\quick-release.ps1 -Tag ${Tag} -DispatchOnly" -ForegroundColor DarkGray
