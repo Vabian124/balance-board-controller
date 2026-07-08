@@ -1247,6 +1247,31 @@ public partial class MainWindow : Window
         ShowCustomProfileStatus($"Loaded profile: {sourceLabel}");
     }
 
+    private void ResetDefaultsButton_Click(object sender, RoutedEventArgs e)
+    {
+        var confirm = MessageBox.Show(
+            this,
+            "Reset all sliders, bindings, and output settings to their defaults? Your paired board and saved profiles are kept.",
+            "Reset to defaults",
+            MessageBoxButton.YesNo,
+            MessageBoxImage.Warning);
+        if (confirm != MessageBoxResult.Yes)
+        {
+            return;
+        }
+
+        try
+        {
+            // Adopt a fresh default settings snapshot while keeping this machine's connection identity.
+            ApplyLoadedProfile(new AppSettings(), "defaults");
+        }
+        catch (Exception ex)
+        {
+            _fileLog.WriteException(ex, "ResetDefaults");
+            ShowCustomProfileStatus($"Could not reset: {ex.Message}");
+        }
+    }
+
     private void SaveProfileButton_Click(object sender, RoutedEventArgs e)
     {
         try
@@ -1875,6 +1900,8 @@ public partial class MainWindow : Window
         _settingsStore.SaveProfile(name, _settings);
         RefreshCustomProfiles(SettingsStore.SanitizeProfileName(name));
     }
+
+    internal void TestResetDefaults() => ApplyLoadedProfile(new AppSettings(), "defaults");
 
     internal bool TestLoadCustomProfile(string name)
     {

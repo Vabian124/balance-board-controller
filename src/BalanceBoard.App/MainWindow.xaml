@@ -224,6 +224,11 @@
                                 </UniformGrid>
                                 <TextBlock x:Name="CustomProfileStatusText" Style="{DynamicResource Text.Subtitle}"
                                            TextWrapping="Wrap" Margin="0,6,0,0" Visibility="Collapsed"/>
+                                <Button x:Name="ResetDefaultsButton" Content="Reset all settings to defaults" MinHeight="32"
+                                        HorizontalAlignment="Left" Margin="0,10,0,0" Style="{StaticResource Button.Secondary}"
+                                        Click="ResetDefaultsButton_Click"
+                                        AutomationProperties.Name="Reset all settings to defaults"
+                                        ToolTip="Restore every tuning, binding, and output setting to its default (keeps your paired board)."/>
                             </StackPanel>
                         </Border>
 

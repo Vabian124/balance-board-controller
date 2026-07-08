@@ -117,6 +117,39 @@ public sealed class MainWindowProfilesTests : UiTestBase
     }
 
     [Fact]
+    public void Reset_defaults_restores_defaults_but_keeps_connection_identity()
+    {
+        var window = Ctx.CreateWindow(seedSettings: new AppSettings
+        {
+            UiDetailLevel = UiDetailLevel.Advanced,
+            UseSimpleSensitivity = false,
+            DeadzonePercent = 18,
+            HasConnectedBefore = true,
+            LastConnectedDeviceId = "0001A2B3C4D5",
+        });
+        try
+        {
+            WpfTestHost.Invoke(() =>
+            {
+                window.TestSelectTab(1);
+                window.TestResetDefaults();
+                window.TestPumpDispatcher();
+
+                Assert.Equal(new AppSettings().DeadzonePercent, window.TestSettings.DeadzonePercent);
+                Assert.True(window.TestSettings.HasConnectedBefore);
+                Assert.Equal("0001A2B3C4D5", window.TestSettings.LastConnectedDeviceId);
+            });
+
+            var saved = Ctx.ReadPersistedSettings();
+            Assert.Equal(new AppSettings().DeadzonePercent, saved.DeadzonePercent);
+        }
+        finally
+        {
+            Ctx.CloseAll();
+        }
+    }
+
+    [Fact]
     public void Profile_combo_selection_persists_active_profile()
     {
         var window = Ctx.CreateWindow();
