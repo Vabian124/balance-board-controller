@@ -27,6 +27,7 @@ Complete map of **maintained source** (ignore `bin/`, `obj/`, `.vs/`).
 | `Services/PhysicalTestRunner.cs` | Opt-in manual hardware lane: guided scenarios, per-step outcomes, structured artifact writing |
 | `Controls/BalanceBoardVisual.xaml(.cs)` | Live 2D balance dot, jump banner |
 | `Controls/ActionBindingRow.xaml(.cs)` | Per-slot key/mouse binding editor row |
+| `Dialogs/NamePromptDialog.xaml(.cs)` | Modal single-line text prompt (naming/importing custom profiles) |
 | `Themes/Colors.xaml` | Shared brush keys |
 | `Themes/Colors.Light.xaml` / `Colors.Dark.xaml` | Theme-specific palettes (dropdown contrast fix in v1.1.1) |
 | `Themes/Controls.xaml` | Shared control styles, tab styles |

@@ -1,3 +1,4 @@
+using System.Linq;
 using BalanceBoard.Core.Models;
 using BalanceBoard.Core.Services;
 using Xunit;
@@ -46,6 +47,68 @@ public sealed class MainWindowProfilesTests : UiTestBase
 
             var saved = Ctx.ReadPersistedSettings();
             Assert.Equal(ActionPresets.Minecraft, saved.ActiveProfileName);
+        }
+        finally
+        {
+            Ctx.CloseAll();
+        }
+    }
+
+    [Fact]
+    public void Custom_profile_save_then_load_round_trips_and_persists()
+    {
+        var window = Ctx.CreateWindow(seedSettings: new AppSettings { DeadzonePercent = 5 });
+        try
+        {
+            WpfTestHost.Invoke(() =>
+            {
+                window.TestSelectTab(1);
+                window.TestSaveCustomProfile("Test A");
+                window.TestPumpDispatcher();
+
+                Assert.Contains("Test A", window.TestCustomProfileCombo.ItemsSource.Cast<string>());
+
+                // Change a persisted setting, then load the profile back.
+                window.TestDeadzoneSlider.Value = 15;
+                window.TestPumpDispatcher();
+                Assert.Equal(15, window.TestSettings.DeadzonePercent);
+
+                Assert.True(window.TestLoadCustomProfile("Test A"));
+                window.TestPumpDispatcher();
+                Assert.Equal(5, window.TestSettings.DeadzonePercent);
+            });
+
+            var saved = Ctx.ReadPersistedSettings();
+            Assert.Equal(5, saved.DeadzonePercent);
+        }
+        finally
+        {
+            Ctx.CloseAll();
+        }
+    }
+
+    [Fact]
+    public void Loading_custom_profile_preserves_connection_identity()
+    {
+        var window = Ctx.CreateWindow(seedSettings: new AppSettings
+        {
+            HasConnectedBefore = true,
+            LastConnectedDeviceId = "0001A2B3C4D5",
+        });
+        try
+        {
+            WpfTestHost.Invoke(() =>
+            {
+                window.TestSelectTab(1);
+                window.TestSaveCustomProfile("Conn");
+                window.TestPumpDispatcher();
+                Assert.True(window.TestLoadCustomProfile("Conn"));
+                window.TestPumpDispatcher();
+
+                // Profile files never carry connection identity, but loading must not wipe the live state.
+                Assert.True(window.TestSettings.HasConnectedBefore);
+                Assert.Equal("0001A2B3C4D5", window.TestSettings.LastConnectedDeviceId);
+            });
         }
         finally
         {

@@ -188,6 +188,45 @@
                             </StackPanel>
                         </Border>
 
+                        <Border x:Name="CustomProfileCard" Style="{StaticResource Card}">
+                            <StackPanel>
+                                <TextBlock Text="MY PROFILES" Style="{DynamicResource Text.Section}"/>
+                                <TextBlock Style="{DynamicResource Text.Subtitle}" TextWrapping="Wrap" Margin="0,4,0,8"
+                                           Text="Save your current sliders, bindings, and output settings as a named profile you can reload any time."/>
+                                <ComboBox x:Name="CustomProfileCombo" Margin="0,0,0,8"
+                                          AutomationProperties.Name="Saved custom profiles"
+                                          ToolTip="Your saved custom profiles."/>
+                                <UniformGrid Columns="3" Margin="0,0,0,4">
+                                    <Button x:Name="SaveProfileButton" Content="Save as…" MinHeight="36"
+                                            Style="{StaticResource Button.Primary}" Margin="0,0,4,4" Click="SaveProfileButton_Click"
+                                            AutomationProperties.Name="Save current settings as a new profile"
+                                            ToolTip="Save the current settings as a new named profile."/>
+                                    <Button x:Name="LoadProfileButton" Content="Load" MinHeight="36"
+                                            Style="{StaticResource Button.Secondary}" Margin="0,0,4,4" Click="LoadProfileButton_Click"
+                                            AutomationProperties.Name="Load selected profile"
+                                            ToolTip="Load the selected profile into the current settings."/>
+                                    <Button x:Name="DeleteProfileButton" Content="Delete" MinHeight="36"
+                                            Style="{StaticResource Button.Secondary}" Margin="0,0,0,4" Click="DeleteProfileButton_Click"
+                                            AutomationProperties.Name="Delete selected profile"
+                                            ToolTip="Delete the selected profile."/>
+                                    <Button x:Name="UpdateProfileButton" Content="Update" MinHeight="36"
+                                            Style="{StaticResource Button.Secondary}" Margin="0,0,4,0" Click="UpdateProfileButton_Click"
+                                            AutomationProperties.Name="Update selected profile with current settings"
+                                            ToolTip="Overwrite the selected profile with the current settings."/>
+                                    <Button x:Name="ExportProfileButton" Content="Export…" MinHeight="36"
+                                            Style="{StaticResource Button.Secondary}" Margin="0,0,4,0" Click="ExportProfileButton_Click"
+                                            AutomationProperties.Name="Export current settings to a file"
+                                            ToolTip="Export the current settings to a shareable .json file."/>
+                                    <Button x:Name="ImportProfileButton" Content="Import…" MinHeight="36"
+                                            Style="{StaticResource Button.Secondary}" Margin="0,0,0,0" Click="ImportProfileButton_Click"
+                                            AutomationProperties.Name="Import settings from a file"
+                                            ToolTip="Import settings from a .json file and save as a profile."/>
+                                </UniformGrid>
+                                <TextBlock x:Name="CustomProfileStatusText" Style="{DynamicResource Text.Subtitle}"
+                                           TextWrapping="Wrap" Margin="0,6,0,0" Visibility="Collapsed"/>
+                            </StackPanel>
+                        </Border>
+
                         <Border x:Name="ThemeCard" Style="{StaticResource Card}">
                             <StackPanel x:Name="ThemeOptionsPanel">
                                 <TextBlock Text="APPEARANCE &amp; STARTUP" Style="{DynamicResource Text.Section}"/>

@@ -5,9 +5,11 @@ using System.Windows.Controls;
 using System.Windows.Media;
 using System.Windows.Threading;
 using BalanceBoard.App.Controls;
+using BalanceBoard.App.Dialogs;
 using BalanceBoard.App.Services;
 using BalanceBoard.Core.Models;
 using BalanceBoard.Core.Services;
+using Microsoft.Win32;
 namespace BalanceBoard.App;
 
 public partial class MainWindow : Window
@@ -328,6 +330,7 @@ public partial class MainWindow : Window
 
         VJoyDeviceCombo.SelectedItem = _settings.VJoyDeviceId;
         LoadActionBindingsFromSettings();
+        RefreshCustomProfiles();
         _suppressSettingEvents = true;
         SessionLogExpander.IsExpanded = _settings.SessionLogExpanded;
         UpdateSessionLogUi();
@@ -1185,6 +1188,247 @@ public partial class MainWindow : Window
         SaveSettingsFromUi();
     }
 
+    private void RefreshCustomProfiles(string? selectName = null)
+    {
+        try
+        {
+            var previous = selectName ?? CustomProfileCombo.SelectedItem as string;
+            var profiles = _settingsStore.ListProfiles();
+            var wasSuppressed = _suppressSettingEvents;
+            _suppressSettingEvents = true;
+            CustomProfileCombo.ItemsSource = profiles;
+            if (previous is not null && profiles.Contains(previous))
+            {
+                CustomProfileCombo.SelectedItem = previous;
+            }
+            else if (profiles.Count > 0)
+            {
+                CustomProfileCombo.SelectedIndex = 0;
+            }
+
+            _suppressSettingEvents = wasSuppressed;
+
+            var hasSelection = CustomProfileCombo.SelectedItem is string;
+            LoadProfileButton.IsEnabled = hasSelection;
+            DeleteProfileButton.IsEnabled = hasSelection;
+            UpdateProfileButton.IsEnabled = hasSelection;
+        }
+        catch (Exception ex)
+        {
+            _fileLog.WriteException(ex, "RefreshCustomProfiles");
+        }
+    }
+
+    private void ShowCustomProfileStatus(string message)
+    {
+        CustomProfileStatusText.Text = message;
+        CustomProfileStatusText.Visibility = Visibility.Visible;
+        Log(message);
+    }
+
+    private void ApplyLoadedProfile(AppSettings loaded, string sourceLabel)
+    {
+        // Keep this machine's connection identity; only adopt the profile's tuning/bindings/output.
+        _settings.CopyFrom(loaded, includeConnectionState: false);
+        SyncUiFromSettings();
+        SaveSettingsFromUi();
+        ShowCustomProfileStatus($"Loaded profile: {sourceLabel}");
+    }
+
+    private void SaveProfileButton_Click(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            SaveSettingsFromUi();
+            var dialog = new NamePromptDialog(
+                "Save profile",
+                "Name this profile:",
+                confirmLabel: "Save",
+                validate: name => _settingsStore.ProfileExists(name)
+                    ? "A profile with that name already exists — use Update to overwrite it, or pick another name."
+                    : null)
+            {
+                Owner = this,
+            };
+
+            if (dialog.ShowDialog() != true)
+            {
+                return;
+            }
+
+            var name = dialog.ResponseText;
+            _settingsStore.SaveProfile(name, _settings);
+            RefreshCustomProfiles(SettingsStore.SanitizeProfileName(name));
+            ShowCustomProfileStatus($"Saved profile: {name}");
+        }
+        catch (Exception ex)
+        {
+            _fileLog.WriteException(ex, "SaveProfile");
+            ShowCustomProfileStatus($"Could not save profile: {ex.Message}");
+        }
+    }
+
+    private void UpdateProfileButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (CustomProfileCombo.SelectedItem is not string name)
+        {
+            ShowCustomProfileStatus("Select a profile to update.");
+            return;
+        }
+
+        try
+        {
+            SaveSettingsFromUi();
+            _settingsStore.SaveProfile(name, _settings);
+            ShowCustomProfileStatus($"Updated profile: {name}");
+        }
+        catch (Exception ex)
+        {
+            _fileLog.WriteException(ex, "UpdateProfile");
+            ShowCustomProfileStatus($"Could not update profile: {ex.Message}");
+        }
+    }
+
+    private void LoadProfileButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (CustomProfileCombo.SelectedItem is not string name)
+        {
+            ShowCustomProfileStatus("Select a profile to load.");
+            return;
+        }
+
+        try
+        {
+            var loaded = _settingsStore.LoadProfile(name);
+            if (loaded is null)
+            {
+                ShowCustomProfileStatus($"Could not read profile: {name}");
+                RefreshCustomProfiles();
+                return;
+            }
+
+            ApplyLoadedProfile(loaded, name);
+        }
+        catch (Exception ex)
+        {
+            _fileLog.WriteException(ex, "LoadProfile");
+            ShowCustomProfileStatus($"Could not load profile: {ex.Message}");
+        }
+    }
+
+    private void DeleteProfileButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (CustomProfileCombo.SelectedItem is not string name)
+        {
+            ShowCustomProfileStatus("Select a profile to delete.");
+            return;
+        }
+
+        var confirm = MessageBox.Show(
+            this,
+            $"Delete the profile \"{name}\"? This cannot be undone.",
+            "Delete profile",
+            MessageBoxButton.YesNo,
+            MessageBoxImage.Warning);
+        if (confirm != MessageBoxResult.Yes)
+        {
+            return;
+        }
+
+        try
+        {
+            _settingsStore.DeleteProfile(name);
+            RefreshCustomProfiles();
+            ShowCustomProfileStatus($"Deleted profile: {name}");
+        }
+        catch (Exception ex)
+        {
+            _fileLog.WriteException(ex, "DeleteProfile");
+            ShowCustomProfileStatus($"Could not delete profile: {ex.Message}");
+        }
+    }
+
+    private void ExportProfileButton_Click(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            SaveSettingsFromUi();
+            var suggested = CustomProfileCombo.SelectedItem as string ?? _settings.ActiveProfileName;
+            var dialog = new SaveFileDialog
+            {
+                Title = "Export settings",
+                Filter = "Balance Board profile (*.json)|*.json|All files (*.*)|*.*",
+                FileName = $"{SettingsStore.SanitizeProfileName(suggested)}.bbprofile.json",
+                DefaultExt = ".json",
+                AddExtension = true,
+            };
+
+            if (dialog.ShowDialog(this) != true)
+            {
+                return;
+            }
+
+            _settingsStore.ExportSettings(_settings, dialog.FileName);
+            ShowCustomProfileStatus($"Exported settings to {dialog.FileName}");
+        }
+        catch (Exception ex)
+        {
+            _fileLog.WriteException(ex, "ExportProfile");
+            ShowCustomProfileStatus($"Could not export: {ex.Message}");
+        }
+    }
+
+    private void ImportProfileButton_Click(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            var dialog = new OpenFileDialog
+            {
+                Title = "Import settings",
+                Filter = "Balance Board profile (*.json)|*.json|All files (*.*)|*.*",
+                CheckFileExists = true,
+            };
+
+            if (dialog.ShowDialog(this) != true)
+            {
+                return;
+            }
+
+            var imported = _settingsStore.ImportSettings(dialog.FileName);
+            if (imported is null)
+            {
+                ShowCustomProfileStatus("That file is not a valid settings profile.");
+                return;
+            }
+
+            var suggestedName = Path.GetFileNameWithoutExtension(dialog.FileName)
+                .Replace(".bbprofile", string.Empty, StringComparison.OrdinalIgnoreCase);
+            var namePrompt = new NamePromptDialog(
+                "Import profile",
+                "Save the imported settings under this profile name:",
+                initialValue: suggestedName,
+                confirmLabel: "Import")
+            {
+                Owner = this,
+            };
+
+            var label = string.IsNullOrWhiteSpace(suggestedName) ? "imported file" : suggestedName;
+            if (namePrompt.ShowDialog() == true)
+            {
+                _settingsStore.SaveProfile(namePrompt.ResponseText, imported);
+                RefreshCustomProfiles(SettingsStore.SanitizeProfileName(namePrompt.ResponseText));
+                label = namePrompt.ResponseText;
+            }
+
+            ApplyLoadedProfile(imported, label);
+        }
+        catch (Exception ex)
+        {
+            _fileLog.WriteException(ex, "ImportProfile");
+            ShowCustomProfileStatus($"Could not import: {ex.Message}");
+        }
+    }
+
     private void SyncUiFromSettings()
     {
         _suppressSettingEvents = true;
@@ -1604,6 +1848,27 @@ public partial class MainWindow : Window
     internal void TestClickDesktopPreset() => KeyboardPreset_Click(DesktopPresetButton, new RoutedEventArgs());
 
     internal void TestRunHealthCheck() => RunHealthCheckButton_Click(RunHealthCheckButton, new RoutedEventArgs());
+
+    internal ComboBox TestCustomProfileCombo => CustomProfileCombo;
+
+    internal void TestSaveCustomProfile(string name)
+    {
+        SaveSettingsFromUi();
+        _settingsStore.SaveProfile(name, _settings);
+        RefreshCustomProfiles(SettingsStore.SanitizeProfileName(name));
+    }
+
+    internal bool TestLoadCustomProfile(string name)
+    {
+        var loaded = _settingsStore.LoadProfile(name);
+        if (loaded is null)
+        {
+            return false;
+        }
+
+        ApplyLoadedProfile(loaded, name);
+        return true;
+    }
 
     internal void TestPumpDispatcher(TimeSpan? timeout = null)
     {

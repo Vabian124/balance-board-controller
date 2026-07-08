@@ -21,7 +21,7 @@ Planned improvements. Safe for agents to implement incrementally.
 
 ## Phase 2 — UX & accessibility
 
-- [ ] **Custom game profiles UI** — wire `SettingsStore.SaveProfile` / `LoadProfile` / `ListProfiles` to save/load named snapshots (built-in presets already on Profiles tab)
+- [x] **Custom game profiles UI** — "My Profiles" card on the Profiles tab: save-as, load, update, delete, export, and import named snapshots (`SettingsStore` profile APIs + `NamePromptDialog`); profiles are portable (connection identity stripped)
 - [ ] **Multi-device picker** — when `DiscoverDevices()` returns >1, show selection dialog before `Connect(index)`
 - [ ] **Tray icon** — minimize to tray, quick connect/disconnect
 - [ ] **Start minimized** — honor `AppSettings.StartMinimized`
