@@ -6,7 +6,7 @@ Short index for AI assistants. User-facing history: [CHANGELOG.md](../../CHANGEL
 
 | Commit | Summary |
 |--------|---------|
-| [`11b3665`](https://github.com/Vabian124/balance-board-controller/commit/11b3665) | **v1.5.1** — Phase 2 refactor: FrameOutput, SettingsSync, tab views, Core namespace layout, test split |
+| [`28dc693`](https://github.com/Vabian124/balance-board-controller/commit/28dc693) | **v1.5.1** — Phase 2 refactor: FrameOutput, SettingsSync, tab views, Core namespace layout, test split |
 | [`7dd5427`](https://github.com/Vabian124/balance-board-controller/commit/7dd5427) | **Phase 2 refactor (#15)** — Core output pipeline, ProfileCoordinator, tab UserControls, SettingsSync, namespace alignment, test split (293 tests) |
 | [`e910c3d`](https://github.com/Vabian124/balance-board-controller/commit/e910c3d) | **Refactor master plan v2** — v1.5.0 shipped, Pass 1/Core/UI phases, all 7 specs complete |
 | [`de834b7`](https://github.com/Vabian124/balance-board-controller/commit/de834b7) | **CI P0** — NuGet cache, job summary, doc sync, `verify-version.ps1`, `GITHUB_MANAGER_REPORT.md` |
