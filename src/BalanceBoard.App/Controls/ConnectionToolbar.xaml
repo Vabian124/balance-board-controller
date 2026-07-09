@@ -12,8 +12,8 @@
                                                AutomationProperties.LiveSetting="Polite"/>
                                 </Border>
                                 <Border x:Name="VJoyChip" Style="{StaticResource StatusChip}"
-                                        AutomationProperties.Name="vJoy driver status">
-                                    <TextBlock x:Name="VJoyChipText" Text="vJoy: …" FontSize="11"
+                                        AutomationProperties.Name="Virtual controller status">
+                                    <TextBlock x:Name="VJoyChipText" Text="Controller: …" FontSize="11"
                                                Foreground="{DynamicResource Brush.Foreground}"/>
                                 </Border>
                             </StackPanel>

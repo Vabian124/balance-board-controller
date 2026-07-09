@@ -13,6 +13,7 @@ public sealed class AppSettings
     public bool SendLoadSensorsToAxes { get; set; }
     public bool DisableKeyboardActions { get; set; }
     public OutputMode OutputMode { get; set; } = OutputMode.Keyboard;
+    public VirtualControllerBackend VirtualControllerBackend { get; set; } = VirtualControllerBackend.VJoy;
     /// <summary>When true, one-foot jump detection drives a vJoy button (see <see cref="JumpVJoyButton"/>).</summary>
     public bool MapJumpToVJoyButton { get; set; }
     /// <summary>1-based vJoy button used when <see cref="MapJumpToVJoyButton"/> is true.</summary>
@@ -75,18 +76,35 @@ public sealed class AppSettings
     public void SetOutputMode(OutputMode mode)
     {
         OutputMode = mode;
-        switch (mode)
+        SyncLegacyOutputFlags();
+        if (mode == OutputMode.Keyboard)
         {
-            case OutputMode.VJoy:
-                EnableVJoy = true;
-                DisableKeyboardActions = true;
-                break;
-            case OutputMode.Keyboard:
-                EnableVJoy = false;
-                DisableKeyboardActions = false;
-                MapJumpToVJoyButton = false;
-                break;
+            MapJumpToVJoyButton = false;
         }
+    }
+
+    public void SetVirtualControllerBackend(VirtualControllerBackend backend)
+    {
+        VirtualControllerBackend = backend;
+        SyncLegacyOutputFlags();
+    }
+
+    public bool UsesVirtualController() => OutputMode == OutputMode.VirtualController;
+
+    public bool UsesImplementedVirtualControllerBackend() =>
+        VirtualControllerBackend == VirtualControllerBackend.VJoy;
+
+    private void SyncLegacyOutputFlags()
+    {
+        if (UsesVirtualController())
+        {
+            DisableKeyboardActions = true;
+            EnableVJoy = VirtualControllerBackend == VirtualControllerBackend.VJoy;
+            return;
+        }
+
+        EnableVJoy = false;
+        DisableKeyboardActions = false;
     }
 
     /// <summary>

@@ -131,10 +131,11 @@ public class SettingsStoreTests
             JumpWeightThresholdKg = 33f,
             JumpLevel = JumpLevel.Easy,
             UiDetailLevel = UiDetailLevel.Advanced,
-            EnableVJoy = true,
             ResponseCurve = ResponseCurve.MinecraftSnappy,
             OneFootMode = true,
         };
+        settings.SetVirtualControllerBackend(VirtualControllerBackend.VJoy);
+        settings.SetOutputMode(OutputMode.VirtualController);
 
         store.Save(settings);
         var loaded = store.Load();

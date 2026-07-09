@@ -20,6 +20,7 @@ public sealed class SettingsSync(AppSettings settings, SettingsControls ui)
         ui.DetailLevelCombo.Items.Add("Advanced");
         ui.ThemeCombo.ItemsSource = new[] { ThemePreference.System, ThemePreference.Light, ThemePreference.Dark };
         PopulateOutputModeCombo();
+        PopulateVirtualControllerBackendCombo();
         PopulateJumpVJoyButtonCombo();
         EnsureResponseCurveComboItems();
     }
@@ -36,9 +37,10 @@ public sealed class SettingsSync(AppSettings settings, SettingsControls ui)
         ui.SendSensorsCheck.IsChecked = settings.SendLoadSensorsToAxes;
         ui.MapJumpVJoyCheck.IsChecked = settings.MapJumpToVJoyButton;
         PopulateOutputModeCombo();
+        PopulateVirtualControllerBackendCombo();
         PopulateJumpVJoyButtonCombo();
         ui.JumpVJoyButtonCombo.SelectedItem = Math.Clamp(settings.JumpVJoyButton, 1, 32);
-        UpdateJumpVJoyPanelVisibility();
+        UpdateVirtualControllerUi();
 
         ui.AutoConnectCheck.IsChecked = settings.AutoConnectOnStartup;
         ui.StartMinimizedCheck.IsChecked = settings.StartMinimized;
@@ -78,15 +80,24 @@ public sealed class SettingsSync(AppSettings settings, SettingsControls ui)
     {
         if (ui.OutputModeCombo.SelectedIndex == 1)
         {
-            settings.SetOutputMode(OutputMode.VJoy);
+            settings.SetOutputMode(OutputMode.VirtualController);
         }
         else if (ui.OutputModeCombo.SelectedIndex == 0)
         {
             settings.SetOutputMode(OutputMode.Keyboard);
         }
 
-        ui.SendCgCheck.IsChecked = settings.SendCenterOfGravityToAxes;
-        ui.SendSensorsCheck.IsChecked = settings.SendLoadSensorsToAxes;
+        if (ui.VirtualControllerBackendCombo.SelectedItem is VirtualControllerBackendOption backendOption)
+        {
+            settings.SetVirtualControllerBackend(backendOption.Backend);
+        }
+        else if (ui.VirtualControllerBackendCombo.SelectedItem is VirtualControllerBackend backend)
+        {
+            settings.SetVirtualControllerBackend(backend);
+        }
+
+        settings.SendCenterOfGravityToAxes = ui.SendCgCheck.IsChecked == true;
+        settings.SendLoadSensorsToAxes = ui.SendSensorsCheck.IsChecked == true;
 
         settings.MapJumpToVJoyButton = ui.MapJumpVJoyCheck.IsChecked == true;
         if (ui.JumpVJoyButtonCombo.SelectedItem is int jumpButton)
@@ -159,7 +170,7 @@ public sealed class SettingsSync(AppSettings settings, SettingsControls ui)
             settings.VJoyDeviceId = (uint)intId;
         }
 
-        UpdateJumpVJoyPanelVisibility();
+        UpdateVirtualControllerUi();
     }
 
     public void PopulateOutputModeCombo()
@@ -167,15 +178,38 @@ public sealed class SettingsSync(AppSettings settings, SettingsControls ui)
         ui.OutputModeCombo.ItemsSource = new[]
         {
             "Keyboard & mouse (WASD, Space, etc.)",
-            "Virtual controller (vJoy)",
+            "Virtual controller",
         };
-        ui.OutputModeCombo.SelectedIndex = settings.OutputMode == OutputMode.VJoy ? 1 : 0;
+        ui.OutputModeCombo.SelectedIndex = settings.UsesVirtualController() ? 1 : 0;
     }
 
-    public void UpdateJumpVJoyPanelVisibility() =>
-        ui.JumpVJoyPanel.Visibility = ui.MapJumpVJoyCheck.IsChecked == true && settings.OutputMode == OutputMode.VJoy
+    public void PopulateVirtualControllerBackendCombo()
+    {
+        ui.VirtualControllerBackendCombo.DisplayMemberPath = nameof(VirtualControllerBackendOption.Label);
+        ui.VirtualControllerBackendCombo.ItemsSource = new[]
+        {
+            new VirtualControllerBackendOption(VirtualControllerBackend.VJoy, "vJoy (current stable)"),
+            new VirtualControllerBackendOption(VirtualControllerBackend.Xbox360, "Xbox 360 (planned)"),
+        };
+        ui.VirtualControllerBackendCombo.SelectedItem =
+            ((IEnumerable<VirtualControllerBackendOption>)ui.VirtualControllerBackendCombo.ItemsSource)
+            .First(option => option.Backend == settings.VirtualControllerBackend);
+    }
+
+    public void UpdateVirtualControllerUi()
+    {
+        var virtualControllerActive = settings.UsesVirtualController();
+        var vjoyActive = virtualControllerActive && settings.VirtualControllerBackend == VirtualControllerBackend.VJoy;
+        var xboxPlaceholderActive = virtualControllerActive && settings.VirtualControllerBackend == VirtualControllerBackend.Xbox360;
+
+        ui.VirtualControllerBackendRow.Visibility = virtualControllerActive ? Visibility.Visible : Visibility.Collapsed;
+        ui.VirtualControllerHintText.Visibility = virtualControllerActive ? Visibility.Visible : Visibility.Collapsed;
+        ui.VirtualControllerUnavailablePanel.Visibility = xboxPlaceholderActive ? Visibility.Visible : Visibility.Collapsed;
+        ui.VJoySettingsPanel.Visibility = vjoyActive ? Visibility.Visible : Visibility.Collapsed;
+        ui.JumpVJoyPanel.Visibility = vjoyActive && ui.MapJumpVJoyCheck.IsChecked == true
             ? Visibility.Visible
             : Visibility.Collapsed;
+    }
 
     private void PopulateJumpVJoyButtonCombo()
     {
@@ -199,12 +233,15 @@ public sealed class SettingsSync(AppSettings settings, SettingsControls ui)
     }
 }
 
+public sealed record VirtualControllerBackendOption(VirtualControllerBackend Backend, string Label);
+
 public sealed class SettingsControls
 {
     public required ComboBox ProfileCombo { get; init; }
     public required ComboBox DetailLevelCombo { get; init; }
     public required ComboBox ThemeCombo { get; init; }
     public required ComboBox OutputModeCombo { get; init; }
+    public required ComboBox VirtualControllerBackendCombo { get; init; }
     public required ComboBox JumpVJoyButtonCombo { get; init; }
     public required ComboBox VJoyDeviceCombo { get; init; }
     public required ComboBox ResponseCurveCombo { get; init; }
@@ -234,5 +271,9 @@ public sealed class SettingsControls
     public required Slider DeadzoneLeftRightSlider { get; init; }
     public required Slider DeadzoneForwardBackwardSlider { get; init; }
     public required Expander SessionLogExpander { get; init; }
+    public required StackPanel VirtualControllerBackendRow { get; init; }
+    public required TextBlock VirtualControllerHintText { get; init; }
+    public required Border VirtualControllerUnavailablePanel { get; init; }
+    public required StackPanel VJoySettingsPanel { get; init; }
     public required StackPanel JumpVJoyPanel { get; init; }
 }

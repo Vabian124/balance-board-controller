@@ -307,6 +307,7 @@ public partial class MainWindow : Window
             DetailLevelCombo = DetailLevelCombo,
             ThemeCombo = ThemeCombo,
             OutputModeCombo = OutputModeCombo,
+            VirtualControllerBackendCombo = VirtualControllerBackendCombo,
             JumpVJoyButtonCombo = JumpVJoyButtonCombo,
             VJoyDeviceCombo = VJoyDeviceCombo,
             ResponseCurveCombo = ResponseCurveCombo,
@@ -336,6 +337,10 @@ public partial class MainWindow : Window
             DeadzoneLeftRightSlider = DeadzoneLeftRightSlider,
             DeadzoneForwardBackwardSlider = DeadzoneForwardBackwardSlider,
             SessionLogExpander = SessionLogExpander,
+            VirtualControllerBackendRow = VirtualControllerBackendRow,
+            VirtualControllerHintText = VirtualControllerHintText,
+            VirtualControllerUnavailablePanel = VirtualControllerUnavailablePanel,
+            VJoySettingsPanel = VJoySettingsPanel,
             JumpVJoyPanel = JumpVJoyPanel,
         });
 
@@ -405,11 +410,12 @@ public partial class MainWindow : Window
             && sender is ActionBindingRow row
             && row != BindBoardButton
             && row.GetBinding().Kind != ActionKind.None
-            && _settings.OutputMode == OutputMode.VJoy)
+            && _settings.UsesVirtualController())
         {
             _suppressSettingEvents = true;
             _settings.SetOutputMode(OutputMode.Keyboard);
             _settingsSync.PopulateOutputModeCombo();
+            _settingsSync.UpdateVirtualControllerUi();
             _suppressSettingEvents = false;
             Log("Switched movement output to keyboard because a movement binding was set.");
         }
@@ -591,8 +597,8 @@ public partial class MainWindow : Window
         DetailLevelDescription.Text = detail switch
         {
             UiDetailLevel.Simple => "Simple — Dashboard, Profiles, and Fine Tuning presets; we handle the rest.",
-            UiDetailLevel.Standard => "Standard — presets or sliders on Fine Tuning; vJoy and bindings on Advanced.",
-            UiDetailLevel.Advanced => "Advanced — full sliders on Fine Tuning; response curves, vJoy, bindings, and diagnostics on Advanced.",
+            UiDetailLevel.Standard => "Standard — presets or sliders on Fine Tuning; controller output and bindings on Advanced.",
+            UiDetailLevel.Advanced => "Advanced — full sliders on Fine Tuning; controller backends, bindings, and diagnostics on Advanced.",
             _ => string.Empty,
         };
 
@@ -614,12 +620,12 @@ public partial class MainWindow : Window
 
         if (simple)
         {
-            VJoySection.Visibility = Visibility.Collapsed;
+            VirtualControllerSection.Visibility = Visibility.Collapsed;
             KeyboardSection.Visibility = Visibility.Collapsed;
         }
         else
         {
-            VJoySection.Visibility = Visibility.Visible;
+            VirtualControllerSection.Visibility = Visibility.Visible;
             KeyboardSection.Visibility = Visibility.Visible;
         }
 
@@ -699,7 +705,28 @@ public partial class MainWindow : Window
         try
         {
             var diag = VJoyDiagnostics.Inspect(_settings.VJoyDeviceId);
+            if (!_settings.UsesVirtualController())
+            {
+                VJoyStatusText.Text = "Movement output: Keyboard & mouse\nVirtual controller backend: standby";
+                VJoyChipText.Text = "Controller: keyboard";
+                VJoyChip.BorderBrush = FindThemeBrush("Brush.CardBorder");
+                return;
+            }
+
+            if (_settings.VirtualControllerBackend == VirtualControllerBackend.Xbox360)
+            {
+                VJoyStatusText.Text =
+                    "Backend: Xbox 360\n" +
+                    "Status: planned / not implemented\n" +
+                    "Runtime output: disabled intentionally\n" +
+                    "Diagnostics: vJoy health check remains available for the current stable backend.";
+                VJoyChipText.Text = "Controller: Xbox 360 planned";
+                VJoyChip.BorderBrush = FindThemeBrush("Brush.Warning", "#F59E0B");
+                return;
+            }
+
             VJoyStatusText.Text =
+                $"Backend: vJoy\n" +
                 $"Driver: {(diag.DriverEnabled ? "OK" : "MISSING")}\n" +
                 $"Status: {diag.DeviceStatus}\n" +
                 $"Product: {diag.Product ?? "—"}\n" +
@@ -708,7 +735,7 @@ public partial class MainWindow : Window
                 (diag.Error ?? "OK");
 
             var ok = diag.DriverEnabled && diag.DeviceStatus is not "VJD_STAT_MISS" and not "VJD_STAT_BUSY";
-            VJoyChipText.Text = ok ? "vJoy: ready" : "vJoy: check";
+            VJoyChipText.Text = ok ? "Controller: vJoy ready" : "Controller: vJoy check";
             VJoyChip.BorderBrush = ok
                 ? FindThemeBrush("Brush.Success", "#22C55E")
                 : FindThemeBrush("Brush.Warning", "#F59E0B");
@@ -919,6 +946,16 @@ public partial class MainWindow : Window
     }
 
     private void OutputModeCombo_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (!_uiReady || _suppressSettingEvents)
+        {
+            return;
+        }
+
+        RequestSaveSettingsFromUi(immediate: true);
+    }
+
+    private void VirtualControllerBackendCombo_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
         if (!_uiReady || _suppressSettingEvents)
         {
@@ -1830,7 +1867,7 @@ public partial class MainWindow : Window
             && string.IsNullOrWhiteSpace(binding.MouseButton));
 
         var controlifyModeWrong = settings.ActiveProfileName == ActionPresets.MinecraftControlify
-            && settings.OutputMode != OutputMode.VJoy;
+            && !settings.UsesVirtualController();
 
         if (!allBindingsEmpty && !controlifyModeWrong)
         {
@@ -1877,6 +1914,10 @@ public partial class MainWindow : Window
 
     internal ComboBox TestThemeCombo => ThemeCombo;
 
+    internal ComboBox TestOutputModeCombo => OutputModeCombo;
+
+    internal ComboBox TestVirtualControllerBackendCombo => VirtualControllerBackendCombo;
+
     internal Slider TestDeadzoneSlider => DeadzoneSlider;
 
     internal Slider TestPollIntervalSlider => PollIntervalSlider;
@@ -1884,6 +1925,12 @@ public partial class MainWindow : Window
     internal CheckBox TestAutoConnectCheck => AutoConnectCheck;
 
     internal CheckBox TestStartMinimizedCheck => StartMinimizedCheck;
+
+    internal Visibility TestVirtualControllerBackendRowVisibility => VirtualControllerBackendRow.Visibility;
+
+    internal Visibility TestVirtualControllerUnavailablePanelVisibility => VirtualControllerUnavailablePanel.Visibility;
+
+    internal Visibility TestVJoySettingsPanelVisibility => VJoySettingsPanel.Visibility;
 
     internal TextBlock TestConnectionChipText => ConnectionChipText;
 

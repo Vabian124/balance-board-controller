@@ -52,7 +52,8 @@ public static class ActionPresets
     public static void ApplyGameController(AppSettings settings)
     {
         settings.ActiveProfileName = GameController;
-        settings.SetOutputMode(OutputMode.VJoy);
+        settings.SetVirtualControllerBackend(VirtualControllerBackend.VJoy);
+        settings.SetOutputMode(OutputMode.VirtualController);
         settings.SendCenterOfGravityToAxes = true;
         settings.SendLoadSensorsToAxes = false;
         settings.MapJumpToVJoyButton = false;
@@ -88,7 +89,8 @@ public static class ActionPresets
     public static void ApplyMinecraftControlify(AppSettings settings)
     {
         settings.ActiveProfileName = MinecraftControlify;
-        settings.SetOutputMode(OutputMode.VJoy);
+        settings.SetVirtualControllerBackend(VirtualControllerBackend.VJoy);
+        settings.SetOutputMode(OutputMode.VirtualController);
         settings.SendCenterOfGravityToAxes = true;
         settings.SendLoadSensorsToAxes = false;
         settings.MapJumpToVJoyButton = true;
@@ -107,7 +109,8 @@ public static class ActionPresets
     public static void ApplyPedal(AppSettings settings)
     {
         settings.ActiveProfileName = Pedal;
-        settings.SetOutputMode(OutputMode.VJoy);
+        settings.SetVirtualControllerBackend(VirtualControllerBackend.VJoy);
+        settings.SetOutputMode(OutputMode.VirtualController);
         settings.SendCenterOfGravityToAxes = false;
         settings.SendLoadSensorsToAxes = true;
     }

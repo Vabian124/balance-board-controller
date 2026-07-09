@@ -129,10 +129,15 @@ public partial class MainWindow
     private ActionBindingRow BindDiagonalLeft => AdvancedView.BindDiagonalLeft;
     private ActionBindingRow BindDiagonalRight => AdvancedView.BindDiagonalRight;
     private ActionBindingRow BindBoardButton => AdvancedView.BindBoardButton;
-    private Border VJoySection => AdvancedView.VJoySection;
+    private Border VirtualControllerSection => AdvancedView.VirtualControllerSection;
     private ComboBox OutputModeCombo => AdvancedView.OutputModeCombo;
+    private ComboBox VirtualControllerBackendCombo => AdvancedView.VirtualControllerBackendCombo;
     private CheckBox EnableVJoyCheck => _enableVJoyCheck;
     private CheckBox DisableActionsCheck => AdvancedView.DisableActionsCheck;
+    private StackPanel VirtualControllerBackendRow => AdvancedView.VirtualControllerBackendRow;
+    private TextBlock VirtualControllerHintText => AdvancedView.VirtualControllerHintText;
+    private Border VirtualControllerUnavailablePanel => AdvancedView.VirtualControllerUnavailablePanel;
+    private StackPanel VJoySettingsPanel => AdvancedView.VJoySettingsPanel;
     private CheckBox SendCgCheck => AdvancedView.SendCgCheck;
     private CheckBox SendSensorsCheck => AdvancedView.SendSensorsCheck;
     private CheckBox MapJumpVJoyCheck => AdvancedView.MapJumpVJoyCheck;
@@ -218,6 +223,7 @@ public partial class MainWindow
         BindDiagonalLeft.BindingChanged += OnActionBindingChanged; BindDiagonalRight.BindingChanged += OnActionBindingChanged;
         BindBoardButton.BindingChanged += OnActionBindingChanged;
         OutputModeCombo.SelectionChanged += OutputModeCombo_SelectionChanged;
+        VirtualControllerBackendCombo.SelectionChanged += VirtualControllerBackendCombo_SelectionChanged;
         SendCgCheck.Checked += SettingChanged; SendCgCheck.Unchecked += SettingChanged;
         SendSensorsCheck.Checked += SettingChanged; SendSensorsCheck.Unchecked += SettingChanged;
         MapJumpVJoyCheck.Checked += SettingChanged; MapJumpVJoyCheck.Unchecked += SettingChanged;

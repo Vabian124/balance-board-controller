@@ -312,10 +312,19 @@ public sealed class SettingsStore
         if (!rawJson.Contains("\"OutputMode\"", StringComparison.Ordinal))
         {
             settings.OutputMode = settings.EnableVJoy && settings.DisableKeyboardActions
-                ? OutputMode.VJoy
+                ? OutputMode.VirtualController
                 : OutputMode.Keyboard;
             changed = true;
         }
+
+        if (!rawJson.Contains("\"VirtualControllerBackend\"", StringComparison.Ordinal))
+        {
+            settings.VirtualControllerBackend = VirtualControllerBackend.VJoy;
+            changed = true;
+        }
+
+        settings.SetOutputMode(settings.OutputMode);
+        settings.SetVirtualControllerBackend(settings.VirtualControllerBackend);
 
         if (!rawJson.Contains("\"JumpVJoyButton\"", StringComparison.Ordinal) && settings.JumpVJoyButton < 1)
         {

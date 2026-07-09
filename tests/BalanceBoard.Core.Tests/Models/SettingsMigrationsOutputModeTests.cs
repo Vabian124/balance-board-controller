@@ -28,10 +28,12 @@ public class SettingsMigrationsOutputModeTests : IDisposable
         var json = JsonSerializer.Serialize(new { EnableVJoy = true, DisableKeyboardActions = true });
         File.WriteAllText(_store.SettingsPath, json);
         var loaded = _store.Load();
-        Assert.Equal(OutputMode.VJoy, loaded.OutputMode);
+        Assert.Equal(OutputMode.VirtualController, loaded.OutputMode);
+        Assert.Equal(VirtualControllerBackend.VJoy, loaded.VirtualControllerBackend);
         Assert.True(loaded.EnableVJoy);
         Assert.True(loaded.DisableKeyboardActions);
         Assert.Contains("\"OutputMode\"", File.ReadAllText(_store.SettingsPath));
+        Assert.Contains("\"VirtualControllerBackend\"", File.ReadAllText(_store.SettingsPath));
     }
 
     [Fact]
@@ -41,6 +43,7 @@ public class SettingsMigrationsOutputModeTests : IDisposable
         File.WriteAllText(_store.SettingsPath, json);
         var loaded = _store.Load();
         Assert.Equal(OutputMode.Keyboard, loaded.OutputMode);
+        Assert.Equal(VirtualControllerBackend.VJoy, loaded.VirtualControllerBackend);
         Assert.False(loaded.EnableVJoy);
         Assert.False(loaded.DisableKeyboardActions);
     }

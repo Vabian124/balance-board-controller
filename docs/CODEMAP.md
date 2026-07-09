@@ -48,6 +48,8 @@ Complete map of **maintained source** (ignore `bin/`, `obj/`, `.vs/`).
 | Path | Purpose |
 |------|---------|
 | `AppSettings.cs` | All user settings; `Actions` dict; `UiDetailLevel`, `JumpLevel`, theme |
+| `OutputMode.cs` | Keyboard vs virtual-controller movement output |
+| `VirtualControllerBackend.cs` | vJoy vs Xbox 360 backend when `OutputMode` is virtual controller |
 | `ActionSlots.cs` | Canonical action slot names (Left, Right, …) |
 | `BalanceConstants.cs` | Thresholds, joy scaling, poll interval — **port verbatim** |
 | `ActionConstants.cs` | Mouse-move timer interval for action engine |

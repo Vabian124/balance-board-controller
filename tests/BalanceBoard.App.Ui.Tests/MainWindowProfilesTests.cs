@@ -23,6 +23,7 @@ public sealed class MainWindowProfilesTests : UiTestBase
             var saved = Ctx.ReadPersistedSettings();
             Assert.Equal(ActionPresets.GameController, saved.ActiveProfileName);
             Assert.True(saved.EnableVJoy);
+            Assert.Equal(VirtualControllerBackend.VJoy, saved.VirtualControllerBackend);
         }
         finally
         {

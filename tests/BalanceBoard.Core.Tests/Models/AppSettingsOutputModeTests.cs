@@ -22,15 +22,34 @@ public class AppSettingsOutputModeTests : IDisposable
     }
 
     [Theory]
-    [InlineData(OutputMode.VJoy, true, true)]
-    [InlineData(OutputMode.Keyboard, false, false)]
-    public void SetOutputMode_syncs_legacy_flags(OutputMode mode, bool enableVJoy, bool disableKeyboard)
+    [InlineData(OutputMode.VirtualController, VirtualControllerBackend.VJoy, true, true)]
+    [InlineData(OutputMode.VirtualController, VirtualControllerBackend.Xbox360, false, true)]
+    [InlineData(OutputMode.Keyboard, VirtualControllerBackend.VJoy, false, false)]
+    public void SetOutputMode_syncs_legacy_flags(
+        OutputMode mode,
+        VirtualControllerBackend backend,
+        bool enableVJoy,
+        bool disableKeyboard)
     {
         var settings = new AppSettings();
+        settings.SetVirtualControllerBackend(backend);
         settings.SetOutputMode(mode);
         Assert.Equal(mode, settings.OutputMode);
+        Assert.Equal(backend, settings.VirtualControllerBackend);
         Assert.Equal(enableVJoy, settings.EnableVJoy);
         Assert.Equal(disableKeyboard, settings.DisableKeyboardActions);
+    }
+
+    [Fact]
+    public void SetVirtualControllerBackend_respects_current_output_mode()
+    {
+        var settings = new AppSettings();
+        settings.SetOutputMode(OutputMode.VirtualController);
+        settings.SetVirtualControllerBackend(VirtualControllerBackend.Xbox360);
+
+        Assert.Equal(VirtualControllerBackend.Xbox360, settings.VirtualControllerBackend);
+        Assert.False(settings.EnableVJoy);
+        Assert.True(settings.DisableKeyboardActions);
     }
 
     [Fact]
@@ -45,12 +64,14 @@ public class AppSettingsOutputModeTests : IDisposable
     public void Save_and_load_round_trips_OutputMode()
     {
         var settings = new AppSettings();
-        settings.SetOutputMode(OutputMode.VJoy);
+        settings.SetVirtualControllerBackend(VirtualControllerBackend.VJoy);
+        settings.SetOutputMode(OutputMode.VirtualController);
         settings.MapJumpToVJoyButton = true;
         settings.JumpVJoyButton = 3;
         _store.Save(settings);
         var loaded = _store.Load();
-        Assert.Equal(OutputMode.VJoy, loaded.OutputMode);
+        Assert.Equal(OutputMode.VirtualController, loaded.OutputMode);
+        Assert.Equal(VirtualControllerBackend.VJoy, loaded.VirtualControllerBackend);
         Assert.True(loaded.EnableVJoy);
         Assert.True(loaded.DisableKeyboardActions);
         Assert.True(loaded.MapJumpToVJoyButton);
@@ -68,5 +89,21 @@ public class AppSettingsOutputModeTests : IDisposable
         Assert.False(loaded.EnableVJoy);
         Assert.False(loaded.DisableKeyboardActions);
         Assert.False(loaded.MapJumpToVJoyButton);
+    }
+
+    [Fact]
+    public void Save_and_load_round_trips_Xbox360_virtual_controller_placeholder()
+    {
+        var settings = new AppSettings();
+        settings.SetVirtualControllerBackend(VirtualControllerBackend.Xbox360);
+        settings.SetOutputMode(OutputMode.VirtualController);
+        _store.Save(settings);
+
+        var loaded = _store.Load();
+
+        Assert.Equal(OutputMode.VirtualController, loaded.OutputMode);
+        Assert.Equal(VirtualControllerBackend.Xbox360, loaded.VirtualControllerBackend);
+        Assert.False(loaded.EnableVJoy);
+        Assert.True(loaded.DisableKeyboardActions);
     }
 }
