@@ -6,7 +6,7 @@ Short index for AI assistants. User-facing history: [CHANGELOG.md](../../CHANGEL
 
 | Commit | Summary |
 |--------|---------|
-| [`e4f27e6`](https://github.com/Vabian124/balance-board-controller/commit/e4f27e6) | **Xbox 360 output UX** — `VirtualControllerBackend` enum, Advanced output mode/backend pickers, vJoy controls hidden for Xbox placeholder, settings migration + Core/UI tests |
+| [`1338642`](https://github.com/Vabian124/balance-board-controller/commit/1338642) | **Xbox 360 output UX** — `VirtualControllerBackend` enum, Advanced output mode/backend pickers, vJoy controls hidden for Xbox placeholder, settings migration + Core/UI tests |
 | [`7844499`](https://github.com/Vabian124/balance-board-controller/commit/7844499) | **v1.5.2 stable** — AppVersion session banner, UI title, docs mark current stable / working connect release (reference FormBluetooth wake, prepared-board reconnect, stale-pairing SYNC) |
 | [`e8f0742`](https://github.com/Vabian124/balance-board-controller/commit/e8f0742) | **v1.5.2** — ScriptedBluetoothPairingService fixtures for all ReferenceConnectScenario values; PairDiscoverableBoard inline FormBluetooth wake; WiiBalanceWalker integration tests |
 | [`28dc693`](https://github.com/Vabian124/balance-board-controller/commit/28dc693) | **v1.5.1** — Phase 2 refactor: FrameOutput, SettingsSync, tab views, Core namespace layout, test split |
