@@ -8,20 +8,14 @@ namespace BalanceBoard.Testing;
 /// Simulates WiiBalanceWalker Bluetooth pair/wake behavior without real hardware.
 /// Drives <see cref="FakeBalanceBoardConnection"/> HID visibility to match reference timing.
 /// </summary>
-public sealed class ScriptedBluetoothPairingService : IBluetoothPairingService
+public sealed class ScriptedBluetoothPairingService(
+    FakeBalanceBoardConnection connection,
+    ReferenceConnectScenario scenario = ReferenceConnectScenario.FormBluetoothFreshSyncPair) : IBluetoothPairingService
 {
-    private readonly FakeBalanceBoardConnection _connection;
+    private readonly FakeBalanceBoardConnection _connection = connection;
     private readonly Queue<BluetoothPairingResult> _pairResults = new();
 
-    public ScriptedBluetoothPairingService(
-        FakeBalanceBoardConnection connection,
-        ReferenceConnectScenario scenario = ReferenceConnectScenario.FormBluetoothFreshSyncPair)
-    {
-        _connection = connection;
-        Scenario = scenario;
-    }
-
-    public ReferenceConnectScenario Scenario { get; set; }
+    public ReferenceConnectScenario Scenario { get; set; } = scenario;
 
     /// <summary>After <see cref="EscalateScenarioAfterPairCall"/> pair attempts, inquiry uses this scenario.</summary>
     public ReferenceConnectScenario? EscalationScenario { get; set; }
