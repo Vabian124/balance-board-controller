@@ -6,7 +6,7 @@ Short index for AI assistants. User-facing history: [CHANGELOG.md](../../CHANGEL
 
 | Commit | Summary |
 |--------|---------|
-| [`f8b2b6a`](https://github.com/Vabian124/balance-board-controller/commit/f8b2b6a) | **v1.5.2 stable** — AppVersion session banner, UI title, docs mark current stable / working connect release (reference FormBluetooth wake, prepared-board reconnect, stale-pairing SYNC) |
+| [`7844499`](https://github.com/Vabian124/balance-board-controller/commit/7844499) | **v1.5.2 stable** — AppVersion session banner, UI title, docs mark current stable / working connect release (reference FormBluetooth wake, prepared-board reconnect, stale-pairing SYNC) |
 | [`e8f0742`](https://github.com/Vabian124/balance-board-controller/commit/e8f0742) | **v1.5.2** — ScriptedBluetoothPairingService fixtures for all ReferenceConnectScenario values; PairDiscoverableBoard inline FormBluetooth wake; WiiBalanceWalker integration tests |
 | [`28dc693`](https://github.com/Vabian124/balance-board-controller/commit/28dc693) | **v1.5.1** — Phase 2 refactor: FrameOutput, SettingsSync, tab views, Core namespace layout, test split |
 | [`7dd5427`](https://github.com/Vabian124/balance-board-controller/commit/7dd5427) | **Phase 2 refactor (#15)** — Core output pipeline, ProfileCoordinator, tab UserControls, SettingsSync, namespace alignment, test split (293 tests) |
