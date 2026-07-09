@@ -1,4 +1,5 @@
 using BalanceBoard.Core.Models;
+using BalanceBoard.Core.Services.Diagnostics;
 using WiimoteLib;
 
 namespace BalanceBoard.Core.Services.Connection;
@@ -12,16 +13,34 @@ internal static class WiimoteCollectionHelper
     /// <summary>Serializes all WiimoteLib HID open/close so wake probes cannot race Connect.</summary>
     internal static readonly object HidGate = new();
 
-    public static IReadOnlyList<string> DiscoverDeviceIds()
+    public static IReadOnlyList<string> DiscoverDeviceIds(Action<string>? log = null) =>
+        DiscoverDeviceIdsCore(log);
+
+    private static IReadOnlyList<string> DiscoverDeviceIdsCore(Action<string>? log)
     {
-        lock (HidGate)
+        if (!Monitor.TryEnter(HidGate, TimeSpan.FromSeconds(BalanceConstants.HidDiscoveryTimeoutSeconds)))
+        {
+            log?.Invoke("[CONNECT] HID discovery skipped — device layer busy (try again shortly).");
+            // #region agent log
+            AgentDebugLog.Write("H11", "WiimoteCollectionHelper.DiscoverDeviceIds", "hid gate busy");
+            // #endregion
+            return Array.Empty<string>();
+        }
+
+        try
         {
             WiimoteCollection? collection = null;
             try
             {
                 collection = new WiimoteCollection();
                 collection.FindAllWiimotes();
-                return EnumerateDeviceIds(collection);
+                var ids = EnumerateDeviceIds(collection);
+                if (log is not null && ids.Count > 0)
+                {
+                    log.Invoke($"[CONNECT] HID enumeration: {ids.Count} device(s): {string.Join(", ", ids)}");
+                }
+
+                return ids;
             }
             catch (WiimoteNotFoundException)
             {
@@ -32,13 +51,27 @@ internal static class WiimoteCollectionHelper
                 ReleaseAll(collection);
             }
         }
+        finally
+        {
+            Monitor.Exit(HidGate);
+        }
     }
 
     public static int WakeDevices(Action<string>? log)
     {
-        lock (HidGate)
+        if (!Monitor.TryEnter(HidGate, TimeSpan.FromSeconds(BalanceConstants.HidDiscoveryTimeoutSeconds)))
+        {
+            log?.Invoke("[CONNECT] wake probe: HID layer busy — skipping wake ping.");
+            return 0;
+        }
+
+        try
         {
             return WakeDevicesCore(log);
+        }
+        finally
+        {
+            Monitor.Exit(HidGate);
         }
     }
 
@@ -71,12 +104,21 @@ internal static class WiimoteCollectionHelper
             {
                 try
                 {
+                    var path = DeviceIdRules.ExtractFromHidPath(wii.HIDDevicePath);
+                    log?.Invoke($"[CONNECT] wake probe: HID ping id={path ?? "?"} path={wii.HIDDevicePath}");
                     BalanceBoardProtocol.WakeDeviceSession(wii, log);
                     wokeCount++;
                 }
                 catch (Exception ex)
                 {
                     log?.Invoke($"[CONNECT] HID wake device note: {ex.Message}");
+                    // #region agent log
+                    AgentDebugLog.Write(
+                        "H12",
+                        "WiimoteCollectionHelper.WakeDevices",
+                        "wake ping error",
+                        new { error = ex.Message });
+                    // #endregion
                 }
             }
 
@@ -94,7 +136,7 @@ internal static class WiimoteCollectionHelper
         }
         finally
         {
-            ReleaseAll(collection, extendedDrain: false);
+            ReleaseAll(collection, extendedDrain: true);
         }
     }
 

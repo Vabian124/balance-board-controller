@@ -1,6 +1,8 @@
 using BalanceBoard.Core.Abstractions;
 using BalanceBoard.Core.Models;
 using BalanceBoard.Core.Processing;
+using BalanceBoard.Core.Services.Connection;
+using BalanceBoard.Core.Services.Diagnostics;
 
 namespace BalanceBoard.Core.Services.Session;
 
@@ -31,6 +33,9 @@ public sealed class BalanceBoardSession : IDisposable
     private int _pollGate;
 
     private bool _adapterMacConfirmedAtConnectStart;
+
+    private static readonly TimeSpan ConnectWorkerTimeout =
+        TimeSpan.FromSeconds(BalanceConstants.ConnectWorkerInvokeTimeoutSeconds);
 
     private bool UsesSimulatedConnection => _connection is SimulatedBalanceBoardConnection;
 
@@ -111,8 +116,20 @@ public sealed class BalanceBoardSession : IDisposable
 
     public IReadOnlyList<string> DiscoverDevices()
     {
-        _worker.TryInvoke(_connection.DiscoverDeviceIds, out var ids, Array.Empty<string>());
-        return ids ?? Array.Empty<string>();
+        if (_worker.IsCurrentThreadWorker)
+        {
+            return _connection.DiscoverDeviceIds();
+        }
+
+        try
+        {
+            return _worker.InvokeStrict(_connection.DiscoverDeviceIds, ConnectWorkerTimeout);
+        }
+        catch (TimeoutException)
+        {
+            Log?.Invoke("[CONNECT] HID discovery timed out — board may be asleep.");
+            return Array.Empty<string>();
+        }
     }
 
     public async Task<ConnectResult> ConnectWithIntentAsync(
@@ -128,19 +145,33 @@ public sealed class BalanceBoardSession : IDisposable
 
         if (Interlocked.CompareExchange(ref _connectActive, 1, 0) != 0)
         {
-            Log?.Invoke("[CONNECT] Connect already in progress ΓÇö ignoring duplicate request.");
+            // #region agent log
+            AgentDebugLog.Write("H5", "BalanceBoardSession.ConnectWithIntentAsync", "duplicate connect suppressed", new { intent, deviceIndex });
+            // #endregion
+            Log?.Invoke("[CONNECT] Connect already in progress - ignoring duplicate request.");
             return ConnectResult.Fail(ConnectStatus.AlreadyInProgress);
         }
 
         try
         {
             CancelInFlightRecoveryHandoff();
+            // #region agent log
+            AgentDebugLog.Write("H1", "BalanceBoardSession.ConnectWithIntentAsync", "connect begin", new { intent, deviceIndex });
+            // #endregion
             return await Task.Run(() =>
-                _worker.InvokeStrict(() => ConnectWithIntentCore(intent, deviceIndex, discoveryRounds, cancellationToken)));
+                _worker.InvokeStrict(
+                    () => ConnectWithIntentCore(intent, deviceIndex, discoveryRounds, cancellationToken),
+                    ConnectWorkerTimeout));
         }
         catch (OperationCanceledException)
         {
             return ConnectResult.Fail(ConnectStatus.Cancelled);
+        }
+        catch (TimeoutException ex)
+        {
+            Log?.Invoke($"Connection timed out: {ex.Message}");
+            StatusChanged?.Invoke("Connection timed out — turn the board on, press SYNC, then try again.");
+            return ConnectResult.Fail(ConnectStatus.Error, ex.Message);
         }
         finally
         {
@@ -153,7 +184,7 @@ public sealed class BalanceBoardSession : IDisposable
     /// this connect's action is queued onto the ConnectionWorker. Without this, a manual
     /// or quick connect issued while BluetoothRecoveryLoop is mid-attempt (e.g. a slow
     /// pairing round) would simply queue behind it and have to wait for that attempt to run
-    /// to completion ΓÇö the recovery loop only observes cancellation at its own checkpoints,
+    /// to completion - the recovery loop only observes cancellation at its own checkpoints,
     /// and those checkpoints are never reached until something cancels the token. Cancelling
     /// here (from the caller's thread, before the worker even starts this connect) lets an
     /// in-flight recovery step unwind at its very next check instead of always finishing
@@ -168,7 +199,7 @@ public sealed class BalanceBoardSession : IDisposable
         }
         catch
         {
-            // Best-effort ΓÇö StopRecovery() retries teardown once this connect runs.
+            // Best-effort - StopRecovery() retries teardown once this connect runs.
         }
     }
 
@@ -182,7 +213,7 @@ public sealed class BalanceBoardSession : IDisposable
         {
             if (IsSessionHealthy())
             {
-                Log?.Invoke("[CONNECT] Already connected ΓÇö ignoring duplicate request.");
+                Log?.Invoke("[CONNECT] Already connected - ignoring duplicate request.");
                 return ConnectResult.Ok();
             }
 
@@ -190,7 +221,7 @@ public sealed class BalanceBoardSession : IDisposable
                 && (DateTime.UtcNow - _connectedAtUtc.Value).TotalMilliseconds
                     <= BalanceConstants.ConnectHealthGraceMs)
             {
-                Log?.Invoke("[CONNECT] HID session opening ΓÇö ignoring duplicate request.");
+                Log?.Invoke("[CONNECT] HID session opening - ignoring duplicate request.");
                 return ConnectResult.Fail(ConnectStatus.AlreadyInProgress);
             }
         }
@@ -200,6 +231,11 @@ public sealed class BalanceBoardSession : IDisposable
         _adapterMacChanged = false;
         _adapterMacConfirmedAtConnectStart = false;
         LogBluetoothAdapterState();
+        if (!UsesSimulatedConnection)
+        {
+            BluetoothDiagnostics.LogSnapshot(Log, $"connect-{intent}");
+        }
+
         ConnectionFlowLogger.LogIntent(Log, intent);
 
         _connectCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
@@ -207,7 +243,7 @@ public sealed class BalanceBoardSession : IDisposable
         try
         {
             var ct = _connectCts.Token;
-            // Probe Bluetooth before WiimoteLib HID ΓÇö HID enumeration can spuriously break InTheHand.
+            // Probe Bluetooth before WiimoteLib HID - HID enumeration can spuriously break InTheHand.
             if (!UsesSimulatedConnection && !WaitForBluetoothAtConnectStart(ct))
             {
                 if (ct.IsCancellationRequested)
@@ -218,7 +254,7 @@ public sealed class BalanceBoardSession : IDisposable
                     return ConnectResult.Fail(ConnectStatus.Cancelled);
                 }
 
-                StatusChanged?.Invoke("Bluetooth is off ΓÇö turn it on, then click Connect.");
+                StatusChanged?.Invoke("Bluetooth is off - turn it on, then click Connect.");
                 ConnectionFlowLogger.LogFlowComplete(Log, false);
                 return ConnectResult.Fail(ConnectStatus.BluetoothUnavailable);
             }
@@ -232,7 +268,7 @@ public sealed class BalanceBoardSession : IDisposable
                 ConnectResult quick;
                 if (_adapterMacChanged)
                 {
-                    Log?.Invoke("[CONNECT] Adapter address changed ΓÇö escalating to full pairing (press SYNC if needed).");
+                    Log?.Invoke("[CONNECT] Adapter address changed - escalating to full pairing (press SYNC if needed).");
                     quick = TryPairAndConnect(deviceIndex, discoveryRounds, ct);
                 }
                 else
@@ -246,7 +282,7 @@ public sealed class BalanceBoardSession : IDisposable
                 }
                 else if (!ct.IsCancellationRequested && ShouldAutoRecoverOnStartup())
                 {
-                    Log?.Invoke("[CONNECT] Quick reconnect did not find the board yet ΓÇö starting background auto-reconnect.");
+                    Log?.Invoke("[CONNECT] Quick reconnect did not find the board yet - starting background auto-reconnect.");
                     SetConnectionPhase(ConnectionPhase.Reconnecting);
                     StartBluetoothRecovery();
                 }
@@ -257,7 +293,7 @@ public sealed class BalanceBoardSession : IDisposable
 
             if (_connection.DiscoverDeviceIds().Count == 0)
             {
-                _pairing.WakePairedDevices(Log);
+                _pairing.WakePairedDevices(Log, ct);
                 ct.ThrowIfCancellationRequested();
                 EnsureBluetoothReady();
             }
@@ -289,7 +325,10 @@ public sealed class BalanceBoardSession : IDisposable
         {
             Log?.Invoke($"Connection error: {ex.Message}");
             Log?.Invoke(ex.StackTrace ?? string.Empty);
-            StatusChanged?.Invoke("Connection error ΓÇö see log.");
+            StatusChanged?.Invoke(
+                ex is TimeoutException
+                    ? "Connection timed out — turn the board on, press SYNC, then try Connect again."
+                    : "Connection error — see log.");
             ConnectionFlowLogger.LogFlowComplete(Log, false);
             return ConnectResult.Fail(ConnectStatus.Error, ex.Message);
         }
@@ -317,14 +356,24 @@ public sealed class BalanceBoardSession : IDisposable
         var visible = _connection.DiscoverDeviceIds();
         if (visible.Count > 0)
         {
-            Log?.Invoke("[CONNECT] HID reconnect: board visible ΓÇö opening session (WiiBalanceWalker fast path).");
-            StatusChanged?.Invoke("Finding boardΓÇª");
+            Log?.Invoke("[CONNECT] HID reconnect: board visible - opening session (WiiBalanceWalker fast path).");
+            StatusChanged?.Invoke("Finding board...");
             return TryConnectWithHidRetries(deviceIndex, preferredDeviceId, ct);
         }
 
+        if (!_pairing.HasRememberedNintendoDevices(Log)
+            && !string.IsNullOrWhiteSpace(preferredDeviceId))
+        {
+            Log?.Invoke(
+                "[CONNECT] Windows has no remembered Nintendo device but settings expect a prior board — " +
+                "starting full pairing (press SYNC).");
+            StatusChanged?.Invoke("Press SYNC under the battery cover…");
+            return TryPairAndConnect(deviceIndex, discoveryRounds: 2, ct);
+        }
+
         Log?.Invoke("[CONNECT] HID reconnect: wake probe then open preferred device.");
-        StatusChanged?.Invoke("Finding boardΓÇª");
-        _pairing.WakePairedDevices(Log);
+        StatusChanged?.Invoke("Finding board...");
+        _pairing.WakePairedDevices(Log, ct);
         ct.ThrowIfCancellationRequested();
 
         for (var attempt = 1; attempt <= BalanceConstants.PostPairHidRetryAttempts; attempt++)
@@ -339,20 +388,21 @@ public sealed class BalanceBoardSession : IDisposable
                 break;
             }
 
-            Log?.Invoke($"[CONNECT] HID reconnect: retry {attempt}/{BalanceConstants.PostPairHidRetryAttempts - 1}ΓÇª");
-            StatusChanged?.Invoke("Finding boardΓÇª");
+            Log?.Invoke($"[CONNECT] HID reconnect: retry {attempt}/{BalanceConstants.PostPairHidRetryAttempts - 1}...");
+            StatusChanged?.Invoke("Finding board...");
             if (!ct.WaitHandle.WaitOne(TimeSpan.FromMilliseconds(BalanceConstants.PostPairHidRetryMs)))
             {
                 // waited
             }
 
             ct.ThrowIfCancellationRequested();
-            _pairing.WakePairedDevices(Log);
+            _pairing.WakePairedDevices(Log, ct);
             ct.ThrowIfCancellationRequested();
         }
 
-        StatusChanged?.Invoke("Board not found ΓÇö trying again soon.");
-        return ConnectResult.Fail(ConnectStatus.NoDevices);
+        Log?.Invoke("[CONNECT] Quick reconnect failed — full pairing with SYNC (stale bonds removed if needed).");
+        StatusChanged?.Invoke("Press SYNC under the battery cover…");
+        return TryPairAndConnect(deviceIndex, discoveryRounds: 2, ct);
     }
 
     private ConnectResult TryConnectWithHidRetries(
@@ -372,7 +422,7 @@ public sealed class BalanceBoardSession : IDisposable
             if (attempt < BalanceConstants.PostPairHidRetryAttempts)
             {
                 Log?.Invoke(
-                    $"[CONNECT] HID not ready yet ΓÇö retry {attempt}/{BalanceConstants.PostPairHidRetryAttempts} " +
+                    $"[CONNECT] HID not ready yet - retry {attempt}/{BalanceConstants.PostPairHidRetryAttempts} " +
                     $"in {BalanceConstants.PostPairHidRetryMs} ms (board may still be waking).");
                 if (ct.WaitHandle.WaitOne(TimeSpan.FromMilliseconds(BalanceConstants.PostPairHidRetryMs)))
                 {
@@ -392,22 +442,22 @@ public sealed class BalanceBoardSession : IDisposable
     {
         if (wakeFirst)
         {
-            _pairing.WakePairedDevices(Log);
+            _pairing.WakePairedDevices(Log, ct);
             ct.ThrowIfCancellationRequested();
         }
         else
         {
-            Log?.Invoke("[CONNECT] Skipping wake probe ΓÇö board was just paired.");
+            Log?.Invoke("[CONNECT] Skipping wake probe - board was just paired.");
         }
 
         return TryConnectWithHidRetries(deviceIndex, preferredDeviceId, ct);
     }
 
-    /// <summary>After Bluetooth pairing: wait for HID, brief wake ping, then open session (WiiBalanceWalker FormBluetooth).</summary>
+    /// <summary>After Bluetooth pairing: PairDiscoverableBoard already ran FormBluetooth 4s + wake ping — poll HID then connect.</summary>
     private ConnectResult TryHidAfterBluetoothPair(int deviceIndex, string? preferredDeviceId, CancellationToken ct)
     {
-        Log?.Invoke("[CONNECT] Post-pair: waiting for Windows HID enumerationΓÇª");
-        var deadline = DateTime.UtcNow.AddMilliseconds(BalanceConstants.PostPairHidEnumerateMs);
+        Log?.Invoke("[CONNECT] Post-pair: waiting for Windows HID enumeration...");
+        var deadline = DateTime.UtcNow.AddMilliseconds(BalanceConstants.PostPairHidRetryMs * BalanceConstants.PostPairHidRetryAttempts);
         while (DateTime.UtcNow < deadline && !ct.IsCancellationRequested)
         {
             if (_connection.DiscoverDeviceIds().Count > 0)
@@ -429,7 +479,7 @@ public sealed class BalanceBoardSession : IDisposable
     private ConnectResult TryPairAndConnect(int deviceIndex, int discoveryRounds, CancellationToken ct)
     {
         Log?.Invoke("[CONNECT] Pair-and-connect: automatic Bluetooth pairing with permanent host PIN.");
-        StatusChanged?.Invoke("Finding boardΓÇª");
+        StatusChanged?.Invoke("Finding board...");
         var wakeResult = _pairing.PairDiscoverableBoard(Log, ct, removeStalePairings: false);
         if (wakeResult.Success)
         {
@@ -469,7 +519,7 @@ public sealed class BalanceBoardSession : IDisposable
             }
             else
             {
-                Log?.Invoke($"Still searchingΓÇª press SYNC again (round {round}/{discoveryRounds}).");
+                Log?.Invoke($"Still searching... press SYNC again (round {round}/{discoveryRounds}).");
             }
 
             var pairResult = _pairing.PairDiscoverableBoard(
@@ -497,7 +547,7 @@ public sealed class BalanceBoardSession : IDisposable
             }
         }
 
-        StatusChanged?.Invoke("Could not find the board ΓÇö press SYNC under the battery cover, then Connect.");
+        StatusChanged?.Invoke("Could not find the board - press SYNC under the battery cover, then Connect.");
         return ConnectResult.Fail(ConnectStatus.PairingFailed);
     }
 
@@ -541,7 +591,7 @@ public sealed class BalanceBoardSession : IDisposable
         }
 
         SetConnectionPhase(ConnectionPhase.Connecting);
-        SafeCallbacks.Raise(StatusChanged, "Finding boardΓÇª");
+        SafeCallbacks.Raise(StatusChanged, "Finding board...");
     }
 
     private bool IsSessionHealthy()
@@ -581,7 +631,7 @@ public sealed class BalanceBoardSession : IDisposable
         var storedMac = Settings.LastBluetoothAdapterMac;
         if (string.IsNullOrWhiteSpace(storedMac))
         {
-            Log?.Invoke("[CONNECT] No saved adapter MAC yet ΓÇö will store after a successful pair.");
+            Log?.Invoke("[CONNECT] No saved adapter MAC yet - will store after a successful pair.");
             return;
         }
 
@@ -593,7 +643,7 @@ public sealed class BalanceBoardSession : IDisposable
         _adapterMacChanged = true;
         var storedDisplay = WiiBluetoothPin.FormatMacForDisplay(storedMac);
         Log?.Invoke(
-            $"[CONNECT] Adapter address changed ({storedDisplay} ΓåÆ {display}) ΓÇö Wii permanent PIN pairing may fail until you re-pair with SYNC.");
+            $"[CONNECT] Adapter address changed ({storedDisplay} -> {display}) - Wii permanent PIN pairing may fail until you re-pair with SYNC.");
     }
 
     private void PersistAdapterMacIfKnown()
@@ -711,7 +761,7 @@ public sealed class BalanceBoardSession : IDisposable
         _profiles.ApplyPreset(
             Settings,
             ActionPresets.ApplyMinecraft,
-            "Applied Minecraft preset ΓÇö WASD movement, Space to jump.");
+            "Applied Minecraft preset - WASD movement, Space to jump.");
 
     public void ApplyProfile(string profileName) => _profiles.ApplyProfile(Settings, profileName);
 
@@ -743,7 +793,7 @@ public sealed class BalanceBoardSession : IDisposable
         // internal HID read thread firing OnReadingAvailable on every incoming report.
         // Neither BalanceProcessor's tare/jump state nor ActionEngine's pressed-key state
         // is synchronized, so two overlapping calls would race those fields. Skip an
-        // overlapping call rather than block WiimoteLib's callback thread ΓÇö the next tick
+        // overlapping call rather than block WiimoteLib's callback thread - the next tick
         // or report picks up the current reading a moment later.
         if (Interlocked.CompareExchange(ref _pollGate, 1, 0) != 0)
         {
@@ -801,8 +851,8 @@ public sealed class BalanceBoardSession : IDisposable
 
         _staleHidHandled = true;
         _loggedFirstPoll = false;
-        Log?.Invoke("[DISCONNECT] HID session stale ΓÇö no balance readings (board may be flashing).");
-        SafeCallbacks.Raise(StatusChanged, "Trying againΓÇª");
+        Log?.Invoke("[DISCONNECT] HID session stale - no balance readings (board may be flashing).");
+        SafeCallbacks.Raise(StatusChanged, "Trying again...");
 
         try
         {
@@ -866,7 +916,7 @@ public sealed class BalanceBoardSession : IDisposable
         _connectedAtUtc = null;
         _lastReadingUtc = null;
         SetConnectionPhase(ConnectionPhase.Reconnecting);
-        SafeCallbacks.Raise(StatusChanged, "Trying againΓÇª");
+        SafeCallbacks.Raise(StatusChanged, "Trying again...");
         SafeCallbacks.Raise(Log, "[DISCONNECT] Balance board disconnected unexpectedly.");
         StartBluetoothRecovery();
     }
@@ -912,7 +962,7 @@ public sealed class BalanceBoardSession : IDisposable
             // thread. If the recovery loop is currently blocked inside its own
             // _worker.InvokeStrict call (RunRecoveryConnect) waiting for this very thread,
             // blocking here too would deadlock both sides until timeouts expire. The
-            // cancellation above is enough ΓÇö RunRecoveryConnect checks the token before
+            // cancellation above is enough - RunRecoveryConnect checks the token before
             // touching the connection, and the recovery task calls EndRecovery itself
             // (from its own thread) once it unwinds.
             return;
@@ -968,12 +1018,12 @@ public sealed class BalanceBoardSession : IDisposable
                 {
                     if (!radioWasOffline)
                     {
-                        SafeCallbacks.Raise(Log, "[CONNECT] Bluetooth radio unavailable ΓÇö pausing recovery.");
+                        SafeCallbacks.Raise(Log, "[CONNECT] Bluetooth radio unavailable - pausing recovery.");
                     }
 
                     radioWasOffline = true;
                     SetConnectionPhase(ConnectionPhase.PairedReconnecting);
-                    SafeCallbacks.Raise(StatusChanged, "Waiting for BluetoothΓÇª");
+                    SafeCallbacks.Raise(StatusChanged, "Waiting for Bluetooth...");
                     if (ct.WaitHandle.WaitOne(delay))
                     {
                         ct.ThrowIfCancellationRequested();
@@ -985,7 +1035,7 @@ public sealed class BalanceBoardSession : IDisposable
 
                 if (radioWasOffline)
                 {
-                    SafeCallbacks.Raise(Log, "[CONNECT] Bluetooth radio available ΓÇö running full recovery sequence.");
+                    SafeCallbacks.Raise(Log, "[CONNECT] Bluetooth radio available - running full recovery sequence.");
                     radioWasOffline = false;
                     delay = BalanceConstants.ReconnectInitialDelayMs;
                     if (!WaitForBluetoothRadioReady(ct))
@@ -996,7 +1046,7 @@ public sealed class BalanceBoardSession : IDisposable
 
                 LogBluetoothAdapterState();
                 SetConnectionPhase(ConnectionPhase.Reconnecting);
-                SafeCallbacks.Raise(StatusChanged, "Trying againΓÇª");
+                SafeCallbacks.Raise(StatusChanged, "Trying again...");
 
                 var result = RunRecoveryConnect(failedAttempts, ct);
                 if (result.IsSuccess && WaitForFirstBalanceReading(ct))
@@ -1009,7 +1059,7 @@ public sealed class BalanceBoardSession : IDisposable
 
                 if (result.IsSuccess)
                 {
-                    SafeCallbacks.Raise(Log, "[CONNECT] HID open but no balance reading ΓÇö will retry.");
+                    SafeCallbacks.Raise(Log, "[CONNECT] HID open but no balance reading - will retry.");
                     _worker.Invoke(() =>
                     {
                         try
@@ -1075,32 +1125,32 @@ public sealed class BalanceBoardSession : IDisposable
         {
             SafeCallbacks.Raise(Log,
                 _adapterMacChanged
-                    ? "[CONNECT] Recovery: adapter MAC changed ΓÇö full SYNC pairing (press SYNC if board is flashing)."
-                    : "[CONNECT] Recovery: repeated failures ΓÇö full SYNC pairing (press SYNC if board is flashing).");
+                    ? "[CONNECT] Recovery: adapter MAC changed - full SYNC pairing (press SYNC if board is flashing)."
+                    : "[CONNECT] Recovery: repeated failures - full SYNC pairing (press SYNC if board is flashing).");
             return _worker.InvokeStrict(() =>
             {
                 ct.ThrowIfCancellationRequested();
                 return TryPairAndConnect(0, 4, ct);
-            });
+            }, ConnectWorkerTimeout);
         }
 
         if (failedAttempts >= BalanceConstants.RecoveryPairAfterAttempts)
         {
             SafeCallbacks.Raise(Log,
-                "[CONNECT] Recovery: HID reconnect failed repeatedly ΓÇö light re-pair (press SYNC if board is flashing).");
+                "[CONNECT] Recovery: HID reconnect failed repeatedly - light re-pair (press SYNC if board is flashing).");
             return _worker.InvokeStrict(() =>
             {
                 ct.ThrowIfCancellationRequested();
                 return TryPairAndConnect(0, 1, ct);
-            });
+            }, ConnectWorkerTimeout);
         }
 
-        SafeCallbacks.Raise(Log, $"[CONNECT] Recovery attempt {failedAttempts + 1} ΓÇö HID reconnect without pairing.");
+        SafeCallbacks.Raise(Log, $"[CONNECT] Recovery attempt {failedAttempts + 1} - HID reconnect without pairing.");
         return _worker.InvokeStrict(() =>
         {
             ct.ThrowIfCancellationRequested();
             return TryQuickReconnect(0, Settings.LastConnectedDeviceId, ct);
-        });
+        }, ConnectWorkerTimeout);
     }
 
     private bool WaitForBluetoothAtConnectStart(CancellationToken ct)
@@ -1117,7 +1167,7 @@ public sealed class BalanceBoardSession : IDisposable
             {
                 if (radioWasOffline)
                 {
-                    Log?.Invoke("[CONNECT] Bluetooth radio available ΓÇö continuing connect.");
+                    Log?.Invoke("[CONNECT] Bluetooth radio available - continuing connect.");
                 }
 
                 return true;
@@ -1125,8 +1175,8 @@ public sealed class BalanceBoardSession : IDisposable
 
             if (!radioWasOffline)
             {
-                Log?.Invoke("[CONNECT] Bluetooth radio unavailable ΓÇö waiting to turn on.");
-                StatusChanged?.Invoke("Waiting for BluetoothΓÇª Turn Bluetooth on in Windows settings.");
+                Log?.Invoke("[CONNECT] Bluetooth radio unavailable - waiting to turn on.");
+                StatusChanged?.Invoke("Waiting for Bluetooth... Turn Bluetooth on in Windows settings.");
             }
 
             radioWasOffline = true;

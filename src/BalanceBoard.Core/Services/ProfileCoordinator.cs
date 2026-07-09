@@ -1,5 +1,6 @@
 using BalanceBoard.Core.Abstractions;
 using BalanceBoard.Core.Models;
+using BalanceBoard.Core.Services.Diagnostics;
 
 namespace BalanceBoard.Core.Services;
 
@@ -19,8 +20,23 @@ internal sealed class ProfileCoordinator(
     /// could Shutdown()/Initialize() the vJoy device concurrently with an in-flight
     /// Update() call on the worker thread.
     /// </summary>
-    public void SyncVJoyFromSettingsThreadSafe(AppSettings settings) =>
-        worker.Invoke(() => SyncVJoyFromSettings(settings));
+    public void SyncVJoyFromSettingsThreadSafe(AppSettings settings)
+    {
+        if (worker.IsCurrentThreadWorker)
+        {
+            SyncVJoyFromSettings(settings);
+            return;
+        }
+
+        // #region agent log
+        AgentDebugLog.Write("H6", "ProfileCoordinator.SyncVJoyFromSettingsThreadSafe", "non-blocking vJoy enqueue", new
+        {
+            settings.EnableVJoy,
+            settings.VJoyDeviceId,
+        });
+        // #endregion
+        worker.Enqueue(() => SyncVJoyFromSettings(settings));
+    }
 
     public void SyncVJoyFromSettings(AppSettings settings)
     {

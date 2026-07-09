@@ -85,9 +85,9 @@ public class ConnectFlowTests
     {
         var connection = new FakeBalanceBoardConnection { DiscoveredDevices = Array.Empty<string>() };
         using var session = CreateSession(connection, new FakeBluetoothPairingService());
-        var result = await session.ConnectWithIntentAsync(ConnectionIntent.QuickReconnect);
+        var result = await session.ConnectWithIntentAsync(ConnectionIntent.QuickReconnect, discoveryRounds: 1);
         Assert.False(result.IsSuccess);
-        Assert.Equal(ConnectStatus.NoDevices, result.Status);
+        Assert.Equal(ConnectStatus.PairingFailed, result.Status);
     }
 
     [Fact]
@@ -227,6 +227,7 @@ public class ConnectFlowTests
             var workerThreadId = worker.InvokeStrict(() => Environment.CurrentManagedThreadId);
 
             session.LoadSettings(new AppSettings { EnableVJoy = true }, initializeVJoy: true);
+            worker.InvokeStrict(() => { });
 
             Assert.Contains(vjoy.Calls, call => call.Call == "Initialize" && call.ThreadId == workerThreadId);
             Assert.DoesNotContain(vjoy.Calls, call => call.ThreadId == Environment.CurrentManagedThreadId);

@@ -10,6 +10,7 @@ using BalanceBoard.App.Services;
 using BalanceBoard.Core.Models;
 using BalanceBoard.Core.Processing;
 using BalanceBoard.Core.Services;
+using BalanceBoard.Core.Services.Diagnostics;
 using Microsoft.Win32;
 namespace BalanceBoard.App;
 
@@ -46,6 +47,10 @@ public partial class MainWindow : Window
             ? new BalanceBoardSession(connection: new SimulatedBalanceBoardConnection())
             : new BalanceBoardSession());
         _settings = _settingsStore.Load();
+        if (TryRepairCorruptedProfileBindings(_settings))
+        {
+            _settingsStore.Save(_settings);
+        }
         _session.LoadSettings(_settings, initializeVJoy: false);
         if (_startupOptions.HardwareTestMode)
         {
@@ -826,7 +831,7 @@ public partial class MainWindow : Window
 
     private void RequestSaveSettingsFromUi(bool immediate = false)
     {
-        if (!_uiReady || _suppressSettingEvents)
+        if (!_uiReady || _suppressSettingEvents || _connectInProgress)
         {
             return;
         }
@@ -942,9 +947,10 @@ public partial class MainWindow : Window
         try
         {
             SaveSettingsFromUi();
-            // Manual Connect always runs full pairing (WiiBalanceWalker: BT add + HID connect).
-            // QuickReconnect is reserved for auto-connect on startup.
-            const ConnectionIntent intent = ConnectionIntent.PairAndConnect;
+            // Returning users: quick HID reconnect first; full pair only when never connected before.
+            var intent = _settings.HasConnectedBefore
+                ? ConnectionIntent.QuickReconnect
+                : ConnectionIntent.PairAndConnect;
             BeginConnect(intent);
         }
         catch (Exception ex)
@@ -974,6 +980,14 @@ public partial class MainWindow : Window
     {
         try
         {
+            // Auto/quiet QuickReconnect does not need a pre-connect HID scan. DiscoverDevices()
+            // runs on the ConnectionWorker and can block for minutes inside WiimoteLib when the
+            // board is paired but asleep — that wedged startup before the first "[CONNECT] UI begin" log.
+            if (quiet && intent == ConnectionIntent.QuickReconnect)
+            {
+                return 0;
+            }
+
             var devices = _session.DiscoverDevices();
             if (devices.Count <= 1)
             {
@@ -1010,8 +1024,19 @@ public partial class MainWindow : Window
     {
         if (_shutdownCompleted
             || _connectInProgress
+            || (_connectTask is { IsCompleted: false })
             || _session.ConnectionPhase is ConnectionPhase.Connected or ConnectionPhase.Connecting)
         {
+            // #region agent log
+            AgentDebugLog.Write("H5", "MainWindow.BeginConnect", "duplicate connect suppressed", new
+            {
+                intent,
+                quiet,
+                _connectInProgress,
+                connectTaskRunning = _connectTask is { IsCompleted: false },
+                phase = _session.ConnectionPhase.ToString(),
+            });
+            // #endregion
             return;
         }
 
@@ -1082,7 +1107,9 @@ public partial class MainWindow : Window
         {
             _fileLog.WriteException(ex, "Connect");
             Log($"Error: {ex.Message}");
-            StatusText.Text = "Error — see session log.";
+            StatusText.Text = ex is TimeoutException
+                ? "Timed out — turn the board on, press SYNC, then Connect again."
+                : "Error — see session log.";
         }
         finally
         {
@@ -1785,6 +1812,38 @@ public partial class MainWindow : Window
     {
         ForceShutdown();
         base.OnClosed(e);
+    }
+
+    private static bool TryRepairCorruptedProfileBindings(AppSettings settings)
+    {
+        if (!ActionPresets.All.Contains(settings.ActiveProfileName))
+        {
+            return false;
+        }
+
+        var allBindingsEmpty = ActionSlots.All.All(slot =>
+            settings.Actions.TryGetValue(slot, out var binding)
+            && binding.Kind == ActionKind.None
+            && string.IsNullOrWhiteSpace(binding.KeyName)
+            && string.IsNullOrWhiteSpace(binding.MouseButton));
+
+        var controlifyModeWrong = settings.ActiveProfileName == ActionPresets.MinecraftControlify
+            && settings.OutputMode != OutputMode.VJoy;
+
+        if (!allBindingsEmpty && !controlifyModeWrong)
+        {
+            return false;
+        }
+
+        ActionPresets.Apply(settings, settings.ActiveProfileName);
+        // #region agent log
+        AgentDebugLog.Write(
+            "H3",
+            "MainWindow.TryRepairCorruptedProfileBindings",
+            "re-applied profile after empty bindings detected",
+            new { settings.ActiveProfileName, allBindingsEmpty, controlifyModeWrong });
+        // #endregion
+        return true;
     }
 
     /// <summary>Used by UiSmoke to verify Minecraft preset styling does not throw.</summary>

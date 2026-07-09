@@ -3,6 +3,19 @@
 All notable user-facing changes. For detailed agent work logs see [`docs/updates/`](docs/updates/).
 
 
+## [1.5.2] - 2026-07-09
+
+Connect flow alignment with WiiBalanceWalker FormBluetooth and scripted reference test fixtures.
+
+### Added
+- **ScriptedBluetoothPairingService** + **ReferenceConnectScenario** — fake Bluetooth flows for all six WiiBalanceWalker connect scenarios (FormMain fast path, fresh SYNC pair, stale Windows pairing, deleted pairing, board on feet, board off)
+- **WiiBalanceWalkerConnectFlowTests** — integration coverage for every reference scenario plus no-remembered escalation, stale-pairing removal, and dynamic HID-after-wake
+- **WiiBluetoothPinTests** — permanent host-MAC PIN matches reference FormBluetooth
+
+### Changed
+- **PairDiscoverableBoard** — after successful pair, inline FormBluetooth 4s HID wait + wake ping (no duplicate wake from callers)
+- Assembly and file version bumped to **1.5.2**
+
 ## [1.5.1] - 2026-07-09
 
 Phase 2 structural refactor: Core output pipeline, SettingsSync, tab views, and test split.

@@ -1,5 +1,6 @@
 using System.Collections.Concurrent;
 using BalanceBoard.Core.Models;
+using BalanceBoard.Core.Services.Diagnostics;
 
 namespace BalanceBoard.Core.Services.Connection;
 
@@ -8,7 +9,7 @@ namespace BalanceBoard.Core.Services.Connection;
 /// </summary>
 public sealed class ConnectionWorker : IDisposable
 {
-    private static readonly TimeSpan InvokeTimeout = TimeSpan.FromSeconds(15);
+    private static readonly TimeSpan DefaultInvokeTimeout = TimeSpan.FromSeconds(15);
     private static readonly TimeSpan DisposeJoinTimeout = TimeSpan.FromSeconds(5);
     private readonly BlockingCollection<Action> _queue = new();
     private readonly Thread _thread;
@@ -39,9 +40,53 @@ public sealed class ConnectionWorker : IDisposable
         set => _pollIntervalMs = Math.Clamp(value, BalanceConstants.MinPollIntervalMs, BalanceConstants.MaxPollIntervalMs);
     }
 
-    public void Invoke(Action action) => Run(action, rethrow: false);
+    /// <summary>Queue work on the worker thread without blocking the caller.</summary>
+    public void Enqueue(Action action)
+    {
+        if (_disposed)
+        {
+            return;
+        }
 
-    public void InvokeStrict(Action action) => Run(action, rethrow: true);
+        if (Thread.CurrentThread == _thread)
+        {
+            try
+            {
+                action();
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"ConnectionWorker inline enqueue: {ex}");
+            }
+
+            return;
+        }
+
+        try
+        {
+            _queue.Add(() =>
+            {
+                try
+                {
+                    action();
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"ConnectionWorker enqueue: {ex}");
+                }
+            });
+        }
+        catch (InvalidOperationException)
+        {
+            // Worker disposed while enqueueing.
+        }
+    }
+
+    public void Invoke(Action action) => Run(action, rethrow: false, DefaultInvokeTimeout);
+
+    public void InvokeStrict(Action action) => Run(action, rethrow: true, DefaultInvokeTimeout);
+
+    public void InvokeStrict(Action action, TimeSpan timeout) => Run(action, rethrow: true, timeout);
 
     public T InvokeStrict<T>(Func<T> func)
     {
@@ -51,7 +96,19 @@ public sealed class ConnectionWorker : IDisposable
         }
 
         T? result = default;
-        Run(() => result = func(), rethrow: true);
+        Run(() => result = func(), rethrow: true, DefaultInvokeTimeout);
+        return result!;
+    }
+
+    public T InvokeStrict<T>(Func<T> func, TimeSpan timeout)
+    {
+        if (Thread.CurrentThread == _thread)
+        {
+            return func();
+        }
+
+        T? result = default;
+        Run(() => result = func(), rethrow: true, timeout);
         return result!;
     }
 
@@ -72,7 +129,7 @@ public sealed class ConnectionWorker : IDisposable
             }
 
             T? inner = default;
-            Run(() => inner = func(), rethrow: false);
+            Run(() => inner = func(), rethrow: false, DefaultInvokeTimeout);
             result = inner;
             return true;
         }
@@ -82,7 +139,7 @@ public sealed class ConnectionWorker : IDisposable
         }
     }
 
-    private void Run(Action action, bool rethrow)
+    private void Run(Action action, bool rethrow, TimeSpan invokeTimeout)
     {
         if (_disposed)
         {
@@ -111,6 +168,7 @@ public sealed class ConnectionWorker : IDisposable
 
         Exception? error = null;
         using var done = new ManualResetEventSlim(false);
+        var waitStartedUtc = DateTime.UtcNow;
         try
         {
             _queue.Add(() =>
@@ -134,10 +192,17 @@ public sealed class ConnectionWorker : IDisposable
             return;
         }
 
-        if (!done.Wait(InvokeTimeout))
+        if (!done.Wait(invokeTimeout))
         {
+            // #region agent log
+            AgentDebugLog.Write("H1", "ConnectionWorker.Run", "invoke timeout", new
+            {
+                timeoutSeconds = invokeTimeout.TotalSeconds,
+                waitedMs = (DateTime.UtcNow - waitStartedUtc).TotalMilliseconds,
+            });
+            // #endregion
             var timeout = new TimeoutException(
-                $"ConnectionWorker action did not complete within {InvokeTimeout.TotalSeconds:0.#} seconds.");
+                $"ConnectionWorker action did not complete within {invokeTimeout.TotalSeconds:0.#} seconds.");
             if (rethrow)
             {
                 throw timeout;

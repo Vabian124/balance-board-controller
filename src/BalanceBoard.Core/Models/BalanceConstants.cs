@@ -42,8 +42,8 @@ public static class BalanceConstants
     /// <summary>Retry delay when HID is not visible yet after Bluetooth reconnect (board still booting).</summary>
     public const int PostPairHidRetryMs = 750;
     public const int PostPairHidRetryAttempts = 4;
-    /// <summary>Hold wake HID session before disconnect (WiiBalanceWalker disconnects immediately after LED).</summary>
-    public const int WakeProbeMinimalHoldMs = 50;
+    /// <summary>Hold wake HID session before disconnect (FormBluetooth disconnects immediately after LED).</summary>
+    public const int WakeProbeMinimalHoldMs = 200;
     public const int BluetoothFinishWaitMs = 2000;
     public const int PairRoundDelayMs = 1500;
     public const int BluetoothInquirySeconds = 6;
@@ -61,6 +61,15 @@ public static class BalanceConstants
     public const int BtRadioReadyPollMs = 250;
     /// <summary>Consecutive radio-ready polls required before resuming HID recovery.</summary>
     public const int BtRadioReadyStablePolls = 2;
+
+    /// <summary>Max wait for WiimoteLib HID enumeration (avoids wedging the worker).</summary>
+    public const int HidDiscoveryTimeoutSeconds = 12;
+
+    /// <summary>Max wait for PairRequest on an already-remembered Nintendo device during wake.</summary>
+    public const int BluetoothReLinkTimeoutSeconds = 8;
+
+    /// <summary>Connect/pair/wake-probe may run Bluetooth inquiry and multiple HID retries on the worker thread.</summary>
+    public const int ConnectWorkerInvokeTimeoutSeconds = 120;
 }
 
 /// <summary>

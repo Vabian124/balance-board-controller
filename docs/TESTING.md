@@ -84,7 +84,7 @@ Respects production guards:
 ### Core / integration
 
 1. Add facts under `tests/BalanceBoard.Core.Tests` or `tests/BalanceBoard.Integration.Tests`.
-2. Use fakes from `tests/BalanceBoard.Testing` (`FakeBalanceBoardConnection`, `FakeBluetoothPairingService`).
+2. Use fakes from `tests/BalanceBoard.Testing` (`FakeBalanceBoardConnection`, `FakeBluetoothPairingService`, `ScriptedBluetoothPairingService` + `ReferenceConnectScenario` for WiiBalanceWalker connect flows).
 3. Tag tests that sleep >1s with `[Trait("Category", "Slow")]` so `-Quick` skips them.
 
 ### UI

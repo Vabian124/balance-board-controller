@@ -31,13 +31,23 @@ public static class BalanceBoardProtocol
         log?.Invoke($"[CONNECT] Report mode {ContinuousReportModeHex} (continuous ButtonsExtension / 0x{WeightReportId:X2})");
     }
 
-    /// <summary>Short HID wake: connect + LED only (WiiBalanceWalker FormBluetooth — no continuous 0x34 reports).</summary>
+    /// <summary>FormBluetooth wake ping: Connect → LED → Disconnect (prevents board sleeping before HID session).</summary>
     public static void WakeDeviceSession(Wiimote device, Action<string>? log = null)
     {
-        log?.Invoke("[CONNECT] wake probe: brief HID wake (LED only).");
+        log?.Invoke("[CONNECT] wake probe: brief HID wake (Connect/LED/Disconnect).");
         device.Connect();
         device.SetLEDs(true, false, false, false);
         Thread.Sleep(BalanceConstants.WakeProbeMinimalHoldMs);
+        try
+        {
+            device.Disconnect();
+        }
+        catch
+        {
+            // Best-effort — ReleaseAll also disconnects.
+        }
+
+        Thread.Sleep(BalanceConstants.DisconnectGraceMs);
     }
 
     public static string FormatExtensionDiagnostic(ExtensionType type)
