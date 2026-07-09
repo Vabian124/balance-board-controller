@@ -17,13 +17,13 @@ Release **does not** re-run the 5-layer test suite. It verifies a successful CI 
 
 1. Bump version and tag:
    ```powershell
-   .\scripts\release\bump-and-tag.ps1 -Version 1.5.0 -Commit
+   .\scripts\release\bump-and-tag.ps1 -Version 1.5.2 -Commit
    ```
 2. Update [CHANGELOG.md](../CHANGELOG.md) (and commit if not done in step 1).
 3. Push `main`, wait for green CI (~5 min).
 4. Push the tag:
    ```powershell
-   git push origin v1.5.0
+   git push origin v1.5.2
    ```
    Or one command after CI is green:
    ```powershell

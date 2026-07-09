@@ -127,7 +127,8 @@ Physical subfolders; all types remain in `BalanceBoard.Core.Services` unless not
 |------|---------|
 | `VJoyDiagnostics.cs` | Read driver status, axis capabilities, DLL version match |
 | `DiagnosticsReport.cs` | Structured health check for UI + clipboard |
-| `FileLogService.cs` | Daily session log with SESSION header + structured tags |
+| `FileLogService.cs` | Daily session log with stable version banner + SESSION header + structured tags |
+| `AppVersion.cs` | Assembly version, stable label, session banner / window title strings |
 | `VJoyConfigLocator.cs` | Locates `vJoyConf.exe` for in-app Configure vJoy button |
 
 ## `tools/Validate/`

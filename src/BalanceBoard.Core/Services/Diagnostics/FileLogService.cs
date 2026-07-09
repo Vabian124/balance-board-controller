@@ -33,6 +33,7 @@ public sealed class FileLogService
 
     public void WriteSessionHeader(string settingsPath, AppSettings settings)
     {
+        Write(AppVersion.SessionBanner, "SESSION");
         Write("=== Session start ===", "SESSION");
         Write($"Settings file: {settingsPath}", "SESSION");
         Write(

@@ -26,7 +26,7 @@ public partial class App : Application
         }
 
         GlobalExceptionLogging.Register(_fileLog);
-        _fileLog.Write("Application starting.", "SESSION");
+        _fileLog.Write(AppVersion.SessionBanner, "SESSION");
 
         if (!_options.SkipSingleInstance && !SingleInstanceService.TryBecomePrimary())
         {

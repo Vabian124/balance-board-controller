@@ -14,6 +14,7 @@ public sealed class DiagnosticsReport
         var healthy = true;
 
         lines.Add("=== Balance Board Controller — Health Check ===");
+        lines.Add(AppVersion.SessionBanner);
         lines.Add($"Time (UTC): {DateTime.UtcNow:O}");
         lines.Add($"OS: {Environment.OSVersion}");
         lines.Add($"64-bit process: {Environment.Is64BitProcess}");

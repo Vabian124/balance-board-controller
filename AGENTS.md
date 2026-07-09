@@ -21,6 +21,7 @@ Upstream inspiration: [WiiBalanceWalker v0.5](https://github.com/lshachar/WiiBal
 | Core library | `src/BalanceBoard.Core/` (no WPF dependency) |
 | Platform | **Windows x64 only** |
 | Target framework | `net8.0-windows` |
+| **Current stable** | **v1.5.2** (tag [`v1.5.2`](https://github.com/Vabian124/balance-board-controller/releases/tag/v1.5.2)) — reference connect release |
 
 ## Read order for new agents
 

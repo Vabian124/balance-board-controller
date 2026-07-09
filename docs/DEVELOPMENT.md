@@ -2,6 +2,8 @@
 
 For AI agents and human contributors working on Balance Board Controller.
 
+**Current stable release:** **v1.5.2** (tag `v1.5.2`) — main branch; working connect release with reference FormBluetooth wake and connect hardening.
+
 ## Prerequisites
 
 - Windows 10/11 x64

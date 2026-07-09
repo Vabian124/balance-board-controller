@@ -15,5 +15,5 @@ if not exist "%EXE%" (
     )
 )
 
-echo Starting Balance Board Controller...
+echo Starting Balance Board Controller v1.5.2 (stable)...
 start "" "%CD%\%EXE%"

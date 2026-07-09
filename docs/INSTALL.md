@@ -35,7 +35,7 @@ dotnet build BalanceBoard.sln -c Release
 
 When a [GitHub Release](https://github.com/Vabian124/balance-board-controller/releases) is published:
 
-1. Download the latest `BalanceBoardController-*-win-x64.zip` and matching `.sha256` from [Releases](https://github.com/Vabian124/balance-board-controller/releases) (v1.2.0+).
+1. Download the latest `BalanceBoardController-*-win-x64.zip` and matching `.sha256` from [Releases](https://github.com/Vabian124/balance-board-controller/releases) — **[v1.5.2](https://github.com/Vabian124/balance-board-controller/releases/tag/v1.5.2)** is the current stable release.
 2. Verify the checksum (optional but recommended):
 
    ```powershell

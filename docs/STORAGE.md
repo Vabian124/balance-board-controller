@@ -64,6 +64,7 @@ Path: `%AppData%\BalanceBoardApp\logs\session-YYYY-MM-DD.log`
 Look for:
 
 ```
+[SESSION] Balance Board Controller v1.5.2 (stable) — reference connect release
 [SESSION] === Session start ===
 [SESSION] Flags: HasConnectedBefore=True, AutoConnectOnStartup=True, ...
 [SESSION] Last board: 002331987181 at ...

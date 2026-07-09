@@ -5,6 +5,8 @@ All notable user-facing changes. For detailed agent work logs see [`docs/updates
 
 ## [1.5.2] - 2026-07-09
 
+**Current stable / main release** — **working connect release** (reference FormBluetooth inline wake, prepared-board reconnect, stale-pairing SYNC path documented in `docs/CONNECTION_PROTOCOL.md`).
+
 Connect flow alignment with WiiBalanceWalker FormBluetooth and scripted reference test fixtures.
 
 ### Added

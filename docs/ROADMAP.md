@@ -2,7 +2,9 @@
 
 Planned improvements. Safe for agents to implement incrementally.
 
-## Completed (through v1.2.0)
+## Completed (through v1.5.2)
+
+- [x] **Reference connect release (v1.5.2)** — FormBluetooth inline wake, prepared-board reconnect, stale-pairing SYNC path; scripted `ReferenceConnectScenario` fixtures + integration tests (309 tests)
 
 - [x] **Tabbed UI** — Dashboard / Profiles / Advanced (`MainTabControl`)
 - [x] **UI detail levels** — Simple / Standard / Advanced (`UiDetailLevel`)

@@ -13,6 +13,7 @@ Run through this list **at the start and end** of each turn where you touch the 
 
 1. **Orient**
    - Read [AGENTS.md](AGENTS.md) if this is your first turn in the repo.
+   - **Current stable release:** **v1.5.2** (working connect release; tag `v1.5.2` on `main`).
    - Check `git status` and `git log -3 --oneline` — know what is committed vs dirty.
    - Read the latest entry in [docs/updates/README.md](docs/updates/README.md) so you do not redo or contradict past work.
 

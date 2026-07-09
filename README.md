@@ -5,7 +5,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Platform](https://img.shields.io/badge/Platform-Windows%20x64-0078D4?logo=windows)](https://github.com/Vabian124/balance-board-controller)
 
-**v1.2.0** — A production-quality **.NET 8** desktop app that turns a **Nintendo Wii Fit Balance Board** into a **virtual game controller** ([vJoy](https://github.com/shauleiz/vJoy)) or hand-free keyboard/mouse input.
+**v1.5.2 (stable)** — **current main release** and **working connect release** (reference FormBluetooth wake, prepared-board reconnect, stale-pairing SYNC path). A production-quality **.NET 8** desktop app that turns a **Nintendo Wii Fit Balance Board** into a **virtual game controller** ([vJoy](https://github.com/shauleiz/vJoy)) or hand-free keyboard/mouse input.
 
 Clean rewrite of [WiiBalanceWalker v0.5](https://github.com/lshachar/WiiBalanceWalker) with tabbed UI, progressive detail levels, automatic Bluetooth pairing, structured diagnostics, and crash-hardened device handling.
 
@@ -19,7 +19,7 @@ Clean rewrite of [WiiBalanceWalker v0.5](https://github.com/lshachar/WiiBalanceW
 - **Game profiles** — Game Controller, **Minecraft (Controlify)**, Pedal/Rudder, Hand-Free Desktop, Balance Mouse
 - **Theme** — System / Light / Dark with accessible dropdown contrast in both themes
 - **Sensitivity presets** — Low through Highly sensitive; manual deadzone/sensitivity sliders when simple presets are off; response curves in Advanced
-- **Smart connect** — first launch pairs on demand; returning users auto-reconnect
+- **Smart connect** — first launch pairs on demand; returning users auto-reconnect; **v1.5.2** aligns wake/pair with WiiBalanceWalker FormBluetooth (inline HID wait, prepared-board reconnect, stale-pairing SYNC)
 - **Crash-safe lifecycle** — dedicated STA `ConnectionWorker` for WiimoteLib; hardened disconnect (no post-dispose HID callbacks)
 - **Structured logs** — `[CONNECT]`, `[DISCONNECT]`, `[JUMP]`, `[VJOY]`, `[SETTINGS]`, `[ERROR]` tags in session log
 - **Debug Suite** — health check, session log, copy report
@@ -40,7 +40,7 @@ Clean rewrite of [WiiBalanceWalker v0.5](https://github.com/lshachar/WiiBalanceW
 
 1. Install **vJoy**, reboot, enable **Device 1** (X/Y) in vJoyConf.
 2. Install **.NET 8 Desktop Runtime**.
-3. Download the latest zip from [GitHub Releases](https://github.com/Vabian124/balance-board-controller/releases) (tag `v1.2.0` or newer).
+3. Download the latest zip from [GitHub Releases](https://github.com/Vabian124/balance-board-controller/releases) (**[v1.5.2](https://github.com/Vabian124/balance-board-controller/releases/tag/v1.5.2)** — current stable).
 4. Extract and run `BalanceBoardApp.exe`.
 5. Click **Connect**, press **SYNC** on the board (first time).
 6. Stand on the board → **Tare** → verify in vJoy Monitor.
@@ -132,7 +132,7 @@ docs/                   Architecture, CODEMAP, testing guide
 |---------|-----|
 | vJoy busy | App stops stale feeders; close vJoy Monitor |
 | vJoy missing | Reboot after install; check Device Manager |
-| Connect / disconnect crash | Update to v1.2.0+; check session log for `[DISCONNECT]` / `[ERROR]` |
+| Connect / disconnect crash | Update to **v1.5.2 (stable)**; check session log for `[DISCONNECT]` / `[ERROR]` |
 | DLL mismatch | Run `.\scripts\dev\sync-vjoy-dlls.ps1` or copy `vJoyInterface*.dll` from vJoy install into `libs/x64/` |
 | Dark dropdown unreadable | Fixed in v1.1.1+ — update theme brushes or switch to Light |
 

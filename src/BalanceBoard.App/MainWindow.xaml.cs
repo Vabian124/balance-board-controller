@@ -60,6 +60,8 @@ public partial class MainWindow : Window
         }
 
         InitializeComponent();
+        Title = AppVersion.WindowTitle;
+        AppTitleText.Text = AppVersion.DisplayName;
         WireViewEvents();
         _settingsSync = CreateSettingsSync();
         ThemeManager.Apply(_settings.ThemePreference);

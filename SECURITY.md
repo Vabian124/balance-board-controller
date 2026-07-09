@@ -4,7 +4,8 @@
 
 | Version | Supported |
 |---------|-----------|
-| `main`  | Yes       |
+| **v1.5.2** (current stable) | Yes |
+| `main` | Yes |
 
 ## Reporting a vulnerability
 

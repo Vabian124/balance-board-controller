@@ -2,6 +2,8 @@
 
 Automated tests for Balance Board Controller run **without user interaction** on Windows x64 with .NET 8.
 
+**Stable baseline (v1.5.2):** full `dotnet test BalanceBoard.sln -c Release` — **309 tests** (reference connect fixtures, FormBluetooth wake, connect hardening).
+
 ## Quick start
 
 ```powershell

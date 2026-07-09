@@ -2,7 +2,7 @@
 
 **Orchestrator:** `edd330ed`  
 **Repo:** `https://github.com/Vabian124/balance-board-controller`  
-**Baseline:** `main` @ `de834b7` (CI P0 landed); **v1.5.0 shipped** @ `89d9ba7` / tag `v1.5.0` (PR #14)  
+**Baseline:** `main` @ `ffc3606`; **v1.5.2 shipped** (current stable) @ tag `v1.5.2` — working connect release  
 **Last updated:** 2026-07-09
 
 This document synthesizes sibling worker specs into one prioritized execution plan. Full specs live in agent transcripts only — do not duplicate them here.

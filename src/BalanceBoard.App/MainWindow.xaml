@@ -19,7 +19,7 @@
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
 
-        <TextBlock Grid.Row="0" Text="Balance Board Controller" Style="{DynamicResource Text.Title}" Margin="0,0,0,8"/>
+        <TextBlock x:Name="AppTitleText" Grid.Row="0" Text="Balance Board Controller" Style="{DynamicResource Text.Title}" Margin="0,0,0,8"/>
 
         <TabControl x:Name="MainTabControl" Grid.Row="1" Style="{StaticResource TabControl.Main}">
             <TabItem Header="Dashboard" Style="{StaticResource TabItem.Main}">
